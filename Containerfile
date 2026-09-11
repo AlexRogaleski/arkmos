@@ -6,7 +6,7 @@ RUN mkdir -p /usr/lib/bootc/install \
         'type = "btrfs"' \
         > /usr/lib/bootc/install/00-arkmos.toml
 
-RUN dnf -y install \
+RUN dnf -y --setopt=install_weak_deps=False install \
         git \
         curl \
         wget \
@@ -28,14 +28,21 @@ RUN dnf -y install \
         podman \
         podman-docker \
         distrobox \
+        niri \
+        xwayland-satellite \
+        foot \
+        xdg-desktop-portal \
+        xdg-desktop-portal-gtk \
+        gnome-keyring \
     && dnf clean all
 
 COPY files/usr/local/libexec/arkmos-firstboot /usr/local/libexec/arkmos-firstboot
 COPY files/etc/systemd/system/arkmos-firstboot.service /etc/systemd/system/arkmos-firstboot.service
+COPY files/etc/niri/config.kdl /etc/niri/config.kdl
 
 RUN chmod +x /usr/local/libexec/arkmos-firstboot \
     && systemctl enable arkmos-firstboot.service
 
 LABEL org.opencontainers.image.title="Arkmos"
 LABEL org.opencontainers.image.description="Estação de trabalho pessoal baseada em Fedora bootc"
-LABEL org.opencontainers.image.version="0.4.0"
+LABEL org.opencontainers.image.version="0.5.0"
