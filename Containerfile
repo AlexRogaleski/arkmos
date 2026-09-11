@@ -1,5 +1,11 @@
 FROM quay.io/fedora/fedora-bootc:44
 
+RUN mkdir -p /usr/lib/bootc/install \
+    && printf '%s\n' \
+        '[install.filesystem.root]' \
+        'type = "btrfs"' \
+        > /usr/lib/bootc/install/00-arkmos.toml
+
 RUN dnf -y install \
         git \
         curl \
@@ -26,4 +32,4 @@ RUN dnf -y install \
 
 LABEL org.opencontainers.image.title="Arkmos"
 LABEL org.opencontainers.image.description="Estação de trabalho pessoal baseada em Fedora bootc"
-LABEL org.opencontainers.image.version="0.2.0"
+LABEL org.opencontainers.image.version="0.3.0"
