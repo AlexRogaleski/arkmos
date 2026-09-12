@@ -1,0 +1,13 @@
+# Configuração do bootc-image-builder para gerar mídia de teste.
+#
+# Deliberadamente SEM bloco [[customizations.user]]: a imagem do Arkmos não
+# declara usuário nenhum, e a conta nasce no assistente do primeiro boot.
+# Definir um usuário aqui pularia justamente o fluxo que precisa ser testado.
+#
+# Este arquivo descreve a MÍDIA, não a imagem — nada daqui vai parar no
+# registry, então é o lugar certo caso um dia seja preciso injetar algo
+# específico de uma instalação.
+
+[[customizations.filesystem]]
+mountpoint = "/"
+minsize = "20 GiB"

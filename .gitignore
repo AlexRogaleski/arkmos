@@ -5,3 +5,5 @@
 *.log
 
 result/
+output/
+output-nvidia/
