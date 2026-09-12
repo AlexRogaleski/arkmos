@@ -167,22 +167,25 @@ Duas regras que valem para tudo em `files/`:
 
 ## Assinatura das imagens
 
-O CI assina a imagem publicada com [cosign](https://github.com/sigstore/cosign) quando o secret `SIGNING_SECRET` existe no repositório. Para ligar isso:
+O CI assina a imagem publicada com [cosign](https://github.com/sigstore/cosign) quando os secrets existem, e a imagem passa a verificar a própria procedência quando a chave pública está nela. Sem isso, tudo funciona — apenas sem verificação.
 
 ```bash
 cosign generate-key-pair
 ```
 
-- `cosign.key` → secret `SIGNING_SECRET` do repositório. **Nunca** versionar.
-- `cosign.pub` → `files/usr/lib/pki/containers/arkmos.pub`, para a imagem carregar a própria chave pública.
+| Arquivo | Onde vai |
+| --- | --- |
+| `cosign.key` | secret `SIGNING_SECRET` do repositório — **nunca** versionar |
+| a senha da chave | secret `COSIGN_PASSWORD` (se a chave tiver senha) |
+| `cosign.pub` | `files/etc/pki/containers/arkmos.pub`, versionado |
 
-**Pendente:** a chave pública e a política em `/etc/containers/policy.json` ainda não estão na imagem, então hoje a assinatura é produzida mas não é verificada na instalação. Até isso fechar, a verificação é manual:
+A chave pública na imagem é o que liga as duas pontas: o build insere a entrada correspondente no `policy.json` que a base já traz, e a partir daí o `bootc upgrade` recusa uma imagem que não venha assinada pela chave correspondente. Enquanto o arquivo não existir, o build avisa e segue.
+
+Verificação manual, a qualquer momento:
 
 ```bash
 cosign verify --key cosign.pub ghcr.io/alexrogaleski/arkmos:44
 ```
-
----
 
 ## Créditos
 

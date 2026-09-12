@@ -263,6 +263,25 @@ check "serviços habilitados" \
         done
     '
 
+# A política de assinatura é opcional (depende da chave pública existir), mas
+# as duas peças só funcionam juntas: chave sem entrada na política não verifica
+# nada, e entrada apontando para chave ausente faz TODO pull falhar.
+check "política de assinatura coerente" \
+    run sh -c '
+        if [ -f /etc/pki/containers/arkmos.pub ]; then
+            grep -q arkmos.pub /etc/containers/policy.json \
+                || { echo "chave presente, mas sem entrada na política"; exit 1; }
+            test -f /etc/containers/registries.d/arkmos.yaml \
+                || { echo "chave presente, mas sem registries.d"; exit 1; }
+        else
+            grep -q arkmos.pub /etc/containers/policy.json \
+                && { echo "política aponta para uma chave que não existe"; exit 1; }
+            test ! -e /etc/containers/registries.d/arkmos.yaml \
+                || { echo "registries.d sobrou sem chave"; exit 1; }
+        fi
+        exit 0
+    '
+
 check "greetd é o display-manager" \
     run sh -c 'readlink /etc/systemd/system/display-manager.service | grep -q greetd'
 

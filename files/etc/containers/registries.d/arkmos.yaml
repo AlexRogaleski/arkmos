@@ -1,0 +1,11 @@
+# Onde procurar a assinatura das imagens do Arkmos.
+#
+# O cosign anexa a assinatura ao próprio registry, como um artefato ligado ao
+# digest da imagem ("sigstore attachment"), em vez de publicá-la num servidor
+# de assinaturas separado. Sem esta declaração o skopeo/podman não sabe disso e
+# procura no lugar errado — a verificação falha mesmo com a assinatura no lugar.
+#
+# Mesmo formato que o ublue-os.yaml que a base entrega, que é o modelo daqui.
+docker:
+  ghcr.io/alexrogaleski:
+    use-sigstore-attachments: true
