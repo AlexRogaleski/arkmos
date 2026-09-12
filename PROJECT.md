@@ -978,18 +978,31 @@ O que não atravessa é o **tema GTK3 em si**: para um Flatpak aplicar `adw-gtk3
 
 Isso entra junto com o mecanismo que vai aplicar a `flatpaks.list` (seção 36) — instalar a extensão de tema é parte da mesma tarefa, não uma segunda.
 
-### O que NÃO dá para resolver na imagem
+### Aplicativo com tema próprio: /etc/skel
 
-O tema do editor do VS Code. Ele é um aplicativo Electron com sistema de temas próprio, e o `workbench.colorTheme` vive no `settings.json` do usuário — nenhum portal, variável de ambiente ou configuração de sistema alcança isso. As correções acima afetam a parte nativa (menus, diálogos, decoração), não o editor.
+O VS Code tem sistema de temas próprio, e o `workbench.colorTheme` vive no `settings.json` do usuário — nenhum portal, variável de ambiente ou configuração de sistema alcança isso.
 
-Para quem quiser que ele acompanhe o sistema, são duas linhas no `~/.config/Code/User/settings.json`:
+O que alcança é semear o arquivo:
 
-```json
-"window.autoDetectColorScheme": true,
-"window.titleBarStyle": "native"
+```text
+files/etc/skel/.config/Code/User/settings.json
 ```
 
-Isso é configuração de usuário, e pela seção 3.3 não pertence à imagem.
+O `useradd --create-home` copia `/etc/skel` para o home ao criar a conta, e o assistente do primeiro boot usa exatamente essa flag. O que fica semeado:
+
+```json
+"window.autoDetectColorScheme": true,   segue claro/escuro do sistema
+"window.titleBarStyle": "custom",       barra desenhada com o tema do editor
+"editor.fontFamily": "JetBrainsMono Nerd Font",
+"update.mode": "none",                  ver abaixo
+"telemetry.telemetryLevel": "off"
+```
+
+`update.mode: none` não é preferência: numa imagem read-only o VS Code não consegue se atualizar, e sem isso ele tenta e falha periodicamente. Atualização vem com a imagem.
+
+Isto é um **default semeado**, não configuração imposta: a partir daí o arquivo é do usuário e nada o sobrescreve. Vale só para conta nova — `/etc/skel` não alcança quem já existe.
+
+O `just check` verifica as duas pontas: que o arquivo está na imagem com os valores que importam, e que o assistente de primeiro boot realmente o entrega no home.
 
 ## 26.2 O que falta
 

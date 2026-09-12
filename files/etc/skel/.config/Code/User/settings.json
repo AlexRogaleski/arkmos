@@ -1,0 +1,8 @@
+{
+    "window.autoDetectColorScheme": true,
+    "window.titleBarStyle": "custom",
+    "editor.fontFamily": "'JetBrainsMono Nerd Font', 'monospace', monospace",
+    "terminal.integrated.fontFamily": "'JetBrainsMono Nerd Font', 'monospace', monospace",
+    "update.mode": "none",
+    "telemetry.telemetryLevel": "off"
+}

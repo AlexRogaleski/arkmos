@@ -75,6 +75,12 @@ firstboot_e2e() {
                 || { echo "a senha não ficou definida"; exit 1; }
             test -f /var/lib/arkmos/initialized \
                 || { echo "não gravou a marca de inicializado"; exit 1; }
+
+            # /etc/skel só é copiado por useradd --create-home, e só para
+            # conta nova. Se o assistente perder essa flag, os defaults de
+            # aplicativo somem sem nenhum erro aparecer.
+            test -s /var/home/arkteste/.config/Code/User/settings.json \
+                || { echo "o /etc/skel não foi copiado para o home"; exit 1; }
         '
 }
 
@@ -175,6 +181,17 @@ check "portal de Settings apontado para o backend gtk" \
 
 # Caminho de leitura independente de portal e de D-Bus: se o portal não subir,
 # o GTK3 ainda encontra o tema aqui em vez de cair no Adwaita claro.
+# O VS Code tem sistema de temas próprio: nenhum portal ou variável alcança o
+# 'workbench.colorTheme'. O que alcança é semear o settings.json do usuário
+# pelo /etc/skel, que o useradd copia ao criar a conta.
+check "defaults do VS Code semeados no /etc/skel" \
+    run python3 -c '
+import json
+c = json.load(open("/etc/skel/.config/Code/User/settings.json"))
+assert c.get("window.autoDetectColorScheme") is True, "não segue o tema do sistema"
+assert c.get("update.mode") == "none", "auto-update ligado numa imagem read-only"
+'
+
 check "tema GTK declarado também fora do dconf" \
     run sh -c 'grep -qx "gtk-theme-name=adw-gtk3-dark" /etc/xdg/gtk-3.0/settings.ini && grep -qx "gtk-application-prefer-dark-theme=1" /etc/xdg/gtk-3.0/settings.ini'
 
