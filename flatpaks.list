@@ -1,0 +1,51 @@
+# Lista declarada de Flatpaks do Arkmos.
+#
+# Hoje esta lista é a maior lacuna de reprodutibilidade fora da imagem: os
+# aplicativos gráficos não estavam versionados em lugar nenhum.
+#
+# Capturada do Aurora em 2026-09-11 e ainda NÃO curada: contém aplicações
+# KDE que vieram do ambiente atual e podem não fazer sentido sob Niri
+# (kcalc, kclock, kontact, gwenview, okular, kpat, kweather, skanpage...).
+# Revisar antes de tratar como definitiva.
+#
+# Regra de qual camada usa o quê: ver PROJECT.md, seção de aplicações.
+# O que precisa do docker/PATH do host vai na imagem, não aqui.
+ai.jan.Jan
+com.anydesk.Anydesk
+com.discordapp.Discord
+com.getpostman.Postman
+com.github.tchx84.Flatseal
+com.github.vikdevelop.photopea_app
+com.google.Chrome
+com.spotify.Client
+dev.zed.Zed
+io.github.DenysMb.Kontainer
+io.github.flattool.Warehouse
+io.github.getnf.embellish
+io.github.kolunmi.Bazaar
+io.github.nacho.mecalin
+io.github.schwarzen.colormydesktop
+io.gitlab.adhami3310.Converter
+io.missioncenter.MissionCenter
+io.podman_desktop.PodmanDesktop
+me.iepure.devtoolbox
+me.timschneeberger.GalaxyBudsClient
+org.fedoraproject.MediaWriter
+org.fkoehler.KTailctl
+org.gnome.DejaDup
+org.inkscape.Inkscape
+org.kde.drawy
+org.kde.gwenview
+org.kde.haruna
+org.kde.kcalc
+org.kde.kclock
+org.kde.kolourpaint
+org.kde.kontact
+org.kde.kpat
+org.kde.kweather
+org.kde.okular
+org.kde.skanpage
+org.localsend.localsend_app
+org.mozilla.firefox
+org.mozilla.thunderbird_esr
+org.onlyoffice.desktopeditors
