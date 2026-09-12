@@ -1128,7 +1128,37 @@ Dois passos, com critérios diferentes:
 
 ## 28.3 Assinatura
 
-**Pendente.** O CI assina, mas a imagem ainda não carrega a chave pública (`/usr/lib/pki/containers/arkmos.pub`) nem a política em `/etc/containers/policy.json`, então a assinatura é produzida e não verificada na instalação. Procedimento no [README.md](README.md).
+A imagem verifica a própria procedência quando existe um par de chaves cosign configurado. Enquanto não existe, o build segue e a imagem funciona — apenas sem verificar de onde veio.
+
+### Como configurar
+
+```bash
+cosign generate-key-pair
+```
+
+- `cosign.key` → secret **`SIGNING_SECRET`** do repositório. **Nunca** versionar.
+- a senha usada → secret **`COSIGN_PASSWORD`**, se a chave tiver senha.
+- `cosign.pub` → `files/etc/pki/containers/arkmos.pub`, versionado (chave pública não é segredo).
+
+O `cosign` não é empacotado pelo Fedora; o binário vem do release upstream, como starship e lazygit.
+
+`COSIGN_PASSWORD` não é opcional por capricho: sem a variável, o cosign tenta **pedir** a senha, e num runner sem terminal isso trava o job até o timeout. Vazia funciona para chave gerada sem senha.
+
+### O que a imagem faz com a chave
+
+```text
+files/etc/pki/containers/arkmos.pub          chave pública
+files/etc/containers/registries.d/arkmos.yaml  onde procurar a assinatura
+/etc/containers/policy.json                  entrada inserida no build
+```
+
+A entrada é **inserida** na política que a base já traz, e não substitui por uma nossa. O `policy.json` do `ublue-os-signing` já recusa tudo por padrão (`"default": [{"type": "reject"}]`) e confia nos registries do Fedora, da Red Hat e do Universal Blue — reescrever o arquivo significaria manter essa lista à mão e sair de sincronia com a base.
+
+O `registries.d` é necessário porque o cosign anexa a assinatura ao próprio registry, ligada ao digest ("sigstore attachment"), em vez de publicá-la num servidor separado. Sem essa declaração, o podman procura no lugar errado e a verificação falha mesmo com a assinatura presente.
+
+`signedIdentity` é `matchRepository`, não `matchExact`: as tags `44` e `latest` se movem entre digests.
+
+O `just check` afirma a coerência das duas peças, que só funcionam juntas — chave sem entrada na política não verifica nada, e entrada apontando para chave ausente faz **todo** pull falhar.
 
 ---
 

@@ -158,6 +158,10 @@ jobs:
         if: env.PUBLICAR == 'true' && env.HAS_SIGNING_KEY == 'true'
         env:
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
+          # Sem esta variável o cosign tenta PEDIR a senha da chave, e num
+          # runner sem terminal isso trava o job até o timeout. Vazia quando o
+          # secret não existe, que é o caso de uma chave gerada sem senha.
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
           DIGEST: ${{ steps.push.outputs.digest }}
         run: |
           cosign sign --yes --key env://COSIGN_PRIVATE_KEY \

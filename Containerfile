@@ -28,6 +28,10 @@ ARG ARKMOS_VERSION="dev"
 ARG ARKMOS_COMMIT="unknown"
 ARG ARKMOS_VARIANT="base"
 
+# Onde as imagens são publicadas. Usado pela política de verificação de
+# assinatura, mais abaixo. Em minúsculas: o GHCR exige.
+ARG ARKMOS_REGISTRY="ghcr.io/alexrogaleski"
+
 # ---------------------------------------------------------------------------
 # Repositórios de terceiros
 #
@@ -183,6 +187,34 @@ RUN ln -sf ../usr/share/zoneinfo/America/Sao_Paulo /etc/localtime
 # /etc/dconf/db/local.d. Sem este passo, os arquivos ficam na imagem e não têm
 # efeito nenhum — o tema continuaria claro e nada indicaria o motivo.
 RUN dconf update
+
+# Verificação de assinatura da própria imagem.
+#
+# Só entra em vigor quando a chave pública existir em
+# files/etc/pki/containers/arkmos.pub — ver README. Sem ela, o build segue e a
+# imagem continua funcionando, apenas sem verificar a própria procedência; com
+# ela, 'bootc upgrade' passa a recusar uma imagem que não venha assinada pela
+# chave correspondente.
+#
+# A entrada é INSERIDA na política que a base já traz, em vez de substituí-la
+# por uma nossa: o policy.json do ublue-os-signing já recusa tudo por padrão e
+# confia nos registries do Fedora, Red Hat e Universal Blue. Reescrever o
+# arquivo significaria manter essa lista à mão e sair de sincronia com a base.
+#
+# 'matchRepository' e não 'matchExact': as tags 44 e latest se movem entre
+# digests, e matchExact exigiria que a assinatura fosse feita para o nome
+# completo com a tag.
+RUN if [ -f /etc/pki/containers/arkmos.pub ]; then \
+        python3 -c 'import json, sys; \
+p = "/etc/containers/policy.json"; \
+d = json.load(open(p)); \
+d["transports"]["docker"][sys.argv[1]] = [{"type": "sigstoreSigned", "keyPath": "/etc/pki/containers/arkmos.pub", "signedIdentity": {"type": "matchRepository"}}]; \
+json.dump(d, open(p, "w"), indent=4)' "$ARKMOS_REGISTRY" \
+        && echo "verificação de assinatura ativada para $ARKMOS_REGISTRY"; \
+    else \
+        echo "sem chave pública: a imagem não verificará a própria assinatura"; \
+        rm -f /etc/containers/registries.d/arkmos.yaml; \
+    fi
 
 RUN chmod 0755 /usr/libexec/arkmos-firstboot /usr/libexec/arkmos-greeter \
     && systemctl enable arkmos-firstboot.service \
