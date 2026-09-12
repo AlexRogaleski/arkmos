@@ -751,6 +751,8 @@ VS Code 1.137
 
 No Flatpak o terminal integrado roda dentro do sandbox e não enxerga o docker do host — o que quebra o Laravel Sail, que é dirigido inteiramente por `docker compose` a partir desse terminal. A extensão Dev Containers também não funciona sob Flatpak.
 
+Manter o VS Code numa imagem que é publicada tem uma questão de licença, tratada na seção 28.4. Os defaults dele são semeados por `/etc/skel` (seção 26.1).
+
 ## 17.2 Stack principal
 
 ```text
@@ -1175,6 +1177,67 @@ O `just check` afirma a coerência das duas peças, que só funcionam juntas —
 
 ---
 
+## 28.4 Licenças e redistribuição
+
+Publicar a imagem é **redistribuir** software de terceiros. O repositório é outra coisa: ele contém apenas configuração própria — nenhuma linha de código de terceiro é versionada aqui —, então a questão se aplica só à imagem.
+
+### O levantamento
+
+As licenças de todos os pacotes da variante padrão, por frequência:
+
+```text
+195  GPL-2.0-or-later        56  BSD-3-Clause
+124  LGPL-2.1-or-later       50  GPL-3.0-or-later
+119  MIT                     41  Apache-2.0
+ 67  OFL-1.1                 33  GPL-2.0-only
+```
+
+Todas permitem redistribuição. Dois grupos merecem nota:
+
+**21 pacotes de firmware** sob `LicenseRef-Callaway-Redistributable-no-modification-permitted` (`linux-firmware`, `iwlwifi-*`, `intel-gpu-firmware`, `amd-*`, `atheros-firmware`…). Redistribuição é permitida; modificação, não — e nada aqui os modifica. São os mesmos que qualquer distribuição Linux redistribui.
+
+**O driver NVIDIA**, na variante correspondente: `nvidia-driver` e `kmod-nvidia` são "NVIDIA License", proprietária. A variante não é publicada hoje (`publishable: false` no CI), então a questão não se apresenta. Antes de publicá-la, avaliar — o Universal Blue publica `base-nvidia` abertamente, o que é um precedente, mas não foi verificado aqui.
+
+### O caso do VS Code
+
+É o único componente cuja licença trata de distribuição em termos restritivos. O EULA embarcado na própria imagem (`/usr/share/code/resources/app/LICENSE.rtf`) diz:
+
+```text
+SCOPE OF LICENSE
+  You may not · share, publish, rent or lease the software,
+  or provide the software as a stand-alone offering for others to use.
+```
+
+E, sobre o que é permitido:
+
+```text
+INSTALLATION AND USE RIGHTS
+  You may use any number of copies of the software to develop and test
+  your applications, including deployment within your internal
+  corporate network.
+```
+
+**Decisão: manter o VS Code na imagem e publicar, seguindo o Universal Blue.**
+
+O que sustenta a decisão:
+
+- O `bluefin-dx` instala o VS Code na imagem — `dnf -y install --enablerepo=code code`, do repositório que a própria Microsoft mantém — e publica essas imagens abertamente no GHCR. Verificado no código deles e confirmado numa instalação de `aurora-dx-nvidia-open`, onde o `code` vem da imagem e não de pacote em camada.
+- É prática estabelecida, em escala e visível, de um projeto com patrocínio institucional, usando o canal de distribuição oficial da Microsoft para Linux.
+- Uma leitura possível é que o alvo da cláusula é oferecer o VS Code **isoladamente** — "as a stand-alone offering" — e não incluí-lo como uma ferramenta entre centenas num sistema operacional.
+
+O que a decisão **não** é: um parecer de que a cláusula não se aplica. Ela diz o que diz, a leitura acima não foi confirmada por ninguém com competência para isso, e o risco é assumido conscientemente.
+
+Se houver objeção algum dia, a correção é pequena e localizada — uma camada do Containerfile:
+
+- trocar por **VSCodium** ou **code-oss**, que são MIT e redistribuíveis (custo: o marketplace da Microsoft não é acessível a eles, e a extensão Dev Containers não está no Open VSX);
+- ou publicar a imagem sem o VS Code e derivá-la localmente com três linhas, que é o padrão para software não-redistribuível.
+
+### Marca
+
+A imagem deriva do Fedora, mas não se chama Fedora nem usa a marca — que é o que as diretrizes de marca pedem de um derivado.
+
+---
+
 # 29. Processo de Build
 
 ```bash
@@ -1490,7 +1553,8 @@ Niri                            compositor
 Noctalia                        shell do desktop
 greetd + tuigreet               login, com fallback de texto
 Docker CE real                  Laravel Sail (seção 15)
-VS Code na imagem               terminal integrado precisa do docker do host
+VS Code na imagem               terminal integrado precisa do docker do host;
+                                redistribuição assumida conscientemente (seção 28.4)
 Podman + Distrobox              containers e ambientes
 PipeWire / NetworkManager       vêm da base
 GTK como preferência visual
