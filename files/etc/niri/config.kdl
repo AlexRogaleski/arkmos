@@ -267,7 +267,10 @@ layout {
 // which may be more convenient to use.
 // See the binds section below for more spawn examples.
 
-// This line starts waybar, a commonly used bar for Wayland compositors.
+// Noctalia: barra, dock, lançador, central de controle, notificações,
+// wallpaper e tela de bloqueio. Substitui a waybar que a config de
+// exemplo iniciava aqui.
+spawn-at-startup "noctalia"
 
 // To run a shell command (with variables, pipes, etc.), use spawn-sh-at-startup:
 // spawn-sh-at-startup "qs -c ~/source/qs/MyAwesomeShell"
@@ -282,7 +285,16 @@ hotkey-overlay {
 // Additionally, clients will be informed that they are tiled, removing some client-side rounded corners.
 // This option will also fix border/focus ring drawing behind some semitransparent windows.
 // After enabling or disabling this, you need to restart the apps for this to take effect.
-// prefer-no-csd
+//
+// Arkmos: ligado. Sem isto o niri pede decoração ao cliente, e cada aplicativo
+// desenha a própria barra de título com o tema que conseguir adivinhar — no
+// foot isso dá uma barra BRANCA, porque ele cai na cor de foreground padrão,
+// independente do esquema de cores configurado. Numa janela em tiling essa
+// barra também não serve para nada: não há o que arrastar nem redimensionar.
+//
+// Com prefer-no-csd, o niri anuncia decoração do lado do servidor e desenha
+// ele mesmo a borda e o anel de foco, com as cores desta configuração.
+prefer-no-csd
 
 // You can change the path where screenshots are saved.
 // A ~ at the front will be expanded to the home directory.
@@ -362,7 +374,7 @@ binds {
 
     // Suggested binds for running programs: terminal, app launcher, screen locker.
     Mod+T hotkey-overlay-title="Open a Terminal: foot" { spawn "foot"; }
-    // Mod+D hotkey-overlay-title="Run an Application: fuzzel" { spawn "fuzzel"; }
+    Mod+D hotkey-overlay-title="Run an Application: fuzzel" { spawn "fuzzel"; }
     // Super+Alt+L hotkey-overlay-title="Lock the Screen: swaylock" { spawn "swaylock"; }
 
     // Use spawn-sh to run a shell command. Do this if you need pipes, multiple commands, etc.
