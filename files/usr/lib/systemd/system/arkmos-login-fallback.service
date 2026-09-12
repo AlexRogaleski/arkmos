@@ -1,0 +1,18 @@
+[Unit]
+Description=Arkmos: login de texto quando o greetd desiste
+After=greetd.service
+
+[Service]
+Type=oneshot
+
+# O getty da vt1 provavelmente está em 'failed' neste ponto, e não por culpa
+# dele: o greetd tem Conflicts=getty@tty1.service, então cada tentativa de
+# reinício do greetd para o getty. Cinco idas e vindas em poucos segundos
+# esgotam o StartLimitBurst do próprio getty, que passa a recusar o start com
+# "Start request repeated too quickly". Sem o reset-failed, o fallback não
+# sobe nada e a vt1 fica com um prompt morto na tela — foi o que aconteceu.
+ExecStart=/usr/bin/systemctl reset-failed getty@tty1.service
+
+# --no-block: este serviço é disparado pelo próprio systemd via OnFailure, e
+# esperar por uma transação que ele mesmo precisa processar trava os dois.
+ExecStart=/usr/bin/systemctl start --no-block getty@tty1.service

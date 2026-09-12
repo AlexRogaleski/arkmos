@@ -1,0 +1,28 @@
+# Sessão do greeter.
+#
+# 'user' é a conta sob a qual o tuigreet roda, e no Fedora ela se chama
+# 'greetd' — não 'greeter'. O README do tuigreet e a maioria dos tutoriais
+# usam 'greeter' porque é o nome convencional em outras distribuições; aqui
+# quem manda é /usr/lib/sysusers.d/greetd.conf, entregue pelo pacote:
+#
+#   u greetd - "greetd daemon" /var/lib/greetd
+#
+# Errar este nome não produz erro de configuração: o greetd sobe, falha ao
+# abrir a sessão do greeter, reinicia 5 vezes e desiste por start-limit-hit.
+# Como a unit tem Conflicts=getty@tty1.service, o getty já foi parado nesse
+# ponto e a vt1 fica preta, sem prompt nenhum.
+#
+# Este arquivo é mantido trivial de propósito: o parser TOML do greetd é mais
+# restrito que o TOML 1.0 e aborta com "expected equals sign on line, but
+# found none" em construções que outros parsers aceitam. Os argumentos da
+# tela de login ficam em /usr/libexec/arkmos-greeter, onde são legíveis e não
+# dependem desse parser.
+#
+# 'just check' valida as duas coisas: que o greetd consegue LER este arquivo,
+# e que a conta referenciada aqui existe na imagem.
+[terminal]
+vt = 1
+
+[default_session]
+command = "/usr/libexec/arkmos-greeter"
+user = "greetd"
