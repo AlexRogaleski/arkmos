@@ -1,0 +1,84 @@
+# Arkmos — prompt.
+#
+# Duas linhas: contexto acima, cursor abaixo. Comando longo colado na borda
+# esquerda fica mais fácil de ler e de editar do que um que começa no meio da
+# tela depois de um prompt comprido.
+#
+# Os símbolos dos módulos ficam nos padrões do Starship de propósito: eles já
+# são glifos Nerd Font testados upstream, e a JetBrains Mono Nerd Font da
+# imagem os cobre. Aqui se define cor, formato e o que aparece — não desenho.
+#
+# Apontado por STARSHIP_CONFIG em zsh/tools.zsh. Um STARSHIP_CONFIG definido
+# no ambiente vence este arquivo.
+
+"$schema" = 'https://starship.rs/config-schema.json'
+
+format = """
+$directory$git_branch$git_state$git_status$php$nodejs$python$rust$docker_context$cmd_duration
+$character"""
+
+add_newline = true
+
+[character]
+success_symbol = '[❯](bold green)'
+error_symbol = '[❯](bold red)'
+vimcmd_symbol = '[❮](bold yellow)'
+
+[directory]
+style = 'bold cyan'
+truncation_length = 3
+truncate_to_repo = true
+truncation_symbol = '…/'
+format = '[$path]($style)[$read_only]($read_only_style) '
+
+[git_branch]
+style = 'bold magenta'
+format = '[$symbol$branch]($style) '
+
+# Contadores em vez de só um símbolo: "!3" diz mais que "!" ao decidir se dá
+# para trocar de branch agora.
+[git_status]
+style = 'bold yellow'
+format = '([$all_status$ahead_behind]($style) )'
+conflicted = '=${count} '
+ahead = '⇡${count} '
+behind = '⇣${count} '
+diverged = '⇕⇡${ahead_count}⇣${behind_count} '
+untracked = '?${count} '
+stashed = '*${count} '
+modified = '!${count} '
+staged = '+${count} '
+renamed = '»${count} '
+deleted = '✘${count} '
+
+[git_state]
+style = 'bold red'
+
+# Versão da linguagem só aparece dentro de um projeto que a usa — é o
+# comportamento padrão desses módulos, e o que mantém o prompt curto.
+[php]
+style = 'bold blue'
+format = '[$symbol($version )]($style)'
+
+[nodejs]
+style = 'bold green'
+format = '[$symbol($version )]($style)'
+
+[python]
+style = 'bold yellow'
+format = '[$symbol($version )(\($virtualenv\) )]($style)'
+
+[rust]
+style = 'bold red'
+format = '[$symbol($version )]($style)'
+
+[docker_context]
+style = 'bold blue'
+format = '[$symbol$context]($style) '
+# O contexto default do docker não informa nada; só aparece se foi trocado.
+only_with_files = true
+
+[cmd_duration]
+min_time = 2000
+style = 'bold yellow'
+format = '[$duration]($style) '
