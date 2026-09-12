@@ -1098,13 +1098,26 @@ Dois detalhes que a experiência impôs:
 .github/workflows/build.yml
 ```
 
-- Dispara em push e PR na `main`, diariamente às 06:30 UTC e sob demanda.
-- Uma variante por job (`strategy.matrix`): o runner do GitHub já precisa de limpeza para caber **uma** imagem de ~11 GB.
-- Pull request valida e para; não publica.
-- Publica em `ghcr.io/<owner>/arkmos[-nvidia]` com as tags `44.AAAAMMDD.N`, `44` e `latest`.
-- Assina com cosign quando o secret `SIGNING_SECRET` existe.
+O workflow tem duas funções, e elas entram em momentos diferentes do projeto.
 
-O cron diário existe porque a base do Universal Blue é reconstruída diariamente — e suas tags expiram em 4 semanas. Seguir de perto evita ficar para trás em correção de segurança do kernel e do driver.
+**Verificar** vale agora. Cada push e cada pull request na `main` constrói as duas variantes e roda o mesmo `tests/check-image.sh` que o `just check` roda na máquina. É o que pega regressão enquanto o projeto muda rápido, sem depender de alguém lembrar de verificar antes de commitar.
+
+**Publicar** só vale quando houver máquina instalada para atualizar — é a peça que transforma o Arkmos de "reconstruir e reinstalar" em um sistema atualizável por `bootc upgrade`. Até lá, publicar é encher o registry de versões que ninguém baixa. Fica atrás de um acionamento manual (`workflow_dispatch` com a caixa `publish` marcada), e as tags seguem o esquema por data: `44.AAAAMMDD.N`, mais `44` e `latest`.
+
+Detalhes do desenho:
+
+- **Uma variante por job** (`strategy.matrix`). O runner do GitHub já precisa de limpeza para caber **uma** imagem de ~11 GB; as duas no mesmo job estouram o disco. Em jobs separados também constroem em paralelo.
+- **A variante NVIDIA é construída e verificada, mas não publicada.** Ela compartilha a árvore `files/` inteira com a padrão, então o que pode quebrar só nela vem da base — a imagem sair do ar, mudar de nome, deixar de trazer um pacote. Construir a cada push custa tempo de runner, que em repositório público é gratuito. Publicar são ~5 GB por versão de uma imagem que ninguém usa hoje.
+- **Sem `schedule` por enquanto.** O cron existe para acompanhar a reconstrução diária da base do Universal Blue — cujas tags, aliás, expiram em 4 semanas — e isso só protege uma imagem que está em uso. Entra quando a publicação virar rotina.
+- **Assina com cosign** quando o secret `SIGNING_SECRET` existe.
+
+### Por que o repositório é público
+
+Não é só preferência: é o que torna este workflow viável. Em conta gratuita do GitHub, repositório privado tem **500 MB** de cota no GitHub Packages, e as imagens ocupam cerca de 4 GB (padrão) e 5 GB (NVIDIA) comprimidas — a primeira publicação estouraria a cota por uma ordem de grandeza. Repositório público tem Actions ilimitado e registry sem cota.
+
+O projeto já era construído com essa hipótese: nada pessoal é declarado na imagem, e a conta nasce no primeiro boot (seção 12.4).
+
+**Pendência:** não há política de retenção. Com publicação manual e esporádica isso é administrável, mas antes de ligar o `schedule` é preciso remover versões antigas — cada execução cria uma nova, e nada as apaga.
 
 ## 28.3 Assinatura
 

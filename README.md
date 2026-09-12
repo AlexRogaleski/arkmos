@@ -132,7 +132,9 @@ bootc status            # o que está rodando e o que está preparado
 sudo bootc rollback     # volta para o deployment anterior
 ```
 
-O número de versão não é a rede de segurança — `bootc rollback` é. As imagens são publicadas com o esquema por data do Fedora e do Universal Blue (`44.AAAAMMDD.N`), mais as tags `44` e `latest`.
+O número de versão não é a rede de segurança — `bootc rollback` é. As imagens usam o esquema por data do Fedora e do Universal Blue (`44.AAAAMMDD.N`), mais as tags `44` e `latest`.
+
+**Ainda não há imagem publicada.** O CI constrói e verifica as duas variantes a cada push, mas a publicação no GHCR fica atrás de um acionamento manual (`workflow_dispatch` com a caixa `publish` marcada) — enquanto não há máquina instalada para atualizar, publicar só encheria o registry. Até então, o caminho é `just vm` e instalar do disco gerado.
 
 ---
 
