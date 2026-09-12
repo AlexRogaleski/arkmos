@@ -1,0 +1,231 @@
+#!/usr/bin/env bash
+#
+# Arkmos — configuração inicial do sistema.
+#
+# Este script faz apenas o que NÃO pode estar declarado na imagem:
+# criar a conta do usuário e definir sua senha.
+#
+# Locale, teclado e timezone são padrão do Arkmos e vêm declarados na
+# imagem (/etc/locale.conf, /etc/vconsole.conf, /etc/localtime). Não
+# devem ser configurados aqui: chamar localectl/timedatectl em runtime
+# marca esses arquivos como modificados localmente e os congela contra
+# futuras atualizações da imagem.
+#
+# Sem 'set -e' de propósito: este é um assistente interativo, e uma
+# falha no meio precisa virar mensagem acionável e nova tentativa, não
+# morte silenciosa que deixa a instalação num estado irrecuperável.
+
+set -uo pipefail
+
+STATE_DIR="/var/lib/arkmos"
+STATE_FILE="${STATE_DIR}/initialized"
+ARKMOS_UID=1000
+
+if [[ -f "$STATE_FILE" ]]; then
+    exit 0
+fi
+
+mkdir -p "$STATE_DIR"
+
+# Cala o status do systemd no console antes de escrever qualquer coisa.
+#
+# SIGRTMIN+21 ao PID 1 desliga a impressão de status no console e
+# SIGRTMIN+20 religa — ver systemd(1). Sem isto as linhas "Started ...",
+# "Listening on ..." e "Reached target ..." dos serviços que ainda estão
+# subindo caem no meio das perguntas deste assistente.
+#
+# Não religamos ao terminar de propósito: o plymouth manda o mesmo
+# SIGRTMIN+21 quando sai, então console silencioso já é o estado normal
+# do sistema depois do boot, e religar aqui é que seria a anomalia.
+kill -s RTMIN+21 1 2>/dev/null || true
+
+clear
+
+echo
+echo "=========================================="
+echo "            BEM-VINDO AO ARKMOS"
+echo "=========================================="
+echo
+echo "Configuração inicial do sistema."
+echo
+
+# --- Conta -----------------------------------------------------------------
+#
+# Se já existe uma conta no UID do Arkmos, uma execução anterior criou o
+# usuário mas não chegou ao fim. Retomamos a partir da senha em vez de
+# pedir um nome novo — pedir travaria o assistente para sempre, já que o
+# nome original seria rejeitado por "usuário já existe".
+
+USERNAME="$(getent passwd "$ARKMOS_UID" | cut -d: -f1)"
+
+if [[ -n "$USERNAME" ]]; then
+    echo "Configuração anterior incompleta encontrada."
+    echo "Retomando o cadastro de '$USERNAME'."
+    echo
+else
+    while true; do
+        read -r -p "Nome de usuário: " USERNAME
+
+        if [[ -z "$USERNAME" || "$USERNAME" == "root" ]]; then
+            echo
+            echo "Nome de usuário inválido."
+            echo
+            continue
+        fi
+
+        if [[ ! "$USERNAME" =~ ^[a-z_][a-z0-9_-]*$ ]]; then
+            echo
+            echo "Nome de usuário inválido."
+            echo "Use apenas letras minúsculas, números, '_' ou '-'."
+            echo
+            continue
+        fi
+
+        if id "$USERNAME" &>/dev/null; then
+            echo
+            echo "Esse usuário já existe."
+            echo
+            continue
+        fi
+
+        break
+    done
+
+    read -r -p "Nome completo: " FULLNAME
+
+    echo
+    echo "Criando usuário '$USERNAME'..."
+    echo
+
+    # UID/GID fixos: evitam divergência de propriedade se o /var/home
+    # sobreviver a uma reinstalação do sistema.
+    if ! useradd \
+            --uid "$ARKMOS_UID" \
+            --user-group \
+            --create-home \
+            --shell /usr/bin/zsh \
+            --comment "$FULLNAME" \
+            "$USERNAME"; then
+        echo
+        echo "ERRO: não foi possível criar o usuário '$USERNAME'."
+        echo "O sistema seguirá para o login. Acesse como root e execute:"
+        echo "  /usr/libexec/arkmos-firstboot"
+        echo
+        exit 1
+    fi
+fi
+
+# --- Grupos ----------------------------------------------------------------
+#
+# Idempotente: usermod -aG pode rodar de novo numa retomada sem efeito
+# colateral. 'docker' só é concedido se o grupo existir.
+
+SUPP_GROUPS="wheel"
+if getent group docker >/dev/null 2>&1; then
+    SUPP_GROUPS="${SUPP_GROUPS},docker"
+fi
+
+if ! usermod -aG "$SUPP_GROUPS" "$USERNAME"; then
+    echo
+    echo "AVISO: não foi possível adicionar '$USERNAME' aos grupos:"
+    echo "  $SUPP_GROUPS"
+    echo "Você precisará fazer isso manualmente como root."
+    echo
+fi
+
+# --- Senha -----------------------------------------------------------------
+#
+# Prompt próprio em vez de chamar 'passwd'.
+#
+# O 'passwd' fala em inglês no meio de um assistente em português, pede a
+# senha duas vezes sem dizer que vai pedir, e intercala mensagens do pwquality
+# ("BAD PASSWORD: The password is shorter than 8 characters") que parecem erro
+# grave quando na verdade são aviso — como root, o passwd aceita a senha
+# depois de reclamar. O resultado é um passo confuso justamente no momento em
+# que a pessoa não pode errar.
+#
+# Aqui a regra é dita ANTES, o retorno é em português, e a senha só sai daqui
+# quando as duas digitações batem.
+
+MIN_SENHA=8
+
+echo
+echo "------------------------------------------"
+echo "Defina a senha de '$USERNAME'."
+echo
+echo "  - mínimo de ${MIN_SENHA} caracteres"
+echo "  - a senha não aparece na tela enquanto você digita"
+echo "  - será pedida duas vezes, para conferência"
+echo "------------------------------------------"
+echo
+
+while true; do
+    read -r -s -p "Senha: " SENHA
+    echo
+
+    if (( ${#SENHA} < MIN_SENHA )); then
+        echo
+        echo "Curta demais: ${#SENHA} caractere(s), o mínimo é ${MIN_SENHA}."
+        echo
+        continue
+    fi
+
+    read -r -s -p "Repita a senha: " SENHA_CONFIRMA
+    echo
+
+    if [[ "$SENHA" != "$SENHA_CONFIRMA" ]]; then
+        echo
+        echo "As duas digitações não coincidem. Vamos tentar de novo."
+        echo
+        continue
+    fi
+
+    # chpasswd lê de stdin, então a senha não passa por linha de comando e não
+    # aparece em 'ps'. printf é builtin do bash, pelo mesmo motivo.
+    if ! printf '%s:%s\n' "$USERNAME" "$SENHA" | chpasswd; then
+        echo
+        echo "ERRO: o sistema recusou a senha."
+        echo "Tente uma diferente."
+        echo
+        continue
+    fi
+
+    # Confirma no banco de senhas em vez de confiar no código de saída.
+    # 'passwd -S' devolve P (definida), L (bloqueada) ou NP (sem senha).
+    if [[ "$(passwd -S "$USERNAME" 2>/dev/null | awk '{print $2}')" == "P" ]]; then
+        break
+    fi
+
+    echo
+    echo "A senha não ficou registrada. Tente novamente."
+    echo
+done
+
+unset SENHA SENHA_CONFIRMA
+
+echo
+echo "Senha definida."
+
+# --- Conclusão -------------------------------------------------------------
+#
+# O arquivo de estado é gravado só aqui, depois de conta, grupos e senha
+# estarem confirmados. Qualquer interrupção antes deste ponto faz o
+# assistente rodar de novo no próximo boot e retomar de onde parou.
+
+touch "$STATE_FILE"
+chmod 600 "$STATE_FILE"
+
+# O resumo é curto de propósito, e a instrução é a ÚLTIMA linha: em janela de
+# VM pequena o texto rola, e uma pausa cuja explicação saiu da tela parece
+# travamento. Pelo mesmo motivo a espera tem prazo — sem o '-t', quem não viu
+# a mensagem fica preso sem saber o que o sistema espera.
+ESPERA=20
+
+echo
+echo "=========================================="
+echo "  Pronto. Usuário '$USERNAME' criado."
+echo "=========================================="
+echo
+echo "Indo para a tela de login em ${ESPERA}s — ENTER para ir agora."
+
+read -r -t "$ESPERA" || true
