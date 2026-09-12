@@ -1117,7 +1117,14 @@ Não é só preferência: é o que torna este workflow viável. Em conta gratuit
 
 O projeto já era construído com essa hipótese: nada pessoal é declarado na imagem, e a conta nasce no primeiro boot (seção 12.4).
 
-**Pendência:** não há política de retenção. Com publicação manual e esporádica isso é administrável, mas antes de ligar o `schedule` é preciso remover versões antigas — cada execução cria uma nova, e nada as apaga.
+### Retenção
+
+Cada publicação cria **uma** versão (um digest) carregando três tags: `44.AAAAMMDD.N`, `44` e `latest`. Sem limpeza, nada remove as anteriores e cada uma ocupa ~4 GB. Em repositório público isso não custa cota, mas uma listagem com centenas de versões deixa de ser navegável — e no dia em que o `schedule` for ligado, passa a crescer sozinha.
+
+Dois passos, com critérios diferentes:
+
+- **Versões sem tag são removidas todas.** Mover `44` e `latest` para a versão nova deixa a anterior sem nenhuma tag apontando para ela; não dá para referenciá-la por nome e ela não é alvo de rollback.
+- **Cinco publicações de histórico são mantidas.** O rollback do dia a dia é local — `bootc rollback` usa o deployment anterior, que já está no disco e não depende do registry. As cinco servem para o outro caso: reinstalar do zero uma versão que se sabe boa, quando a mais recente não presta.
 
 ## 28.3 Assinatura
 

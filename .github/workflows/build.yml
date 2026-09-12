@@ -162,3 +162,37 @@ jobs:
         run: |
           cosign sign --yes --key env://COSIGN_PRIVATE_KEY \
             "${IMAGE_REGISTRY}/${IMAGE}@${DIGEST}"
+
+      # --- Retenção -------------------------------------------------------
+      #
+      # Cada publicação cria UMA versão (um digest) carregando três tags:
+      # 44.AAAAMMDD.N, 44 e latest. Nada remove as anteriores, e cada uma
+      # ocupa ~4 GB. Em repositório público isso não custa cota, mas uma
+      # listagem de pacote com centenas de versões deixa de ser navegável — e
+      # no dia em que o schedule for ligado, passa a crescer sozinha.
+      #
+      # Dois passos, porque as duas limpezas têm critérios diferentes.
+
+      # Mover as tags 44 e latest para a versão nova deixa a anterior sem
+      # nenhuma tag apontando para ela. Essas não servem para nada: não dá
+      # para referenciá-las por nome, e não são alvo de rollback.
+      - name: Remover versões sem tag
+        if: env.PUBLICAR == 'true'
+        uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5.0.0
+        with:
+          package-name: ${{ env.IMAGE }}
+          package-type: container
+          delete-only-untagged-versions: true
+          min-versions-to-keep: 0
+
+      # Cinco publicações de histórico. O rollback do dia a dia é local —
+      # 'bootc rollback' usa o deployment anterior, que já está no disco e não
+      # depende do registry. Isto serve para o outro caso: reinstalar do zero
+      # uma versão que se sabe boa, quando a mais recente não presta.
+      - name: Manter apenas as últimas versões
+        if: env.PUBLICAR == 'true'
+        uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5.0.0
+        with:
+          package-name: ${{ env.IMAGE }}
+          package-type: container
+          min-versions-to-keep: 5
