@@ -61,7 +61,7 @@ Vale saber: na variante padrão não há driver NVIDIA nenhum. Numa máquina cuj
 | Containers | Podman 5.8, Docker CE 29.8 (+ compose), Distrobox 1.8 |
 | Desenvolvimento | VS Code 1.137, Git, Python, Neovim, lazygit, lazydocker, eza/bat/fd/fzf/ripgrep/zoxide |
 | Sistema | PipeWire, NetworkManager, BlueZ, TuneD, Flatpak |
-| Aparência | tema escuro padrão (GTK via dconf), decoração pelo compositor, Papirus, cursor Adwaita |
+| Aparência | tema escuro padrão (GTK via dconf e portal), decoração pelo compositor, Papirus, cursor Adwaita |
 | Localização | pt_BR.UTF-8, teclado ABNT2, `America/Sao_Paulo` |
 
 **Docker CE, e não `podman-docker`.** O `podman-docker` é um shim que faz `docker` invocar o podman — e o [Laravel Sail](https://laravel.com/docs/sail), que é o fluxo de trabalho central desta máquina, é dirigido inteiramente por `docker compose`. Pelo mesmo motivo o VS Code está na imagem em vez de em Flatpak: sob o sandbox, o terminal integrado não enxerga o docker do host.
@@ -155,6 +155,7 @@ files/                     árvore copiada para dentro da imagem
   usr/libexec/             assistente do primeiro boot
   usr/share/arkmos/        configuração do zsh e do prompt
   etc/dconf/               tema escuro padrão para aplicativos GTK
+  etc/skel/                defaults semeados no home ao criar a conta
 .github/workflows/         build, verificação, publicação e assinatura
 ```
 
