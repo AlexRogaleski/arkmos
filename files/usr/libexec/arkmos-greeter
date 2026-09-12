@@ -1,0 +1,39 @@
+#!/bin/sh
+#
+# Arkmos — tela de login.
+#
+# Os argumentos do tuigreet vivem aqui, e não no 'command =' do
+# /etc/greetd/config.toml, por dois motivos:
+#
+#   1. O parser TOML do greetd é mais restrito que o TOML 1.0. Uma string
+#      multi-linha (""" ... """) com barra invertida no fim de cada linha é
+#      válida no padrão e o tomllib do Python a aceita sem reclamar — o
+#      greetd aborta com "expected equals sign on line, but found none".
+#      O sintoma disso não parece erro de configuração: o greetd reinicia
+#      cinco vezes e desiste, exatamente como faria com uma conta de greeter
+#      inexistente. Aconteceu, e custou um teste em VM.
+#
+#   2. Uma flag por linha, comentada, é legível. A alternativa que funciona
+#      no greetd é uma única linha de 400 caracteres dentro de uma string.
+#
+# O greetd roda este script com sh(1), como usuário 'greetd'.
+#
+# Sobre o que dá para fazer aqui: o tuigreet desenha na console do kernel —
+# 16 cores, sem tipografia própria, sem gráficos. Não existe tela de login
+# bonita neste ponto. O login gráfico de verdade é o Noctalia Greeter, ainda
+# na fila (PROJECT.md, seção 8.3).
+
+exec tuigreet \
+    --greeting 'Arkmos' \
+    --asterisks \
+    --theme 'border=blue;title=cyan;text=white;prompt=cyan;input=white;greet=cyan;time=blue;action=blue;button=cyan' \
+    --width 44 \
+    --container-padding 2 \
+    --time \
+    --time-format '%H:%M  %d/%m/%Y' \
+    --remember \
+    --remember-user-session \
+    --power-shutdown 'systemctl poweroff' \
+    --power-reboot 'systemctl reboot' \
+    --sessions /usr/share/wayland-sessions \
+    --cmd niri-session
