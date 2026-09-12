@@ -1,0 +1,36 @@
+[Unit]
+Description=Arkmos First Boot Setup
+ConditionPathExists=!/var/lib/arkmos/initialized
+
+After=systemd-vconsole-setup.service
+
+# Depois do plymouth, não antes.
+#
+# Sem esta ordenação o assistente arranca junto com sysinit.target, ainda com
+# o splash do plymouth na tela, e o prompt nasce disputando a vt1: o splash
+# cobre o texto, e quando o plymouth finalmente sai ele redesenha a tela por
+# cima do que já estava escrito. O resultado, na prática, foi um assistente
+# atravessado por mensagens de status do systemd.
+#
+# getty@.service já tem After=plymouth-quit-wait.service, então ordenar aqui
+# desta forma é consistente com o Before=getty@tty1.service abaixo.
+After=plymouth-quit-wait.service
+
+# Precisa terminar antes de qualquer coisa tomar a vt1: o greetd em uso
+# normal, e o getty como caminho de recuperação se o greetd não subir.
+Before=greetd.service
+Before=getty@tty1.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/arkmos-firstboot
+StandardInput=tty
+StandardOutput=tty
+StandardError=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+
+[Install]
+WantedBy=multi-user.target
