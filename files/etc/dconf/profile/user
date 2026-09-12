@@ -1,0 +1,7 @@
+# Arkmos: faz o banco de sistema valer como padrão para todo usuário.
+#
+# Sem este arquivo, o /etc/dconf/db/local é compilado e simplesmente ignorado:
+# o dconf só consulta bancos listados num profile. A ordem importa — 'user-db'
+# primeiro significa que a escolha de quem usa vence o padrão do sistema.
+user-db:user
+system-db:local

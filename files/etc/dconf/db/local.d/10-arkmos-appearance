@@ -1,0 +1,27 @@
+# Aparência padrão do Arkmos.
+#
+# Fora de uma sessão GNOME não há daemon de configurações para dizer aos
+# aplicativos GTK qual tema usar, então eles leem direto do GSettings — e o
+# padrão do GSettings é claro. É isso que faz um app GTK abrir branco no meio
+# de um desktop escuro.
+#
+# 'color-scheme' atende GTK4/libadwaita e o portal; 'gtk-theme' atende GTK3,
+# inclusive a libdecor, que é quem desenha decoração de janela para clientes
+# Wayland que não desenham a própria.
+#
+# Isto é um PADRÃO, não uma imposição: o user-db vem antes no profile, então
+# qualquer mudança que a pessoa faça vence. Para travar de fato, seria preciso
+# um arquivo em /etc/dconf/db/local.d/locks/.
+
+[org/gnome/desktop/interface]
+color-scheme='prefer-dark'
+gtk-theme='adw-gtk3-dark'
+icon-theme='Papirus'
+cursor-theme='Adwaita'
+cursor-size=24
+font-name='Cantarell 11'
+monospace-font-name='JetBrainsMono Nerd Font 11'
+document-font-name='Cantarell 11'
+
+[org/gnome/desktop/wm/preferences]
+button-layout='appmenu:close'
