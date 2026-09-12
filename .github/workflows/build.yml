@@ -1,18 +1,31 @@
 name: build
 
-# Sem isto o 'bootc upgrade' não existe: a máquina precisa resolver a imagem
-# a partir de um registry. Esta é a peça que transforma o Arkmos de
-# "reconstruir e reinstalar" em um sistema operacional atualizável.
+# Duas funções distintas, e elas entram em momentos diferentes do projeto.
+#
+# VERIFICAR vale agora: cada push constrói as duas variantes e roda o mesmo
+# tests/check-image.sh do 'just check'. É o que pega regressão enquanto o
+# projeto muda rápido, sem depender de alguém lembrar de rodar a verificação
+# na máquina.
+#
+# PUBLICAR só vale quando houver máquina instalada para atualizar — é a peça
+# que transforma o Arkmos de "reconstruir e reinstalar" em um sistema
+# atualizável por 'bootc upgrade'. Até lá publicar é encher o registry de
+# versões que ninguém baixa, então fica atrás de um acionamento manual.
+#
+# Sem 'schedule' por enquanto: o cron existe para acompanhar a reconstrução
+# diária da base do Universal Blue, e isso só protege uma imagem que está em
+# uso. Ligar quando a publicação virar rotina.
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-  schedule:
-    # A base ublue é reconstruída diariamente; seguir de perto evita ficar
-    # para trás em correção de segurança do kernel e do driver.
-    - cron: "30 6 * * *"
   workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publicar no GHCR (desmarcado: apenas construir e verificar)"
+        type: boolean
+        default: false
 
 env:
   IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
@@ -42,15 +55,36 @@ jobs:
           - variant: base
             suffix: ""
             base_image: ghcr.io/ublue-os/base-main:44
+            publishable: true
+
+          # A variante NVIDIA é construída e verificada, mas não publicada.
+          #
+          # Ela compartilha a árvore files/ inteira com a padrão: o que pode
+          # quebrar só nela é algo vindo da base — a imagem sair do ar, mudar
+          # de nome, deixar de trazer um pacote. Construir a cada push custa
+          # tempo de runner, que em repositório público é gratuito, e evita
+          # que ela apodreça em silêncio.
+          #
+          # Publicar é outra conversa: são ~5 GB por versão de uma imagem que
+          # ninguém usa hoje. Trocar para 'true' quando houver máquina com a
+          # dGPU ligada.
           - variant: nvidia
             suffix: "-nvidia"
             base_image: ghcr.io/ublue-os/base-nvidia:44
+            publishable: false
 
     env:
       # Avaliado no nível do job porque o 'if' de um passo não enxerga o
       # 'env' definido nesse mesmo passo.
       HAS_SIGNING_KEY: ${{ secrets.SIGNING_SECRET != '' }}
       IMAGE: arkmos${{ matrix.suffix }}
+
+      # Publica só quando o acionamento é manual E a caixa foi marcada E esta
+      # variante é publicável. Em push e em pull request o job constrói e
+      # verifica, e para aí.
+      PUBLICAR: ${{ github.event_name == 'workflow_dispatch'
+                    && inputs.publish
+                    && matrix.publishable }}
 
     steps:
       - name: Checkout
@@ -95,15 +129,14 @@ jobs:
       - name: Verificar imagem
         run: ./tests/check-image.sh "${IMAGE}:latest"
 
-      # Pull request nunca publica: valida e para por aqui.
       - name: Login no GHCR
-        if: github.event_name != 'pull_request'
+        if: env.PUBLICAR == 'true'
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" \
             | podman login ghcr.io -u "${{ github.actor }}" --password-stdin
 
       - name: Publicar
-        if: github.event_name != 'pull_request'
+        if: env.PUBLICAR == 'true'
         id: push
         run: |
           for tag in "${{ steps.tags.outputs.version }}" "${FEDORA_MAJOR}" latest; do
@@ -115,14 +148,14 @@ jobs:
           echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
 
       - name: Instalar cosign
-        if: github.event_name != 'pull_request' && env.HAS_SIGNING_KEY == 'true'
+        if: env.PUBLICAR == 'true' && env.HAS_SIGNING_KEY == 'true'
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
       # A política de assinatura da imagem (/etc/containers/policy.json) só
       # passa a valer depois que a chave pública correspondente estiver em
       # /usr/lib/pki/containers/arkmos.pub. Ver README.
       - name: Assinar
-        if: github.event_name != 'pull_request' && env.HAS_SIGNING_KEY == 'true'
+        if: env.PUBLICAR == 'true' && env.HAS_SIGNING_KEY == 'true'
         env:
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
           DIGEST: ${{ steps.push.outputs.digest }}
