@@ -1,0 +1,19 @@
+# Arkmos: aponta o zsh para a configuração versionada na imagem.
+#
+# /etc/zshenv é lido antes de qualquer coisa, o que o torna o único lugar de
+# onde dá para definir ZDOTDIR. A config em si fica em /usr, read-only e
+# atualizada junto com a imagem.
+#
+# Dois pontos de escape, em ordem de precedência:
+#   1. ZDOTDIR já definido no ambiente vence sempre.
+#   2. Um ~/.config/zsh/.zshrc próprio assume o controle total.
+# Para ajustes pontuais sem abandonar a config do Arkmos, use
+# ~/.config/zsh/local.zsh, que é carregado por último.
+
+if [ -z "${ZDOTDIR:-}" ]; then
+    if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/zsh/.zshrc" ]; then
+        export ZDOTDIR="${XDG_CONFIG_HOME:-$HOME/.config}/zsh"
+    elif [ -d /usr/share/arkmos/zsh ]; then
+        export ZDOTDIR=/usr/share/arkmos/zsh
+    fi
+fi
