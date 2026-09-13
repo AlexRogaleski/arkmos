@@ -142,6 +142,43 @@ check "niri validate" \
 
 check "assistente do primeiro boot cria a conta" firstboot_e2e
 
+# --- Sessão: autenticação e localização -------------------------------------
+
+# O /etc/pam.d/greetd já referencia pam_gnome_keyring com '-' na frente, que
+# manda ignorar em silêncio quando o módulo não existe. Sem o pacote -pam,
+# portanto, nada falha e nada avisa: o chaveiro não é destravado com a senha do
+# login, e a sessão abre pedindo a mesma senha outra vez, num prompt sem tema e
+# em inglês. Foi o que apareceu no teste em VM.
+check "pam_gnome_keyring presente e referenciado" \
+    run sh -c 'test -e /usr/lib64/security/pam_gnome_keyring.so \
+        || { echo "o módulo não está instalado (falta gnome-keyring-pam)"; exit 1; }
+      grep -q pam_gnome_keyring /etc/pam.d/greetd \
+        || { echo "o PAM do greetd não referencia o módulo"; exit 1; }'
+
+# O autostart XDG do agente tem OnlyShowIn=MATE, e XDG_CURRENT_DESKTOP=niri não
+# casa com isso: ele nunca subiria sozinho. Sem agente, toda autorização falha
+# sem mostrar janela nem erro.
+check "agente polkit iniciado pelo niri" \
+    run sh -c 'grep -q "^spawn-at-startup \"/usr/libexec/polkit-mate-authentication-agent-1\"$" /etc/niri/config.kdl \
+        && test -x /usr/libexec/polkit-mate-authentication-agent-1'
+
+# A policy do greeter exige auth_admin em allow_active, o que vira prompt de
+# senha logo depois do login — pedindo a senha que acabou de ser digitada.
+check "sync do greeter dispensa senha para o wheel" \
+    run sh -c 'f=/usr/share/polkit-1/rules.d/50-arkmos-greeter-sync.rules
+      grep -q "org.noctalia.greeter.sync-appearance" "$f" \
+        || { echo "a regra não cobre a ação do greeter"; exit 1; }
+      grep -q "isInGroup(\"wheel\")" "$f" \
+        || { echo "a regra não restringe ao grupo wheel"; exit 1; }'
+
+# O systemd --user arranca antes de qualquer login shell e é quem inicia os
+# serviços da sessão. /etc/locale.conf não o alcança; environment.d sim.
+check "LANG declarado para o systemd --user" \
+    run sh -c 'grep -qx "LANG=pt_BR.UTF-8" /usr/lib/environment.d/10-arkmos-locale.conf'
+
+check "arkmos-diag disponível e válido" \
+    run sh -c 'test -x /usr/bin/arkmos-diag && bash -n /usr/bin/arkmos-diag'
+
 # --- Aparência -------------------------------------------------------------
 
 # É esta opção que faz o compositor desenhar a decoração. Sem ela cada cliente

@@ -272,6 +272,14 @@ layout {
 // exemplo iniciava aqui.
 spawn-at-startup "noctalia"
 
+// Agente de autenticação do polkit.
+//
+// Iniciado aqui porque o autostart XDG que o pacote entrega tem
+// OnlyShowIn=MATE, e XDG_CURRENT_DESKTOP=niri não casa com isso — ou seja, o
+// agente nunca subiria sozinho nesta sessão. Sem agente, toda ação que exige
+// autorização falha sem mostrar nada: nenhuma janela, nenhum erro visível.
+spawn-at-startup "/usr/libexec/polkit-mate-authentication-agent-1"
+
 // To run a shell command (with variables, pipes, etc.), use spawn-sh-at-startup:
 // spawn-sh-at-startup "qs -c ~/source/qs/MyAwesomeShell"
 
