@@ -168,7 +168,7 @@ Ambiente atual de desenvolvimento/teste:
                          │
                          ▼
               ┌─────────────────────┐
-              │  greetd + tuigreet  │
+              │  Noctalia Greeter   │
               └──────────┬──────────┘
                          │
                          ▼
@@ -322,84 +322,56 @@ Responsável por barra, dock, lançador, central de controle, notificações, wa
 
 ## 8.3 Login
 
-Atual:
-
 ```text
-greetd 0.10.3 + tuigreet 0.9.1
+greetd 0.10.3  +  Noctalia Greeter 1.5.0
 ```
+
+O greetd continua sendo o gerenciador; o que mudou foi o greeter. O Noctalia Greeter é gráfico, sobe um compositor wlroots próprio e foi escrito para acompanhar o Noctalia Shell — a tela de login usa a paleta que o shell publica, em vez de ter identidade própria.
 
 `greetd-selinux` traz a política; sem ela o greetd esbarra no SELinux em modo enforcing.
 
-**A conta do greeter no Fedora chama-se `greetd`, não `greeter`.** Errar esse nome não produz erro de configuração: o greetd sobe, falha ao abrir a sessão, reinicia cinco vezes e termina em `start-limit-hit`. Como a unit tem `Conflicts=getty@tty1.service`, o getty já foi parado nesse ponto, e a vt1 fica preta com o cursor. Esse foi o sintoma que travou o primeiro teste em VM (0.7.0), e hoje existe uma verificação dedicada a ele.
+**A conta do greeter no Fedora chama-se `greetd`, não `greeter`.** Errar esse nome não produz erro de configuração: o greetd sobe, falha ao abrir a sessão, reinicia cinco vezes e termina em `start-limit-hit`. Como a unit tem `Conflicts=getty@tty1.service`, o getty já foi parado nesse ponto, e a vt1 fica preta com o cursor. Esse foi o sintoma que travou o primeiro teste em VM, e hoje existe uma verificação dedicada a ele.
 
-### Onde ficam os argumentos do greeter
+### Por que compilado, e não de pacote
 
-Em `/usr/libexec/arkmos-greeter`, e não no `command =` do `config.toml`.
+O greeter não é empacotado pelo Fedora. A documentação dele aponta o repositório Terra para Fedora 44, mas **foi verificado que o pacote não está lá** — só o shell. O único RPM existente é um snapshot de git num COPR de terceiro.
 
-O parser TOML do greetd é mais restrito que o TOML 1.0. Uma string multi-linha delimitada por três aspas, com barra invertida no fim de cada linha, é válida no padrão e o `tomllib` do Python a aceita sem reclamar — o greetd aborta com:
+Compilar mantém a política da seção 13.3: versão fixada, nada de snapshot. O estágio de compilação é separado justamente para os ~40 pacotes `-devel` não acabarem na imagem final — o que atravessa são 5 binários e alguns assets, **5,5 MB**, mais o `wlroots` de runtime. O commit é fixado, e não a tag, porque tag pode ser movida.
 
-```text
-expected equals sign on line, but found none
-```
+### A armadilha do usuário, de novo
 
-O sintoma não parece erro de configuração: o greetd reinicia cinco vezes e desiste, exatamente como faria com uma conta de greeter inexistente. Custou um teste em VM.
-
-A lição que virou verificação: **quem valida o arquivo do greetd é o greetd**. O `just check` roda `greetd --config` na imagem e exige que a falha seja a de não encontrar o VT — ter chegado até o terminal significa que o arquivo foi lido.
-
-### Rede de segurança da vt1
-
-```ini
-# greetd.service.d/50-arkmos-fallback.conf
-[Unit]
-OnFailure=arkmos-login-fallback.service
-```
-
-Se o login gráfico falhar, o sistema degrada para um login de texto na mesma vt — de onde `journalctl -u greetd` responde o que aconteceu. Sem isso, qualquer falha do greetd é indistinguível de travamento.
-
-O `OnFailure` aponta para uma unit própria, e não direto para `getty@tty1.service`, por um motivo que só apareceu em uso: **o `OnFailure` dispara a cada falha, não só na última**. Durante o loop de reinício do greetd, isso vira uma briga —
+O `tmpfiles.d` que o upstream instala declara:
 
 ```text
-greetd falha        →  OnFailure sobe o getty
-greetd reinicia     →  Conflicts=getty@tty1.service mata o getty
-(cinco vezes)
-                    →  getty@tty1: Start request repeated too quickly
+d /var/lib/noctalia-greeter 0750 greeter greeter -
 ```
 
-— e no fim ninguém fica na vt1: o getty esgotou o próprio `StartLimitBurst` por ter sido parado e iniciado cinco vezes em poucos segundos. A tela pisca e congela num prompt de login morto.
+`greeter` de novo — e o próprio comentário deles avisa para sobrescrever quando o usuário difere. No Fedora isso falha, o diretório de estado não é criado e o greeter não tem onde gravar. O Zirconium registrou exatamente essa falha na issue #68, com outro greeter. O arquivo deles é removido no build e a declaração correta vive em `arkmos.conf`, que o `just check` valida resolvendo usuários de verdade.
 
-A unit intermediária existe para desfazer isso antes de subir o getty:
-
-```ini
-ExecStart=/usr/bin/systemctl reset-failed getty@tty1.service
-ExecStart=/usr/bin/systemctl start --no-block getty@tty1.service
-```
-
-O `--no-block` é obrigatório: a unit é disparada pelo próprio systemd, e esperar por uma transação que ele ainda precisa processar trava os dois.
-
-### Aparência
-
-O tuigreet roda na console do kernel: 16 cores, nenhuma tipografia própria, nenhum gráfico. Não existe tela de login bonita aqui — o que existe é dizer o nome do sistema, dar retorno ao digitar e oferecer os atalhos:
+### Configuração
 
 ```text
---greeting 'Arkmos'      nome do sistema acima do prompt
---asterisks              sem isto, digitar a senha não produz retorno NENHUM
-                         na tela, e a sensação é de teclado travado
---theme                  cores ANSI; nome fora da lista é ignorado em silêncio
---width 44               o padrão (80) ocupa a tela inteira
---time                   relógio, em formato numérico
---power-shutdown/reboot  desligar e reiniciar sem precisar entrar
---remember*              último usuário e última sessão
+/usr/share/arkmos/noctalia-greeter.toml   →   /var/lib/noctalia-greeter/greeter.toml
 ```
 
-Uma flag inexistente aqui reproduz a tela preta da seção anterior: o greetd falha, reinicia cinco vezes e desiste. Rodar o tuigreet para descobrir isso não funciona — sem tty ele estoura no terminal antes de reclamar do argumento, e ainda sai com código 0. Por isso o `just check` confere cada flag usada contra o `--help`.
+Entregue por `tmpfiles.d` com `C`, que copia só se o destino não existir: a imagem dá o padrão e uma edição feita na máquina sobrevive às atualizações. Em troca, mudança no template não alcança quem já tem o arquivo — para reaplicar, apagar o de `/var/lib` e reiniciar.
 
-Objetivo futuro:
+O que importa estar ali: `[session] default = "Niri"` (tem de casar com o `Name=` do `.desktop`), `[appearance] scheme = "Synced"` com `theme_mode = "dark"`, e **`[keyboard] layout = "br"`** — sem isso o login nasce em `us`, e é a única tela do sistema onde não há retorno visual do que foi digitado.
+
+### O PAM não precisa de patch aqui
+
+O script de setup do upstream aplica um patch em `/etc/pam.d/greetd` para acrescentar `pam_systemd.so`. **No Fedora é desnecessário**, e o script dá falso positivo porque faz grep literal sem seguir os `include`:
 
 ```text
-Noctalia Greeter
+/etc/pam.d/greetd          session include system-auth → tem pam_systemd
+/etc/pam.d/greetd-greeter  session optional pam_systemd.so (direto, do pacote)
 ```
 
-O greetd/tuigreet permanece como fallback/recuperação.
+O Fedora já entrega um PAM dedicado ao greeter. Nada a fazer.
+
+### Caminho de recuperação
+
+Se o greeter gráfico falhar, o `OnFailure` entrega um login de texto na vt1. O tuigreet permanece instalado, com os argumentos em `/usr/libexec/arkmos-greeter`: trocar uma linha no `config.toml` devolve um greeter que não depende de GPU nem de compositor.
 
 ---
 

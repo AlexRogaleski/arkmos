@@ -20,6 +20,45 @@
 # derivada daqui.
 # ---------------------------------------------------------------------------
 ARG BASE_IMAGE="ghcr.io/ublue-os/base-main:44"
+
+# ---------------------------------------------------------------------------
+# Estágio de compilação: Noctalia Greeter
+#
+# O greeter não é empacotado pelo Fedora, e o único RPM existente é um snapshot
+# de git num COPR de terceiro. Compilar aqui mantém a mesma política do resto
+# do projeto — versão fixada, nada de snapshot — e o estágio separado existe
+# para que os ~40 pacotes -devel da compilação não acabem na imagem final: o
+# que atravessa são 5 binários e alguns assets.
+#
+# Fixado por commit, e não pela tag: tag pode ser movida.
+# v1.5.0 = 5a450b891067c1f0cd7157f4f1091aa0e3014780
+# ---------------------------------------------------------------------------
+FROM ${BASE_IMAGE} AS greeter-builder
+
+ARG NOCTALIA_GREETER_COMMIT="5a450b891067c1f0cd7157f4f1091aa0e3014780"
+
+RUN dnf -y --setopt=install_weak_deps=False install \
+        meson gcc-c++ git \
+        wayland-devel wayland-protocols-devel wlroots-devel \
+        libEGL-devel mesa-libGLES-devel \
+        freetype-devel fontconfig-devel \
+        cairo-devel pango-devel harfbuzz-devel \
+        libxkbcommon-devel glib2-devel \
+        tomlplusplus-devel json-devel stb_image_resize2-devel \
+        libwebp-devel librsvg2-devel libxml2-devel
+
+# fetch de um commit específico, sem clonar o histórico inteiro.
+RUN git init --quiet /tmp/greeter \
+    && git -C /tmp/greeter remote add origin \
+        https://github.com/noctalia-dev/noctalia-greeter.git \
+    && git -C /tmp/greeter fetch --quiet --depth=1 origin "${NOCTALIA_GREETER_COMMIT}" \
+    && git -C /tmp/greeter checkout --quiet FETCH_HEAD \
+    && cd /tmp/greeter \
+    && meson setup build --prefix=/usr --buildtype=release \
+    && meson compile -C build \
+    && DESTDIR=/tmp/greeter-root meson install -C build --no-rebuild \
+    && test -x /tmp/greeter-root/usr/bin/noctalia-greeter-session
+
 FROM ${BASE_IMAGE}
 
 # Versão da imagem. O CI injeta o esquema por data (44.AAAAMMDD.N);
@@ -141,6 +180,29 @@ RUN dnf -y --setopt=install_weak_deps=False install \
         greetd-selinux \
         tuigreet \
     && dnf clean all
+
+# Noctalia Greeter, vindo do estágio de compilação acima.
+#
+# 'wlroots' é a única dependência de runtime que a base não traz — o greeter
+# sobe um compositor wlroots próprio para desenhar a tela de login.
+#
+# O tmpfiles.d do upstream é descartado de propósito. Ele declara
+#
+#     d /var/lib/noctalia-greeter 0750 greeter greeter -
+#
+# com o usuário 'greeter', que no Fedora não existe — a conta é 'greetd'. O
+# próprio comentário deles avisa para sobrescrever quando o usuário difere.
+# Sem isso o diretório de estado não é criado e o greeter não tem onde gravar:
+# é o mesmo erro que a conta errada no config.toml produz, e a mesma falha que
+# o Zirconium registrou na issue #68 com o greeter deles. A entrada correta
+# está em /usr/lib/tmpfiles.d/arkmos.conf, que o 'just check' valida
+# resolvendo usuários de verdade.
+RUN dnf -y --setopt=install_weak_deps=False install \
+        wlroots \
+    && dnf clean all
+
+COPY --from=greeter-builder /tmp/greeter-root/ /
+RUN rm -f /usr/lib/tmpfiles.d/noctalia-greeter.conf
 
 # Docker CE de verdade — não podman-docker.
 #

@@ -14,9 +14,20 @@
 #
 # Este arquivo é mantido trivial de propósito: o parser TOML do greetd é mais
 # restrito que o TOML 1.0 e aborta com "expected equals sign on line, but
-# found none" em construções que outros parsers aceitam. Os argumentos da
-# tela de login ficam em /usr/libexec/arkmos-greeter, onde são legíveis e não
-# dependem desse parser.
+# found none" em construções que outros parsers aceitam.
+#
+# A tela de login é o Noctalia Greeter, gráfico, que sobe um compositor wlroots
+# próprio e acompanha o tema do Noctalia. Ele se configura por
+# /var/lib/noctalia-greeter/greeter.toml — entregue pelo tmpfiles.d a partir de
+# /usr/share/arkmos/noctalia-greeter.toml — e não por argumentos aqui.
+#
+# CAMINHO DE RECUPERAÇÃO: se o greeter gráfico falhar, o getty assume a vt1
+# pelo OnFailure (ver greetd.service.d/). Para voltar ao greeter de console,
+# que continua instalado, troque o command por:
+#
+#     command = "/usr/libexec/arkmos-greeter"
+#
+# Isso é tuigreet, que não depende de GPU nem de compositor.
 #
 # 'just check' valida as duas coisas: que o greetd consegue LER este arquivo,
 # e que a conta referenciada aqui existe na imagem.
@@ -24,5 +35,5 @@
 vt = 1
 
 [default_session]
-command = "/usr/libexec/arkmos-greeter"
+command = "/usr/bin/noctalia-greeter-session"
 user = "greetd"
