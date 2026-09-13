@@ -1147,13 +1147,27 @@ A imagem verifica a própria procedência quando existe um par de chaves cosign 
 
 ### Como configurar
 
-```bash
-cosign generate-key-pair
+**Já configurado.** O par foi gerado com cosign v3.1.3 e a chave privada está cifrada com scrypt.
+
+```text
+~/.local/share/arkmos-signing/   (modo 700)
+├── cosign.key        privada, cifrada          → secret SIGNING_SECRET
+├── cosign.password   senha da chave            → secret COSIGN_PASSWORD
+└── cosign.pub        pública                   → files/etc/pki/containers/arkmos.pub
 ```
 
-- `cosign.key` → secret **`SIGNING_SECRET`** do repositório. **Nunca** versionar.
-- a senha usada → secret **`COSIGN_PASSWORD`**, se a chave tiver senha.
-- `cosign.pub` → `files/etc/pki/containers/arkmos.pub`, versionado (chave pública não é segredo).
+Esse diretório é o único lugar onde a chave privada e a senha existem fora dos secrets do GitHub: **perder os dois significa não poder mais assinar com essa identidade**, e a saída seria gerar um par novo e atualizar a chave pública na imagem — o que invalida as assinaturas antigas.
+
+O `.gitignore` bloqueia `cosign.key`, `cosign.password` e `*.key` como rede de segurança contra cópia acidental para dentro do repositório.
+
+Para gerar de novo, se algum dia for preciso:
+
+```bash
+cosign generate-key-pair            # o cosign não é empacotado pelo Fedora
+gh secret set SIGNING_SECRET  < cosign.key
+gh secret set COSIGN_PASSWORD < cosign.password
+cp cosign.pub files/etc/pki/containers/arkmos.pub
+```
 
 O `cosign` não é empacotado pelo Fedora; o binário vem do release upstream, como starship e lazygit.
 
@@ -1162,18 +1176,29 @@ O `cosign` não é empacotado pelo Fedora; o binário vem do release upstream, c
 ### O que a imagem faz com a chave
 
 ```text
-files/etc/pki/containers/arkmos.pub          chave pública
+files/etc/pki/containers/arkmos.pub            chave pública (versionada)
 files/etc/containers/registries.d/arkmos.yaml  onde procurar a assinatura
-/etc/containers/policy.json                  entrada inserida no build
+/etc/containers/policy.json                    entradas inseridas no build
 ```
 
-A entrada é **inserida** na política que a base já traz, e não substitui por uma nossa. O `policy.json` do `ublue-os-signing` já recusa tudo por padrão (`"default": [{"type": "reject"}]`) e confia nos registries do Fedora, da Red Hat e do Universal Blue — reescrever o arquivo significaria manter essa lista à mão e sair de sincronia com a base.
+A entrada é **inserida** na política que a base já traz, e não substitui por uma nossa. O `policy.json` do `ublue-os-signing` já confia nos registries do Fedora, da Red Hat e do Universal Blue — reescrever o arquivo significaria manter essa lista à mão e sair de sincronia com a base.
+
+O escopo são os **dois repositórios** do Arkmos, não o namespace inteiro. O ublue pode usar `ghcr.io/ublue-os` porque tudo que vive lá é deles e é assinado; este namespace é uma conta pessoal, que pode publicar qualquer outra imagem — e com o escopo no namespace, cada uma delas passaria a precisar da assinatura do Arkmos para ser baixada nesta máquina.
+
+Vale saber o que a política da base já faz, para não confundir o alcance disto:
+
+```text
+"default":  reject
+docker "":  insecureAcceptAnything
+```
+
+O escopo vazio do transporte docker aceita qualquer coisa, então imagem de registry não listado continua sendo baixada sem verificação. A entrada do Arkmos é **aditiva e específica** — ela garante que uma imagem do Arkmos venha assinada, e não torna o sistema restritivo de forma geral.
 
 O `registries.d` é necessário porque o cosign anexa a assinatura ao próprio registry, ligada ao digest ("sigstore attachment"), em vez de publicá-la num servidor separado. Sem essa declaração, o podman procura no lugar errado e a verificação falha mesmo com a assinatura presente.
 
 `signedIdentity` é `matchRepository`, não `matchExact`: as tags `44` e `latest` se movem entre digests.
 
-O `just check` afirma a coerência das duas peças, que só funcionam juntas — chave sem entrada na política não verifica nada, e entrada apontando para chave ausente faz **todo** pull falhar.
+O `just check` afirma a coerência das duas peças, que só funcionam juntas — chave sem entrada na política não verifica nada, e entrada apontando para chave ausente faz **todo** pull do Arkmos falhar.
 
 ---
 
