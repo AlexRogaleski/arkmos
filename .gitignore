@@ -7,3 +7,9 @@
 result/
 output/
 output-nvidia/
+
+# Chave privada de assinatura: NUNCA deve entrar no repositório. A pública
+# (files/etc/pki/containers/arkmos.pub) é versionada de propósito.
+cosign.key
+cosign.password
+*.key

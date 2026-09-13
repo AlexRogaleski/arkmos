@@ -204,13 +204,25 @@ RUN dconf update
 # 'matchRepository' e não 'matchExact': as tags 44 e latest se movem entre
 # digests, e matchExact exigiria que a assinatura fosse feita para o nome
 # completo com a tag.
+#
+# O escopo são os DOIS repositórios do Arkmos, e não o namespace inteiro. O
+# ublue pode usar 'ghcr.io/ublue-os' porque tudo que vive lá é deles e é
+# assinado; este namespace é uma conta pessoal, que pode publicar qualquer
+# outra imagem — e com o escopo no namespace, cada uma dessas passaria a
+# precisar da assinatura do Arkmos para ser baixada nesta máquina.
+#
+# Vale saber o que a política da base já faz: o escopo "" do transporte docker
+# é 'insecureAcceptAnything', então imagem de registry não listado continua
+# sendo aceita sem verificação. Esta entrada é aditiva e específica; ela não
+# torna o sistema restritivo de forma geral.
 RUN if [ -f /etc/pki/containers/arkmos.pub ]; then \
         python3 -c 'import json, sys; \
 p = "/etc/containers/policy.json"; \
 d = json.load(open(p)); \
-d["transports"]["docker"][sys.argv[1]] = [{"type": "sigstoreSigned", "keyPath": "/etc/pki/containers/arkmos.pub", "signedIdentity": {"type": "matchRepository"}}]; \
+regra = [{"type": "sigstoreSigned", "keyPath": "/etc/pki/containers/arkmos.pub", "signedIdentity": {"type": "matchRepository"}}]; \
+d["transports"]["docker"].update({f"{sys.argv[1]}/arkmos": regra, f"{sys.argv[1]}/arkmos-nvidia": regra}); \
 json.dump(d, open(p, "w"), indent=4)' "$ARKMOS_REGISTRY" \
-        && echo "verificação de assinatura ativada para $ARKMOS_REGISTRY"; \
+        && echo "verificação de assinatura ativada para $ARKMOS_REGISTRY/arkmos{,-nvidia}"; \
     else \
         echo "sem chave pública: a imagem não verificará a própria assinatura"; \
         rm -f /etc/containers/registries.d/arkmos.yaml; \
