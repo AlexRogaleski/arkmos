@@ -1,0 +1,23 @@
+// Arkmos: sincronizar a aparência do greeter sem pedir senha.
+//
+// O Noctalia Greeter instala uma policy com auth_admin em allow_active, ou
+// seja: pede senha de administrador toda vez que o shell publica a paleta para
+// a tela de login. Como esse sync roda ao abrir a sessão, o efeito é um prompt
+// de senha logo depois de entrar — pedindo a mesma senha que acabou de ser
+// digitada no login.
+//
+// O upstream oferece 'noctalia-greeter passwordless-sync enable <usuário>',
+// que escreve uma regra equivalente em runtime. Aqui a regra é declarada na
+// imagem: não depende de comando manual depois da instalação, e vale para
+// qualquer conta que o primeiro boot venha a criar.
+//
+// O alcance é estreito de propósito — só esta ação, só sessão local e ativa, só
+// grupo wheel. Não é 'permitir tudo sem senha'.
+polkit.addRule(function (action, subject) {
+    if (action.id === "org.noctalia.greeter.sync-appearance" &&
+        subject.isInGroup("wheel") &&
+        subject.local &&
+        subject.active) {
+        return polkit.Result.YES;
+    }
+});

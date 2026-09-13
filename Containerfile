@@ -89,6 +89,13 @@ COPY files/etc/yum.repos.d/ /etc/yum.repos.d/
 # Os portais seguem listados de propósito: o Niri depende deles e o ublue vem
 # podando imagens intermediárias — se a base parar de trazê-los, é melhor o
 # build continuar correto do que a sessão quebrar de forma confusa.
+#
+# 'gnome-keyring-pam' é um pacote separado do 'gnome-keyring' e entrega só o
+# pam_gnome_keyring.so. O /etc/pam.d/greetd JÁ o referencia, mas com '-' na
+# frente — sintaxe que manda ignorar em silêncio quando o módulo não existe.
+# Sem o pacote, portanto, nada falha e nada avisa: o chaveiro simplesmente não
+# é destravado com a senha do login, e a sessão abre com um prompt pedindo a
+# mesma senha de novo.
 # ---------------------------------------------------------------------------
 RUN dnf -y --setopt=install_weak_deps=False install \
         git \
@@ -109,6 +116,7 @@ RUN dnf -y --setopt=install_weak_deps=False install \
         xdg-desktop-portal-gtk \
         xdg-desktop-portal-gnome \
         gnome-keyring \
+        gnome-keyring-pam \
         mate-polkit \
         mako \
         fuzzel \
@@ -291,6 +299,7 @@ json.dump(d, open(p, "w"), indent=4)' "$ARKMOS_REGISTRY" \
     fi
 
 RUN chmod 0755 /usr/libexec/arkmos-firstboot /usr/libexec/arkmos-greeter \
+                /usr/bin/arkmos-diag \
     && systemctl enable arkmos-firstboot.service \
     && systemctl enable docker.service \
     && systemctl enable greetd.service
