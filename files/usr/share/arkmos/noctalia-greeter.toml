@@ -1,0 +1,45 @@
+# Arkmos — tela de login.
+#
+# Configuração declarativa do Noctalia Greeter. O arquivo que o greeter lê fica
+# em /var/lib/noctalia-greeter/greeter.toml, e é entregue a partir daqui pelo
+# tmpfiles.d: /var não pode ser assado na imagem, porque o bootc só o popula na
+# primeira instalação e o que for gravado lá nunca mais é atualizado.
+#
+# Como a entrega é 'C' (copiar se não existir), uma edição feita na máquina
+# sobrevive às atualizações da imagem — e, em troca, mudanças feitas aqui não
+# alcançam quem já tem o arquivo. Para reaplicar, apagar o de /var/lib e
+# reiniciar.
+#
+# O que o greeter grava por conta própria (última sessão escolhida, esquema
+# selecionado) vai para sync.toml, não para cá. Valor definido aqui vence o
+# sync.
+
+[session]
+# Precisa casar com o 'Name=' de /usr/share/wayland-sessions/niri.desktop.
+default = "Niri"
+
+[appearance]
+# 'Synced' faz o greeter usar a paleta que o Noctalia publica, o que é o ponto
+# de ter os dois: a tela de login acompanha o tema do desktop em vez de ter uma
+# identidade própria. Sem sync configurado, cai no tema embutido.
+scheme = "Synced"
+theme_mode = "dark"
+font_family = "JetBrainsMono Nerd Font"
+power_buttons_position = "bottom-right"
+scheme_selector_position = "top-right"
+
+[keyboard]
+# Mesmo teclado de /etc/vconsole.conf. Sem isto o login nasce em us e a senha
+# com acento ou ç é digitada errada — no único lugar onde não há retorno visual
+# do que foi digitado.
+layout = "br"
+numlock = true
+
+[cursor]
+theme = "Adwaita"
+size = 24
+
+[auth]
+# Watchdog do greetd. O padrão (60s) é mantido explícito porque 0 desliga, e um
+# login que trava sem timeout é indistinguível de máquina travada.
+request_timeout = 60

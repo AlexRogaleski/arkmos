@@ -244,6 +244,67 @@ if faltando:
     sys.exit("tuigreet nao reconhece: " + ", ".join(faltando))
 '
 
+# --- Tela de login gráfica ---------------------------------------------------
+
+check "binários do Noctalia Greeter instalados" \
+    run sh -c 'for b in noctalia-greeter noctalia-greeter-session noctalia-greeter-compositor noctalia-greeter-apply-appearance; do
+        test -x "/usr/bin/$b" || { echo "falta /usr/bin/$b"; exit 1; }
+    done'
+
+# Compilado noutro estágio justamente para o toolchain não vir junto. Se algum
+# -devel aparecer na imagem final, o COPY --from virou um dnf install.
+check "toolchain de compilação ficou fora da imagem" \
+    sh -c '! podman run --rm "'"$IMAGE"'" sh -c "rpm -q meson gcc-c++ wlroots-devel >/dev/null 2>&1"'
+
+check "wlroots de runtime presente" run rpm -q wlroots
+
+# O tmpfiles.d do upstream declara o diretório para o usuário 'greeter', que no
+# Fedora não existe. Se ele voltar para a imagem, o estado do greeter deixa de
+# ser criado e o login falha — a mesma classe de erro da conta errada no
+# config.toml.
+check "tmpfiles.d do upstream substituído pelo nosso" \
+    run sh -c '
+        test ! -e /usr/lib/tmpfiles.d/noctalia-greeter.conf \
+            || { echo "o tmpfiles.d do upstream voltou para a imagem"; exit 1; }
+        grep -q "d /var/lib/noctalia-greeter 0750 greetd greetd" /usr/lib/tmpfiles.d/arkmos.conf \
+            || { echo "a declaração corrigida não está no arkmos.conf"; exit 1; }
+    '
+
+check "greeter.toml entregue pelo tmpfiles" \
+    run sh -c 'grep -q "^C /var/lib/noctalia-greeter/greeter.toml" /usr/lib/tmpfiles.d/arkmos.conf &&
+               test -s /usr/share/arkmos/noctalia-greeter.toml'
+
+# Valor inválido aqui não dá erro de sintaxe: o greeter sobe e ignora, ou falha
+# ao desenhar. O teclado é o que mais importa — é a única tela do sistema onde
+# não há retorno visual do que foi digitado.
+check "greeter.toml declara sessão e teclado do Arkmos" \
+    run python3 -c '
+import tomllib
+c = tomllib.load(open("/usr/share/arkmos/noctalia-greeter.toml", "rb"))
+assert c["session"]["default"] == "Niri", "sessão padrão não é Niri"
+assert c["keyboard"]["layout"] == "br", "teclado do login não é br"
+assert c["appearance"]["theme_mode"] == "dark", "login não está em tema escuro"
+'
+
+# A sessão apontada tem de existir como .desktop, senão o greeter mostra uma
+# opção que não abre nada.
+check "sessão padrão do greeter existe como .desktop" \
+    run python3 -c '
+import tomllib, pathlib, re
+nome = tomllib.load(open("/usr/share/arkmos/noctalia-greeter.toml", "rb"))["session"]["default"]
+nomes = []
+for p in pathlib.Path("/usr/share/wayland-sessions").glob("*.desktop"):
+    for linha in p.read_text().splitlines():
+        if linha.startswith("Name="):
+            nomes.append(linha[5:].strip())
+assert nome in nomes, f"sessao {nome!r} nao esta em {nomes}"
+'
+
+# O tuigreet continua instalado como caminho de recuperação: se o greeter
+# gráfico não subir, trocar uma linha no config do greetd devolve o login.
+check "greeter de console mantido como recuperação" \
+    run sh -c 'test -x /usr/libexec/arkmos-greeter && rpm -q tuigreet >/dev/null'
+
 # --- tmpfiles --------------------------------------------------------------
 
 # O dry-run resolve usuários e grupos de verdade, então uma entrada apontando
