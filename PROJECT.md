@@ -1569,6 +1569,7 @@ overlay de atalhos do niri: não abre sozinho, títulos em português
 teclado ABNT2 na sessão gráfica
 clipboard entre terminal e VS Code, nos dois sentidos
 wallpaper padrão aplicado no desktop
+wallpaper escolhido na sessão levado às telas de bloqueio e de login (sync)
 ```
 
 ## 35.3 Não validado ainda
@@ -1579,7 +1580,6 @@ docker em uso real / Laravel Sail
 bootc upgrade a partir do GHCR
 rollback
 instalação em hardware real
-sync do wallpaper para a tela de login
 Nautilus em uso: montagem, lixeira, "mostrar na pasta"
 travamento antes do assistente no primeiro boot em VM — visto uma vez em
   2026-09-15, com a janela GTK/GL; não reproduzido no boot seguinte
@@ -1594,7 +1594,7 @@ travamento antes do assistente no primeiro boot em VM — visto uma vez em
 1. Primeira publicação no GHCR. O CI constrói e verifica a cada push, mas a publicação é disparada à mão (`workflow_dispatch`) e nunca foi feita.
 2. `bootc switch` para a imagem publicada, com a verificação de assinatura, e depois `bootc upgrade` e `bootc rollback` de ponta a ponta.
 3. Confirmar portais e notificações.
-4. Validar o sync do wallpaper para a tela de login e o Nautilus em uso: montagem, lixeira, "mostrar na pasta" (seção 35.3).
+4. Validar o Nautilus em uso: montagem, lixeira, "mostrar na pasta" (seção 35.3).
 5. Se o travamento antes do assistente voltar num primeiro boot em VM, abrir **View → serial0** antes de fechar a janela (seção 30).
 
 ## Médio prazo
