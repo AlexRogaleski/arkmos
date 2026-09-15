@@ -897,6 +897,18 @@ AppImages específicas:
 - Tolaria;
 - Tabularis.
 
+## 25.1 Gerenciador de arquivos: Nautilus, na imagem
+
+O gerenciador de arquivos fica na camada do sistema, não em Flatpak. Ele não é um aplicativo isolado, é integração: montar pendrive (udisks), falar MTP e SMB e ter lixeira (gvfs), e implementar `org.freedesktop.FileManager1` — a interface D-Bus que o "mostrar na pasta" do VS Code e do Firefox chama. No sandbox ele precisaria de `filesystem=host` para ser útil, e ainda assim ficaria sem o resto.
+
+| Opção | Custo na imagem | Observação |
+| --- | --- | --- |
+| **Nautilus** | 10 pacotes, 22 MiB | GTK4/libadwaita, segue o tema escuro já configurado; traz o gvfs |
+| Thunar | 15 pacotes, 35 MiB | puxa `xfce4-panel` e `xfconf`, sem uso sob o Niri |
+| Dolphin | 85 pacotes | KDE; Qt coberto só pelo portal |
+
+O seletor de arquivos dos aplicativos continua no backend `gtk` do portal (`niri-portals.conf`). O backend do GNOME delega o seletor ao próprio Nautilus.
+
 ---
 
 # 26. Identidade Visual
@@ -1436,6 +1448,7 @@ Base, distribuição e robustez:
 - configuração própria do Zsh, substituindo a config de terceiro clonada no build (seção 13.3); plugins passam a vir de RPM;
 - lazygit e lazydocker, com checksum SHA256 fixado, como todo download de build;
 - primeira aparência coerente: `prefer-no-csd`, terminal escuro, tema GTK escuro por dconf, tela de login com nome e retorno ao digitar (seção 26.1);
+- Nautilus como gerenciador de arquivos, na imagem (seção 25.1);
 - correções: conta do greeter, ordenação do firstboot e ruído no console, hostname, `nvidia-cdi-refresh`, fallback de getty, cache do tuigreet, variáveis EFI da VM, prompt de senha do assistente, resolução e captura de teclado da VM;
 - documentação: README e este documento.
 
@@ -1461,6 +1474,7 @@ pacotes do Arkmos e componentes herdados da base
 ausência de podman-docker
 pilha NVIDIA presente/ausente conforme a variante
 zsh funcionando sem rede
+Nautilus atendendo org.freedesktop.FileManager1
 ```
 
 ## 35.2 Validado em VM
@@ -1483,6 +1497,7 @@ docker em uso real / Laravel Sail
 bootc upgrade a partir do GHCR
 rollback
 instalação em hardware real
+Nautilus em uso: montagem, lixeira, "mostrar na pasta"
 ```
 
 ---

@@ -55,7 +55,7 @@ Vale saber: na variante padrão não há driver NVIDIA nenhum. Numa máquina cuj
 | Camada | Componentes |
 | --- | --- |
 | Base | Fedora 44 bootc, kernel 7.2, Btrfs, SELinux enforcing |
-| Gráfico | [niri](https://github.com/niri-wm/niri) 26.04 (compositor scrollable-tiling), [Noctalia](https://github.com/noctalia-dev/noctalia) 5.0.1 (shell), xwayland-satellite |
+| Gráfico | [niri](https://github.com/niri-wm/niri) 26.04 (compositor scrollable-tiling), [Noctalia](https://github.com/noctalia-dev/noctalia) 5.0.1 (shell), xwayland-satellite, Nautilus (arquivos) |
 | Login | [greetd](https://kl.wtf/projects/greetd) 0.10.3 + [tuigreet](https://github.com/apognu/tuigreet) 0.9.1 |
 | Terminal | [foot](https://codeberg.org/dnkl/foot) 1.27.0, zsh 5.9 com configuração própria + starship, JetBrains Mono Nerd Font |
 | Containers | Podman 5.8, Docker CE 29.8 (+ compose), Distrobox 1.8 |
