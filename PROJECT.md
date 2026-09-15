@@ -929,6 +929,11 @@ prefer-no-csd no niri            decoração desenhada pelo compositor
 /etc/xdg-desktop-portal/         backend gtk para a interface Settings
   niri-portals.conf
 /etc/greetd/config.toml          tela de login com nome, cores e retorno ao digitar
+/usr/share/plymouth/themes/      splash de boot com o nome do sistema
+  arkmos
+/usr/share/backgrounds/arkmos    wallpaper padrão, gerado no build
+/etc/skel/.config/noctalia/      wallpaper padrão e sync da tela de login
+  arkmos.toml
 ```
 
 ### Por que três lugares para a mesma coisa
@@ -990,6 +995,21 @@ Isto é um **default semeado**, não configuração imposta: a partir daí o arq
 
 O `just check` verifica as duas pontas: que o arquivo está na imagem com os valores que importam, e que o assistente de primeiro boot realmente o entrega no home.
 
+### Arte gerada no build
+
+O splash de boot e o wallpaper padrão não são imagens versionadas: saem de `build_files/render-artwork.sh`, a partir de fonte, cores e formas. O repositório e a imagem publicada são públicos, e arte tirada de site de wallpaper não tem autor nem licença identificáveis (seção 28.4).
+
+As cores são as que o Tokyo Night e o Dracula têm em comum — fundo índigo quase preto e lavanda como destaque (`#bb9af7` num, `#bd93f9` no outro) —, para que o boot e o desktop combinem com qualquer um dos dois. Os dois esquemas vêm embutidos no Noctalia.
+
+O Noctalia só lê configuração do home, então o wallpaper padrão chega pelo `/etc/skel` (`.config/noctalia/arkmos.toml`), como os defaults do VS Code. A tela de bloqueio usa o wallpaper do desktop enquanto a dela estiver vazia, que é o padrão.
+
+A tela de login recebe wallpaper e paleta pelo **sync** do Noctalia, ligado no mesmo arquivo (`auto_sync = true`) e liberado sem senha pela regra `50-arkmos-greeter-sync.rules`. O código do greeter impõe duas consequências:
+
+- **Nada de wallpaper ou paleta no `greeter.toml`.** Ele vence o `sync.toml`, e um valor declarado lá impediria para sempre que a escolha feita no desktop chegasse ao login. O `just check` barra isso.
+- **Não há semente para o login.** O greeter só usa o `[appearance]` do `sync.toml` com a paleta completa (16 cores): semear só o wallpaper seria ignorado, e semear a paleta seria escolher um esquema. Até a primeira mudança de aparência na sessão, o login usa o tema embutido do greeter.
+
+Um wallpaper pessoal é escolhido na conta, pela interface do Noctalia, e o sync o leva para login e bloqueio. Ele não entra no repositório.
+
 ## 26.2 O que falta
 
 A personalização deverá abranger:
@@ -1002,8 +1022,8 @@ A personalização deverá abranger:
 - Zsh;
 - ícones (hoje `papirus-icon-theme`);
 - cursores;
-- wallpapers;
-- cores;
+- wallpapers (hoje, o padrão gerado da seção 26.1);
+- cores (base comum a Tokyo Night e Dracula; esquema final a escolher);
 - tipografia;
 - login;
 - notificações;
@@ -1029,7 +1049,25 @@ files/usr/lib/bootc/kargs.d/10-arkmos.toml
 kargs = ["rhgb", "quiet", "loglevel=3", "rd.udev.log_level=3"]
 ```
 
-## 27.2 Resolvido na 0.8.0
+## 27.2 Splash de boot
+
+```text
+files/etc/plymouth/plymouthd.conf          Theme=arkmos
+files/usr/share/plymouth/themes/arkmos/    o .plymouth do tema
+build_files/render-artwork.sh              a arte, gerada no build
+```
+
+O padrão do Fedora é o `bgrt`, que desenha o logo gravado no firmware — nesta máquina, o da Lenovo. O tema do Arkmos usa o plugin `two-step`, o mesmo do `spinner`: wordmark `arkmos` em JetBrains Mono Light, a animação do spinner recolorida em lavanda, fundo índigo em degradê. Os títulos dos modos de atualização estão em português.
+
+**O tema só vale dentro do initramfs.** O `plymouthd` arranca do initramfs e continua, depois do switch-root, com o tema que carregou lá. O initramfs da base foi gerado com o `bgrt`: trocar o `plymouthd.conf` sem regerá-lo passa em qualquer verificação que olhe o sistema de arquivos, e o boot continua com o logo do fabricante.
+
+Por isso o `Containerfile` roda o `dracut` com os mesmos argumentos que a base usou (visíveis no `lsinitrd`, linha "Arguments") e com os `dracut.conf.d` que ela instalou — inclusive o `99-nvidia.conf` da variante NVIDIA. Rodando depois de todo o `/etc`, o initramfs também passa a levar o teclado `br`, que é onde uma senha de LUKS seria digitada.
+
+O `just check` confere o initramfs, e não só o `/usr`: tema, `plymouthd.conf`, teclado e o módulo `ostree` — sem ele o deployment não é montado e não há boot.
+
+**Custo medido: 249 MB.** É o tamanho da camada com o initramfs regerado. O arquivo da base continua na camada dela, então é quanto a imagem cresce — e, como o initramfs já sai comprimido com zstd, o download cresce praticamente o mesmo. Comparado ao da base, o initramfs novo tem exatamente os mesmos módulos do dracut e os mesmos arquivos; muda o tema do Plymouth e entra o `vconsole.conf`. A comparação pegou uma diferença, já corrigida: sem `/var/roothome` no container de build — ele só nasce no boot —, o dracut não instalava o `/root`. O diretório é criado só durante o dracut.
+
+## 27.3 Resolvido na 0.8.0
 
 - **Status do systemd por cima do assistente de firstboot** — seção 12.3.
 - **`nvidia-cdi-refresh` falhando em todo boot** — seção 24.2.
@@ -1037,7 +1075,7 @@ kargs = ["rhgb", "quiet", "loglevel=3", "rd.udev.log_level=3"]
 - **Pausa final do assistente sem prazo**, que em janela pequena parecia travamento — seção 12.2.
 - **Config do greetd rejeitada pelo parser dele**, e o fallback de vt1 brigando com o `Restart=always` do greetd — seção 8.3. Foram as duas falhas do segundo teste em VM.
 
-## 27.3 Ruído conhecido e aceito
+## 27.4 Ruído conhecido e aceito
 
 Dezenas de `Failed to resolve group 'audio' / 'utmp' / 'tty'…` do `systemd-tmpfiles` no initramfs. Comparado com o Aurora instalado: acontece igual lá (167 ocorrências no boot atual). É comportamento do Fedora no initrd, não do Arkmos, e não vale divergir da base por isso.
 
@@ -1241,6 +1279,14 @@ Se houver objeção algum dia, a correção é pequena e localizada — uma cama
 - trocar por **VSCodium** ou **code-oss**, que são MIT e redistribuíveis (custo: o marketplace da Microsoft não é acessível a eles, e a extensão Dev Containers não está no Open VSX);
 - ou publicar a imagem sem o VS Code e derivá-la localmente com três linhas, que é o padrão para software não-redistribuível.
 
+### Arte
+
+A arte do Arkmos — splash de boot e wallpaper padrão — é gerada no build (seção 26.1) e pertence ao projeto. As formas da animação do splash vêm do tema `spinner` do próprio Plymouth (GPL-2.0-or-later), recoloridas; a fonte do wordmark é a JetBrains Mono (OFL-1.1).
+
+**Imagem de terceiros não entra no repositório nem na imagem.** Sites de wallpaper republicam arte sem autor nem licença identificáveis, e publicar a imagem seria redistribuí-la. Um wallpaper pessoal fica na conta do usuário.
+
+Um wallpaper definitivo gerado por IA é aceitável, com dois cuidados: registrar a ferramenta e conferir se os termos dela permitem redistribuir o resultado; e gerar a partir de descrição de estilo, sem usar como entrada as imagens de terceiros que serviram de referência — um resultado muito próximo delas continua sendo cópia.
+
 ### Marca
 
 A imagem deriva do Fedora, mas não se chama Fedora nem usa a marca — que é o que as diretrizes de marca pedem de um derivado.
@@ -1361,7 +1407,8 @@ arkmos/
 │
 ├── build_files/                   rodam no build e NÃO ficam na imagem
 │   ├── install-upstream-bins.sh   starship, lazygit, lazydocker (sha256)
-│   └── install-nerd-font.sh       JetBrains Mono patched (sha256)
+│   ├── install-nerd-font.sh       JetBrains Mono patched (sha256)
+│   └── render-artwork.sh          splash de boot e wallpaper padrão
 │
 └── files/                         copiado para dentro da imagem
     ├── etc/
@@ -1371,6 +1418,8 @@ arkmos/
     │   ├── vconsole.conf
     │   ├── niri/config.kdl
     │   ├── nvidia/…
+    │   ├── plymouth/plymouthd.conf
+    │   ├── skel/                  defaults de VS Code e Noctalia
     │   ├── xdg-desktop-portal/niri-portals.conf
     │   ├── yum.repos.d/           docker-ce e vscode, enabled=0
     │   └── zshenv
@@ -1384,9 +1433,11 @@ arkmos/
         ├── libexec/
         │   ├── arkmos-firstboot
         │   └── arkmos-greeter
-        └── share/arkmos/
-            ├── starship.toml      prompt
-            └── zsh/               configuração do shell, em módulos
+        ├── share/arkmos/
+        │   ├── starship.toml      prompt
+        │   └── zsh/               configuração do shell, em módulos
+        └── share/plymouth/themes/arkmos/
+                                   tema do splash (arte gerada no build)
 ```
 
 Os repositórios de terceiros ficam com `enabled=0` e são habilitados pontualmente no `install` correspondente, para que o sistema em execução nunca dependa deles.
@@ -1448,6 +1499,7 @@ Base, distribuição e robustez:
 - configuração própria do Zsh, substituindo a config de terceiro clonada no build (seção 13.3); plugins passam a vir de RPM;
 - lazygit e lazydocker, com checksum SHA256 fixado, como todo download de build;
 - primeira aparência coerente: `prefer-no-csd`, terminal escuro, tema GTK escuro por dconf, tela de login com nome e retorno ao digitar (seção 26.1);
+- splash de boot próprio — tema `arkmos` do Plymouth, com o initramfs regerado — e wallpaper padrão, os dois gerados no build a partir de fonte e cores (seções 26.1 e 27.2);
 - Nautilus como gerenciador de arquivos, na imagem (seção 25.1);
 - correções: conta do greeter, ordenação do firstboot e ruído no console, hostname, `nvidia-cdi-refresh`, fallback de getty, cache do tuigreet, variáveis EFI da VM, prompt de senha do assistente, resolução e captura de teclado da VM;
 - documentação: README e este documento.
@@ -1474,6 +1526,8 @@ pacotes do Arkmos e componentes herdados da base
 ausência de podman-docker
 pilha NVIDIA presente/ausente conforme a variante
 zsh funcionando sem rede
+tema do Plymouth e conteúdo do initramfs (tema, ostree, ABNT2, /root)
+wallpaper padrão e config do Noctalia semeados, sem avisos do validador
 Nautilus atendendo org.freedesktop.FileManager1
 ```
 
@@ -1485,6 +1539,7 @@ assistente de firstboot completo: usuário, grupos wheel e docker, senha
 /var/lib/arkmos/initialized gravado
 login pelo tuigreet
 sessão gráfica subindo depois do login
+splash de boot do Arkmos em UEFI — boot só de kernel + initramfs, sem disco
 ```
 
 ## 35.3 Não validado ainda
@@ -1497,6 +1552,8 @@ docker em uso real / Laravel Sail
 bootc upgrade a partir do GHCR
 rollback
 instalação em hardware real
+splash de boot numa instalação completa
+wallpaper padrão e sync para a tela de login
 Nautilus em uso: montagem, lixeira, "mostrar na pasta"
 ```
 
@@ -1516,7 +1573,7 @@ Nautilus em uso: montagem, lixeira, "mostrar na pasta"
 ## Médio prazo
 
 7. Curar a `flatpaks.list` e criar o mecanismo que a aplica — incluindo a extensão de tema `org.gtk.Gtk3theme.adw-gtk3-dark`, sem a qual Flatpaks GTK3 não usam o tema do sistema (seção 26.1).
-8. Definir a identidade visual (seção 26).
+8. Definir a identidade visual (seção 26): escolher o esquema — Tokyo Night ou Dracula, os dois embutidos no Noctalia — e o wallpaper definitivo.
 9. Configurar Noctalia: barra, dock, notificações, wallpaper, lock.
 10. Avaliar o Noctalia Greeter, mantendo greetd/tuigreet como fallback.
 11. Validar `bootc upgrade` e `bootc rollback` de ponta a ponta.

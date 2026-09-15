@@ -1,0 +1,22 @@
+# Arkmos — padrões do Noctalia para conta nova.
+#
+# O Noctalia só lê configuração do home (~/.config/noctalia), sem diretório de
+# sistema, então o padrão chega pelo /etc/skel, que o useradd copia ao criar a
+# conta. Vale só para conta nova, e a partir daí o arquivo é do usuário.
+#
+# O que se escolhe pela interface vai para ~/.local/state/noctalia/settings.toml,
+# que carrega por último e vence este arquivo: trocar o wallpaper ou o esquema
+# de cores pela interface não exige editar nada aqui.
+
+# Gerado no build por build_files/render-artwork.sh. A tela de bloqueio usa o
+# wallpaper do desktop enquanto [lockscreen] wallpaper estiver vazio, que é o
+# padrão — por isso não é declarado.
+[wallpaper.default]
+path = "/usr/share/backgrounds/arkmos/arkmos.webp"
+
+# Leva wallpaper, paleta e fonte para a tela de login sempre que a aparência
+# muda. Não pede senha: a regra em
+# /usr/share/polkit-1/rules.d/50-arkmos-greeter-sync.rules libera essa ação
+# para o grupo wheel.
+[shell.greeter_sync]
+auto_sync = true
