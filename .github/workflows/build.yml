@@ -28,7 +28,6 @@ on:
         default: false
 
 env:
-  IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
   FEDORA_MAJOR: "44"
 
 concurrency:
@@ -111,6 +110,13 @@ jobs:
             echo "commit=${GITHUB_SHA}"
           } >> "$GITHUB_OUTPUT"
 
+          # O nome do repositório no registry tem de ser minúsculo, e o dono
+          # desta conta é "AlexRogaleski". github.repository_owner vem com as
+          # maiúsculas e as expressões do Actions não têm lower(): montado
+          # direto, o podman recusa o nome ("repository name must be
+          # lowercase") e a publicação quebra no push.
+          echo "IMAGE_REGISTRY=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+
       - name: Construir imagem
         run: |
           podman build \
@@ -118,6 +124,7 @@ jobs:
             --build-arg ARKMOS_VARIANT="${{ matrix.variant }}" \
             --build-arg ARKMOS_VERSION="${{ steps.tags.outputs.version }}" \
             --build-arg ARKMOS_COMMIT="${{ steps.tags.outputs.commit }}" \
+            --build-arg ARKMOS_REGISTRY="${IMAGE_REGISTRY}" \
             --tag "${IMAGE}:${{ steps.tags.outputs.version }}" \
             --tag "${IMAGE}:${FEDORA_MAJOR}" \
             --tag "${IMAGE}:latest" \
@@ -139,12 +146,23 @@ jobs:
         if: env.PUBLICAR == 'true'
         id: push
         run: |
+          # O digest a assinar é o que o registry recebeu, não o da imagem
+          # local. O push recomprime as camadas e o manifesto publicado ganha
+          # outro digest, e o 'podman inspect' continua mostrando o local
+          # mesmo depois do push: assinar esse seria assinar algo que não
+          # existe no registry. O --digestfile devolve o publicado.
+          #
+          # Cada tag é um push próprio. Se os digests divergirem, a assinatura
+          # cobriria só uma das tags — então a publicação para aqui.
           for tag in "${{ steps.tags.outputs.version }}" "${FEDORA_MAJOR}" latest; do
-            podman push "${IMAGE}:${tag}" \
-              "docker://${IMAGE_REGISTRY}/${IMAGE}:${tag}"
+            podman push --digestfile "${RUNNER_TEMP}/digest-${tag}" \
+              "${IMAGE}:${tag}" "docker://${IMAGE_REGISTRY}/${IMAGE}:${tag}"
           done
-          DIGEST="$(podman inspect --format '{{index .RepoDigests 0}}' \
-            "${IMAGE}:latest" | cut -d@ -f2)"
+          DIGEST="$(cat "${RUNNER_TEMP}/digest-latest")"
+          for tag in "${{ steps.tags.outputs.version }}" "${FEDORA_MAJOR}"; do
+            [ "$(cat "${RUNNER_TEMP}/digest-${tag}")" = "${DIGEST}" ] \
+              || { echo "::error::a tag ${tag} foi publicada com outro digest"; exit 1; }
+          done
           echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
 
       - name: Instalar cosign
@@ -153,7 +171,7 @@ jobs:
 
       # A política de assinatura da imagem (/etc/containers/policy.json) só
       # passa a valer depois que a chave pública correspondente estiver em
-      # /usr/lib/pki/containers/arkmos.pub. Ver README.
+      # /etc/pki/containers/arkmos.pub. Ver README.
       - name: Assinar
         if: env.PUBLICAR == 'true' && env.HAS_SIGNING_KEY == 'true'
         env:
