@@ -190,8 +190,16 @@ RUN dnf -y --setopt=install_weak_deps=False --enablerepo=code install \
 #
 # O seletor de arquivos continua no backend gtk do portal (niri-portals.conf):
 # o do GNOME passaria a abrir o próprio Nautilus como seletor.
+#
+# xdg-user-dirs cria Documentos, Downloads, Imagens… no login. Sem ele o home
+# nasce vazio, e a barra lateral do Nautilus não tem para onde apontar. O
+# pacote entrega uma unit de usuário ligada ao início da sessão gráfica, que o
+# preset do Fedora já habilita (a entrada de autostart dele vem marcada para o
+# systemd pular). Os nomes saem em português porque o LANG do systemd --user
+# vem do environment.d do Arkmos.
 RUN dnf -y --setopt=install_weak_deps=False install \
         nautilus \
+        xdg-user-dirs \
     && dnf clean all
 
 # Login: greetd + tuigreet, só repositórios Fedora.
