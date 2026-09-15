@@ -335,6 +335,41 @@ RUN if [ ! -e /usr/lib/systemd/system/nvidia-cdi-refresh.service ]; then \
                /etc/nvidia; \
     fi
 
+# Arte do Arkmos: splash de boot e wallpaper padrão.
+#
+# Gerada por build_files/render-artwork.sh a partir de fonte e cores — ver o
+# cabeçalho do script sobre por que não há imagem pronta versionada. Roda
+# depois do COPY files/, que traz o plymouthd.conf e o .plymouth do tema.
+COPY build_files/render-artwork.sh /tmp/render-artwork.sh
+RUN bash /tmp/render-artwork.sh && rm -f /tmp/render-artwork.sh
+
+# Initramfs regerado, porque o tema do Plymouth só vale lá dentro.
+#
+# O plymouthd arranca do initramfs e continua, depois do switch-root, com o
+# tema que carregou nele. O initramfs da base foi gerado com o bgrt: sem
+# regerar, o boot continua mostrando o logo do fabricante, com o plymouthd.conf
+# da imagem dizendo outra coisa.
+#
+# Os argumentos são os mesmos que a base usou ('lsinitrd', linha "Arguments"),
+# e a configuração vem dos dracut.conf.d que a própria base instalou — inclusive
+# o 99-nvidia.conf da variante NVIDIA. Rodar depois de todo o /etc também leva
+# o teclado br do vconsole.conf para o initramfs, que é onde uma senha de LUKS
+# seria digitada.
+#
+# /var/roothome existe só enquanto o dracut roda. O /root da imagem é symlink
+# para ele, mas o diretório só nasce no boot, pelo tmpfiles do rpm-ostree. Sem
+# ele o dracut não instala o /root ("dracut-install: ERROR: installing '/root'"
+# no log) e o initramfs sai sem o home do shell de emergência — diferente do
+# initramfs da base, que tem. Removido em seguida: /var não sai do build com
+# conteúdo.
+RUN kver="$(ls /usr/lib/modules)"; \
+    [ "$(printf '%s\n' "$kver" | wc -l)" -eq 1 ] \
+        || { echo "esperado um único kernel em /usr/lib/modules: $kver"; exit 1; }; \
+    criado=; [ -d /var/roothome ] || { mkdir -m 0700 /var/roothome; criado=1; }; \
+    DRACUT_NO_XATTR=1 dracut --no-hostonly --kver "$kver" --reproducible \
+        --add ostree -f "/usr/lib/modules/$kver/initramfs.img" || exit 1; \
+    [ -z "$criado" ] || rmdir /var/roothome
+
 # /var só é populado na primeira instalação, então cache e log deixados aqui
 # pelo build ficariam congelados na imagem para sempre. /run e /tmp são
 # efêmeros e não devem carregar conteúdo vindo do build.

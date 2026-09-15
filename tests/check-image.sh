@@ -81,6 +81,8 @@ firstboot_e2e() {
             # aplicativo somem sem nenhum erro aparecer.
             test -s /var/home/arkteste/.config/Code/User/settings.json \
                 || { echo "o /etc/skel não foi copiado para o home"; exit 1; }
+            test -s /var/home/arkteste/.config/noctalia/arkmos.toml \
+                || { echo "os padrões do Noctalia não chegaram ao home"; exit 1; }
         '
 }
 
@@ -341,6 +343,88 @@ assert nome in nomes, f"sessao {nome!r} nao esta em {nomes}"
 # gráfico não subir, trocar uma linha no config do greetd devolve o login.
 check "greeter de console mantido como recuperação" \
     run sh -c 'test -x /usr/libexec/arkmos-greeter && rpm -q tuigreet >/dev/null'
+
+# --- Boot ------------------------------------------------------------------
+
+check "tema padrão do Plymouth é o do Arkmos" \
+    run sh -c 't=$(plymouth-set-default-theme); [ "$t" = arkmos ] || { echo "tema padrão é $t"; exit 1; }'
+
+# A arte é gerada no build. Se o render falhar pela metade, o two-step sobe sem
+# a imagem que falta e desenha só o fundo — nada quebra, e nada avisa.
+check "tema do Plymouth completo" \
+    run sh -c '
+        d=/usr/share/plymouth/themes/arkmos
+        grep -qx "ImageDir=$d" "$d/arkmos.plymouth" \
+            || { echo "ImageDir não aponta para $d"; exit 1; }
+        for f in watermark.png throbber-0001.png animation-0001.png entry.png bullet.png lock.png; do
+            test -s "$d/$f" || { echo "falta $d/$f"; exit 1; }
+        done
+    '
+
+# O plymouthd arranca de dentro do initramfs e continua com o tema que carregou
+# lá, então o que vale é o conteúdo do initramfs, não o de /usr. Configurar o
+# tema e esquecer de regerar passa em qualquer verificação que olhe o sistema
+# de arquivos — e o boot segue com o logo do fabricante.
+#
+# Regerar também troca um arquivo que a base gerou, e o erro possível ali não
+# aparece em lint: aparece como máquina que não monta a raiz. O módulo ostree é
+# o que monta o deployment; sem ele não há boot.
+#
+# O /root do initramfs aponta para var/roothome, que no build só existe se o
+# Containerfile o criar para o dracut — ver o comentário lá.
+check "initramfs regerado com o tema, o ostree e o ABNT2" \
+    run sh -c '
+        img=$(ls /usr/lib/modules/*/initramfs.img)
+        lista=$(lsinitrd "$img" 2>/dev/null)
+        printf "%s\n" "$lista" | grep -q "usr/share/plymouth/themes/arkmos/watermark.png$" \
+            || { echo "tema do Arkmos fora do initramfs"; exit 1; }
+        printf "%s\n" "$lista" | grep -q " var/roothome$" \
+            || { echo "o /root do initramfs ficou sem destino (var/roothome)"; exit 1; }
+        lsinitrd -f etc/plymouth/plymouthd.conf "$img" 2>/dev/null | grep -qx "Theme=arkmos" \
+            || { echo "o plymouthd.conf do initramfs não aponta para o arkmos"; exit 1; }
+        lsinitrd -m "$img" 2>/dev/null | grep -qx ostree \
+            || { echo "módulo ostree ausente do initramfs"; exit 1; }
+        lsinitrd -f etc/vconsole.conf "$img" 2>/dev/null | grep -q "^KEYMAP=br" \
+            || { echo "teclado do initramfs não é br"; exit 1; }
+    '
+
+# --- Wallpaper ---------------------------------------------------------------
+
+# O Noctalia só lê configuração do home, então o padrão chega pelo /etc/skel.
+# Caminho errado ali não dá erro: o shell sobe com o fundo vazio.
+check "wallpaper padrão semeado para o Noctalia" \
+    run python3 -c '
+import tomllib, os
+c = tomllib.load(open("/etc/skel/.config/noctalia/arkmos.toml", "rb"))
+p = c["wallpaper"]["default"]["path"]
+assert os.path.getsize(p) > 0, f"{p} vazio"
+assert c["shell"]["greeter_sync"]["auto_sync"] is True, "auto-sync do greeter desligado"
+'
+
+# O validate sai com 0 mesmo quando encontra chave desconhecida — e chave com
+# nome errado é justamente o erro provável, porque o Noctalia a ignora e segue.
+# Por isso o que decide é a saída, não o código de retorno.
+check "config semeada do Noctalia é válida e sem avisos" \
+    run sh -c '
+        saida=$(HOME=/tmp noctalia config validate /etc/skel/.config/noctalia/arkmos.toml 2>&1 | grep -v dconf)
+        case "$saida" in
+            *WARN*|*ERROR*|*"warning(s)"*) echo "$saida"; exit 1 ;;
+            *"Config is valid"*) exit 0 ;;
+            *) echo "$saida"; exit 1 ;;
+        esac
+    '
+
+# A tela de login recebe wallpaper e paleta pelo sync da sessão, gravado no
+# sync.toml. O greeter.toml vence o sync.toml, então wallpaper ou paleta
+# declarados lá impediriam para sempre que a escolha feita no desktop chegasse
+# ao login — sem erro, só com a tela de login parada no valor antigo.
+check "greeter.toml não bloqueia o sync da aparência" \
+    run python3 -c '
+import tomllib
+a = tomllib.load(open("/usr/share/arkmos/noctalia-greeter.toml", "rb")).get("appearance", {})
+bloqueiam = sorted(k for k in ("wallpaper", "wallpapers", "palette") if k in a)
+assert not bloqueiam, "declarado no greeter.toml: " + ", ".join(bloqueiam)
+'
 
 # --- Arquivos ----------------------------------------------------------------
 

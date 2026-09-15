@@ -1,0 +1,61 @@
+[Plymouth Theme]
+Name=Arkmos
+Description=Splash de boot do Arkmos.
+ModuleName=two-step
+
+[two-step]
+Font=JetBrains Mono 12
+TitleFont=JetBrains Mono Light 26
+ImageDir=/usr/share/plymouth/themes/arkmos
+DialogHorizontalAlignment=.5
+DialogVerticalAlignment=.6
+TitleHorizontalAlignment=.5
+TitleVerticalAlignment=.75
+HorizontalAlignment=.5
+VerticalAlignment=.6
+WatermarkHorizontalAlignment=.5
+WatermarkVerticalAlignment=.42
+Transition=none
+TransitionDuration=0.0
+BackgroundStartColor=0x1f1d33
+BackgroundEndColor=0x16161e
+ProgressBarBackgroundColor=0x2a2b3d
+ProgressBarForegroundColor=0xbb9af7
+MessageBelowAnimation=true
+
+[boot-up]
+UseEndAnimation=false
+
+[shutdown]
+UseEndAnimation=false
+
+[reboot]
+UseEndAnimation=false
+
+[updates]
+SuppressMessages=true
+ProgressBarShowPercentComplete=true
+UseProgressBar=true
+Title=Instalando atualizações
+SubTitle=Não desligue o computador
+
+[system-upgrade]
+SuppressMessages=true
+ProgressBarShowPercentComplete=true
+UseProgressBar=true
+Title=Atualizando o sistema
+SubTitle=Não desligue o computador
+
+[firmware-upgrade]
+SuppressMessages=true
+ProgressBarShowPercentComplete=true
+UseProgressBar=true
+Title=Atualizando o firmware
+SubTitle=Não desligue o computador
+
+[system-reset]
+SuppressMessages=true
+ProgressBarShowPercentComplete=true
+UseProgressBar=true
+Title=Restaurando o sistema
+SubTitle=Não desligue o computador
