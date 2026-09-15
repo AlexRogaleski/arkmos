@@ -1164,6 +1164,16 @@ Detalhes do desenho:
 - **A variante NVIDIA é construída e verificada, mas não publicada.** Ela compartilha a árvore `files/` inteira com a padrão, então o que pode quebrar só nela vem da base — a imagem sair do ar, mudar de nome, deixar de trazer um pacote. Construir a cada push custa tempo de runner, que em repositório público é gratuito. Publicar são ~5 GB por versão de uma imagem que ninguém usa hoje.
 - **Sem `schedule` por enquanto.** O cron existe para acompanhar a reconstrução diária da base do Universal Blue — cujas tags, aliás, expiram em 4 semanas — e isso só protege uma imagem que está em uso. Entra quando a publicação virar rotina.
 - **Assina com cosign** quando o secret `SIGNING_SECRET` existe.
+- **Nome do registry em minúsculas.** O dono da conta é `AlexRogaleski`, e `github.repository_owner` vem com as maiúsculas; o podman recusa o nome ("repository name must be lowercase"). O workflow monta `ghcr.io/alexrogaleski` num passo de shell e passa o mesmo valor ao build, para a política de assinatura apontar para onde a imagem é publicada.
+- **O digest assinado é o publicado.** O push recomprime as camadas, e o manifesto no registry tem outro digest que o da imagem local — que o `podman inspect` continua mostrando mesmo depois do push. O workflow assina o digest do `--digestfile` e para se as três tags saírem com digests diferentes.
+
+Esses dois só apareceram ao preparar a primeira publicação, porque é o único trecho que um push comum não executa.
+
+### Como publicar
+
+1. Na aba **Actions** do GitHub: workflow **build** → **Run workflow**, branch `main`, caixa **publish** marcada. Pela linha de comando, `gh workflow run build.yml -f publish=true`.
+2. **Só na primeira vez:** pacote de conta pessoal nasce **privado**, e o `bootc switch` não baixa imagem privada sem login. Em *Packages → arkmos → Package settings → Change visibility*, marcar **Public**. **Não tem volta** — pacote público não pode voltar a ser privado.
+3. Conferir a assinatura: `cosign verify --key files/etc/pki/containers/arkmos.pub ghcr.io/alexrogaleski/arkmos:latest`.
 
 ### Por que o repositório é público
 
