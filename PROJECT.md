@@ -1560,22 +1560,22 @@ pastas do usuário em português e overlay do niri com títulos traduzidos
 boot em UEFI/OVMF com Btrfs
 assistente de firstboot completo: usuário, grupos wheel e docker, senha
 /var/lib/arkmos/initialized gravado
-login pelo tuigreet
-sessão gráfica subindo depois do login
-splash de boot do Arkmos em UEFI — boot só de kernel + initramfs, sem disco
+login pelo Noctalia Greeter
+sessão Niri + Noctalia subindo depois do login
+splash de boot do Arkmos numa instalação completa (mídia com
+  plymouth.ignore-serial-consoles; seção 30)
+pastas do usuário criadas em português no login
+overlay de atalhos do niri: não abre sozinho, títulos em português
 ```
 
 ## 35.3 Não validado ainda
 
 ```text
-aparência corrigida (prefer-no-csd, tema escuro, tela de login) — a
-  primeira VM foi testada antes dessas mudanças
-Noctalia em uso
+aparência conferida item a item (prefer-no-csd, tema escuro, terminal)
 docker em uso real / Laravel Sail
 bootc upgrade a partir do GHCR
 rollback
 instalação em hardware real
-splash de boot numa instalação completa
 wallpaper padrão e sync para a tela de login
 Nautilus em uso: montagem, lixeira, "mostrar na pasta"
 travamento antes do assistente no primeiro boot em VM — visto uma vez em
