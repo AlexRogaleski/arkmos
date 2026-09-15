@@ -11,3 +11,11 @@
 [[customizations.filesystem]]
 mountpoint = "/"
 minsize = "20 GiB"
+
+# O builder acrescenta console=tty0 console=ttyS0 na linha de boot do qcow2. Com
+# console serial o Plymouth alterna entre o splash e o modo texto de reserva, e
+# o que aparece muda a cada boot. Isto faz o Plymouth ignorar o serial e
+# desenhar o splash na tela da VM, como numa máquina real. O console serial
+# continua funcionando (View → serial0 na janela do QEMU).
+[customizations.kernel]
+append = "plymouth.ignore-serial-consoles"
