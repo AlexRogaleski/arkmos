@@ -1566,6 +1566,9 @@ splash de boot do Arkmos numa instalação completa (mídia com
   plymouth.ignore-serial-consoles; seção 30)
 pastas do usuário criadas em português no login
 overlay de atalhos do niri: não abre sozinho, títulos em português
+teclado ABNT2 na sessão gráfica
+clipboard entre terminal e VS Code, nos dois sentidos
+wallpaper padrão aplicado no desktop
 ```
 
 ## 35.3 Não validado ainda
@@ -1576,7 +1579,7 @@ docker em uso real / Laravel Sail
 bootc upgrade a partir do GHCR
 rollback
 instalação em hardware real
-wallpaper padrão e sync para a tela de login
+sync do wallpaper para a tela de login
 Nautilus em uso: montagem, lixeira, "mostrar na pasta"
 travamento antes do assistente no primeiro boot em VM — visto uma vez em
   2026-09-15, com a janela GTK/GL; não reproduzido no boot seguinte
@@ -1590,26 +1593,25 @@ travamento antes do assistente no primeiro boot em VM — visto uma vez em
 
 1. Primeira publicação no GHCR. O CI constrói e verifica a cada push, mas a publicação é disparada à mão (`workflow_dispatch`) e nunca foi feita.
 2. `bootc switch` para a imagem publicada, com a verificação de assinatura, e depois `bootc upgrade` e `bootc rollback` de ponta a ponta.
-3. Confirmar teclado ABNT2 na sessão gráfica.
-4. Confirmar portais, clipboard e notificações.
-5. Validar o sync do wallpaper para a tela de login e o Nautilus em uso: montagem, lixeira, "mostrar na pasta" (seção 35.3).
-6. Se o travamento antes do assistente voltar num primeiro boot em VM, abrir **View → serial0** antes de fechar a janela (seção 30).
+3. Confirmar portais e notificações.
+4. Validar o sync do wallpaper para a tela de login e o Nautilus em uso: montagem, lixeira, "mostrar na pasta" (seção 35.3).
+5. Se o travamento antes do assistente voltar num primeiro boot em VM, abrir **View → serial0** antes de fechar a janela (seção 30).
 
 ## Médio prazo
 
-7. Curar a `flatpaks.list` e criar o mecanismo que a aplica — incluindo a extensão de tema `org.gtk.Gtk3theme.adw-gtk3-dark`, sem a qual Flatpaks GTK3 não usam o tema do sistema (seção 26.1).
-8. Definir a identidade visual (seção 26): escolher o esquema — Tokyo Night ou Dracula, os dois embutidos no Noctalia — e o wallpaper definitivo.
-9. Configurar o Noctalia: barra, dock, notificações, tela de bloqueio.
-10. Declarar os containers Distrobox (`fedora-mobile`, `ubuntu-db`).
+6. Curar a `flatpaks.list` e criar o mecanismo que a aplica — incluindo a extensão de tema `org.gtk.Gtk3theme.adw-gtk3-dark`, sem a qual Flatpaks GTK3 não usam o tema do sistema (seção 26.1).
+7. Definir a identidade visual (seção 26): escolher o esquema — Tokyo Night ou Dracula, os dois embutidos no Noctalia — e o wallpaper definitivo.
+8. Configurar o Noctalia: barra, dock, notificações, tela de bloqueio.
+9. Declarar os containers Distrobox (`fedora-mobile`, `ubuntu-db`).
 
 ## Longo prazo
 
-11. Snapper/Btrfs snapshots.
-12. Avaliar Limine.
-13. Validar instalação em hardware real.
-14. Documentar recuperação.
-15. Definir política de atualização/rollback.
-16. Estabilizar a versão 1.0.0.
+10. Snapper/Btrfs snapshots.
+11. Avaliar Limine.
+12. Validar instalação em hardware real.
+13. Documentar recuperação.
+14. Definir política de atualização/rollback.
+15. Estabilizar a versão 1.0.0.
 
 ---
 
