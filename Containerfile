@@ -175,6 +175,25 @@ RUN dnf -y --setopt=install_weak_deps=False --enablerepo=code install \
         code \
     && dnf clean all
 
+# Gerenciador de arquivos na imagem, não em Flatpak.
+#
+# Um gerenciador de arquivos é integração com o sistema, não aplicativo
+# isolado: no sandbox ele precisa de filesystem=host para ser útil e mesmo
+# assim não monta pendrive, não fala MTP nem SMB e não enxerga a lixeira do
+# gvfs. O Nautilus traz o gvfs como dependência e implementa o
+# org.freedesktop.FileManager1 — é por essa interface que o "mostrar na pasta"
+# do VS Code e do Firefox abre alguma coisa.
+#
+# Escolhido por ser GTK4/libadwaita, o mesmo tema escuro que o resto já segue
+# pelo dconf e pelo portal, e pelo custo: 10 pacotes e 22 MiB. O Thunar custa
+# 35 MiB e puxa xfce4-panel; o Dolphin, 85 pacotes de KDE.
+#
+# O seletor de arquivos continua no backend gtk do portal (niri-portals.conf):
+# o do GNOME passaria a abrir o próprio Nautilus como seletor.
+RUN dnf -y --setopt=install_weak_deps=False install \
+        nautilus \
+    && dnf clean all
+
 # Login: greetd + tuigreet, só repositórios Fedora.
 #
 # greetd-selinux traz a política; sem ela o greetd esbarra no SELinux em modo

@@ -342,6 +342,13 @@ assert nome in nomes, f"sessao {nome!r} nao esta em {nomes}"
 check "greeter de console mantido como recuperação" \
     run sh -c 'test -x /usr/libexec/arkmos-greeter && rpm -q tuigreet >/dev/null'
 
+# --- Arquivos ----------------------------------------------------------------
+
+# "Mostrar na pasta" do VS Code e do Firefox chama org.freedesktop.FileManager1
+# por D-Bus. Sem quem implemente a interface, o clique não faz nada e não dá erro.
+check "gerenciador de arquivos atende FileManager1" \
+    run sh -c 'rpm -q nautilus gvfs >/dev/null && grep -rqx "Name=org.freedesktop.FileManager1" /usr/share/dbus-1/services/'
+
 # --- tmpfiles --------------------------------------------------------------
 
 # O dry-run resolve usuários e grupos de verdade, então uma entrada apontando
