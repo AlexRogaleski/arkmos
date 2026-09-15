@@ -478,6 +478,23 @@ readlink /etc/localtime
 grep -qx KEYMAP=br /etc/vconsole.conf
 ```
 
+## 11.1 Pastas do usuário
+
+O `xdg-user-dirs` cria as pastas do home no login, com o nome no idioma da sessão:
+
+```text
+Área de trabalho  Documentos  Downloads  Imagens  Modelos  Músicas  Público  Vídeos
+```
+
+Quem roda é a unit de usuário do pacote, `xdg-user-dirs.service`, ligada ao `graphical-session-pre.target` e habilitada pelo preset do Fedora; a entrada de autostart dele vem marcada para o systemd pular. O português depende do `LANG` do `systemd --user`, que vem de `/usr/lib/environment.d/10-arkmos-locale.conf` — o `/etc/locale.conf` não alcança o gerenciador de usuário.
+
+Conta que já existe ganha as pastas no primeiro login depois da atualização.
+
+## 11.2 O que continua em inglês
+
+- **Overlay de atalhos do niri.** O niri não tem tradução. Cada linha aceita um `hotkey-overlay-title`, e as 19 ações que ele lista têm título em português na `config.kdl` — o `just check` barra ação sem título. O cabeçalho "Important Hotkeys" é fixo no binário. O overlay não abre sozinho no login (`skip-at-startup`); `Mod+Shift+/` o mostra.
+- **Noctalia Greeter.** Não tem mecanismo de tradução: "Type password", "Search users…", "Shut down", "Restart", "No users found" e mais uns poucos textos estão fixos no código. O Noctalia Shell, esse sim, tem `pt-BR`. **Decisão (2026-09-15): aceito em inglês.** Traduzir no build seria o primeiro patch em código de terceiro do projeto, a conferir a cada versão, por uns dez textos.
+
 ---
 
 # 12. First Boot
@@ -1500,7 +1517,8 @@ Base, distribuição e robustez:
 - lazygit e lazydocker, com checksum SHA256 fixado, como todo download de build;
 - primeira aparência coerente: `prefer-no-csd`, terminal escuro, tema GTK escuro por dconf, tela de login com nome e retorno ao digitar (seção 26.1);
 - splash de boot próprio — tema `arkmos` do Plymouth, com o initramfs regerado — e wallpaper padrão, os dois gerados no build a partir de fonte e cores (seções 26.1 e 27.2);
-- Nautilus como gerenciador de arquivos, na imagem (seção 25.1);
+- Nautilus como gerenciador de arquivos, na imagem (seção 25.1), e as pastas do usuário criadas em português (seção 11.1);
+- títulos do overlay de atalhos do niri em português (seção 11.2);
 - correções: conta do greeter, ordenação do firstboot e ruído no console, hostname, `nvidia-cdi-refresh`, fallback de getty, cache do tuigreet, variáveis EFI da VM, prompt de senha do assistente, resolução e captura de teclado da VM;
 - documentação: README e este documento.
 
@@ -1529,6 +1547,7 @@ zsh funcionando sem rede
 tema do Plymouth e conteúdo do initramfs (tema, ostree, ABNT2, /root)
 wallpaper padrão e config do Noctalia semeados, sem avisos do validador
 Nautilus atendendo org.freedesktop.FileManager1
+pastas do usuário em português e overlay do niri com títulos traduzidos
 ```
 
 ## 35.2 Validado em VM

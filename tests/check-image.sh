@@ -433,6 +433,35 @@ assert not bloqueiam, "declarado no greeter.toml: " + ", ".join(bloqueiam)
 check "gerenciador de arquivos atende FileManager1" \
     run sh -c 'rpm -q nautilus gvfs >/dev/null && grep -rqx "Name=org.freedesktop.FileManager1" /usr/share/dbus-1/services/'
 
+# Sem o xdg-user-dirs-update na sessão, o home nasce sem Documentos, Downloads,
+# Imagens… A unit de usuário do pacote cuida disso, mas só se estiver
+# habilitada — e os nomes só saem em português com o LANG certo.
+check "pastas do usuário criadas em português" \
+    run sh -c '
+        [ "$(systemctl --global is-enabled xdg-user-dirs.service 2>&1)" = enabled ] \
+            || { echo "xdg-user-dirs.service não está habilitada para as sessões"; exit 1; }
+        mkdir -p /tmp/h
+        HOME=/tmp/h LANG=pt_BR.UTF-8 xdg-user-dirs-update \
+            && test -d /tmp/h/Documentos && test -d /tmp/h/Imagens \
+            || { echo "pastas criadas:"; ls /tmp/h; exit 1; }
+    '
+
+# O niri não tem tradução, mas cada linha do overlay de atalhos aceita um
+# título próprio. Um bind novo sem título volta a aparecer em inglês.
+check "títulos do overlay do niri em português" \
+    run python3 -c '
+import re
+t = open("/etc/niri/config.kdl").read()
+acoes = ["show-hotkey-overlay", "quit", "close-window", "focus-column-left", "focus-column-right",
+         "move-column-left", "move-column-right", "focus-workspace-down", "focus-workspace-up",
+         "move-column-to-workspace-down", "move-column-to-workspace-up", "switch-preset-column-width",
+         "maximize-column", "consume-or-expel-window-left", "consume-or-expel-window-right",
+         "toggle-window-floating", "switch-focus-between-floating-and-tiling", "toggle-overview", "screenshot"]
+binds = [l for l in t.splitlines() if not l.strip().startswith("//")]
+faltando = [a for a in acoes if not any(re.search(r"hotkey-overlay-title=\"[^\"]+\".*\{ *" + re.escape(a) + r";", l) for l in binds)]
+assert not faltando, "sem título: " + ", ".join(faltando)
+'
+
 # --- tmpfiles --------------------------------------------------------------
 
 # O dry-run resolve usuários e grupos de verdade, então uma entrada apontando
