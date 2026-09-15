@@ -1588,30 +1588,28 @@ travamento antes do assistente no primeiro boot em VM — visto uma vez em
 
 ## Curto prazo
 
-1. Testar a 0.8.0 em QEMU: assistente limpo, tuigreet, sessão Niri + Noctalia.
-2. Confirmar teclado ABNT2 na sessão gráfica.
-3. Confirmar portais, clipboard e notificações.
-4. Commitar o trabalho da 0.7.0/0.8.0.
-5. Primeiro build no CI e publicação no GHCR.
-6. Fechar a assinatura (chave pública + `policy.json`).
+1. Primeira publicação no GHCR. O CI constrói e verifica a cada push, mas a publicação é disparada à mão (`workflow_dispatch`) e nunca foi feita.
+2. `bootc switch` para a imagem publicada, com a verificação de assinatura, e depois `bootc upgrade` e `bootc rollback` de ponta a ponta.
+3. Confirmar teclado ABNT2 na sessão gráfica.
+4. Confirmar portais, clipboard e notificações.
+5. Validar o sync do wallpaper para a tela de login e o Nautilus em uso: montagem, lixeira, "mostrar na pasta" (seção 35.3).
+6. Se o travamento antes do assistente voltar num primeiro boot em VM, abrir **View → serial0** antes de fechar a janela (seção 30).
 
 ## Médio prazo
 
 7. Curar a `flatpaks.list` e criar o mecanismo que a aplica — incluindo a extensão de tema `org.gtk.Gtk3theme.adw-gtk3-dark`, sem a qual Flatpaks GTK3 não usam o tema do sistema (seção 26.1).
 8. Definir a identidade visual (seção 26): escolher o esquema — Tokyo Night ou Dracula, os dois embutidos no Noctalia — e o wallpaper definitivo.
-9. Configurar Noctalia: barra, dock, notificações, wallpaper, lock.
-10. Avaliar o Noctalia Greeter, mantendo greetd/tuigreet como fallback.
-11. Validar `bootc upgrade` e `bootc rollback` de ponta a ponta.
-12. Declarar os containers Distrobox (`fedora-mobile`, `ubuntu-db`).
+9. Configurar o Noctalia: barra, dock, notificações, tela de bloqueio.
+10. Declarar os containers Distrobox (`fedora-mobile`, `ubuntu-db`).
 
 ## Longo prazo
 
-13. Snapper/Btrfs snapshots.
-14. Avaliar Limine.
-15. Validar instalação em hardware real.
-16. Documentar recuperação.
-17. Definir política de atualização/rollback.
-18. Estabilizar a versão 1.0.0.
+11. Snapper/Btrfs snapshots.
+12. Avaliar Limine.
+13. Validar instalação em hardware real.
+14. Documentar recuperação.
+15. Definir política de atualização/rollback.
+16. Estabilizar a versão 1.0.0.
 
 ---
 
@@ -1711,6 +1709,6 @@ O objetivo final é poder reinstalar o ambiente pessoal com o mínimo possível 
 Próximo marco:
 
 ```text
-0.8.0 → validar a sessão gráfica em VM e publicar no GHCR
+0.8.0 → publicar no GHCR e validar bootc upgrade/rollback a partir dela
 0.9.0 → aplicações declaradas e identidade visual
 ```
