@@ -1357,6 +1357,10 @@ UEFI via `pflash`, não `-bios`: o firmware precisa de uma cópia **gravável** 
 
 Cada variante tem seu próprio diretório de saída (`output/`, `output-nvidia/`).
 
+**A linha de boot da VM não é a da imagem.** O bootc-image-builder acrescenta `console=tty0 console=ttyS0` no qcow2; isso não vem do `kargs.d`. Com console serial o Plymouth alterna entre o splash e o modo texto de reserva (três pontos), e o que aparece muda de um boot para outro. Por isso o `config.toml` acrescenta `plymouth.ignore-serial-consoles` na mídia de teste: o Plymouth ignora o serial e desenha o splash na tela, como numa máquina real. É configuração da mídia, não da imagem publicada.
+
+O mesmo console serial é útil quando a tela congela: na janela do QEMU, **View → serial0** mostra o console do sistema, e um `arkmos login:` ali significa que o sistema subiu e o problema é só a exibição.
+
 ---
 
 # 31. Instalação e Atualização
@@ -1574,6 +1578,8 @@ instalação em hardware real
 splash de boot numa instalação completa
 wallpaper padrão e sync para a tela de login
 Nautilus em uso: montagem, lixeira, "mostrar na pasta"
+travamento antes do assistente no primeiro boot em VM — visto uma vez em
+  2026-09-15, com a janela GTK/GL; não reproduzido no boot seguinte
 ```
 
 ---
