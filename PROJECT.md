@@ -1169,7 +1169,7 @@ Detalhes do desenho:
 
 - **O cosign faz login próprio.** Ele não lê o arquivo de autenticação do podman, e sim a configuração do Docker: sem `cosign login`, a assinatura falha com `UNAUTHORIZED` depois de o push ter dado certo. Foi assim que a primeira publicação terminou com a imagem no registry e sem assinatura.
 - **O CI confere a assinatura publicada**, com a mesma chave pública que vai dentro da imagem. É a verificação que a máquina instalada vai exigir no `bootc upgrade`.
-- **O formato da assinatura importa.** No cosign 3, `--new-bundle-format` vem ligada: a assinatura vira um bundle Sigstore anexado pela API de referrers, que o GHCR não suporta — e o cosign cai numa tag de índice `sha256-<digest>`. O podman e o bootc leem a *sigstore attachment* clássica, na tag `sha256-<digest>.sig`, que nesse formato não existe. O CI assina **e** verifica com `--new-bundle-format=false`. Sem isso, a imagem é validada pelo cosign e recusada pela máquina.
+- **O formato da assinatura importa.** No cosign 3, `--new-bundle-format` vem ligada: a assinatura vira um bundle Sigstore anexado pela API de referrers, que o GHCR não suporta — e o cosign cai numa tag de índice `sha256-<digest>`. O podman e o bootc leem a *sigstore attachment* clássica, na tag `sha256-<digest>.sig`, que nesse formato não existe. O CI assina **e** verifica com `--new-bundle-format=false` — e, ao assinar, também com `--use-signing-config=false`, que no cosign 3 vem ligada e exige o formato novo: sozinha, a primeira opção é recusada antes de assinar. Sem isso, a imagem é validada pelo cosign e recusada pela máquina.
 
 Esses três só apareceram ao publicar de verdade, porque é o único trecho que um push comum não executa.
 

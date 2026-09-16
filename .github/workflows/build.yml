@@ -197,7 +197,12 @@ jobs:
           # procuram ali. Eles leem a sigstore attachment clássica, a tag
           # 'sha256-<digest>.sig', que no formato novo nem existe: o resultado
           # é uma imagem que o cosign valida e a máquina recusa no upgrade.
+          # --use-signing-config=false acompanha: no cosign 3 ela vem LIGADA e
+          # exige o formato novo, então sozinha a opção acima é recusada antes
+          # de assinar ("must provide --new-bundle-format ... with
+          # --use-signing-config"). As duas juntas voltam ao fluxo clássico.
           cosign sign --yes --new-bundle-format=false \
+            --use-signing-config=false \
             --key env://COSIGN_PRIVATE_KEY \
             "${IMAGE_REGISTRY}/${IMAGE}@${DIGEST}"
 
