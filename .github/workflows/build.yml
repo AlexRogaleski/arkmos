@@ -190,7 +190,15 @@ jobs:
           echo "${GH_TOKEN}" \
             | cosign login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-          cosign sign --yes --key env://COSIGN_PRIVATE_KEY \
+          # --new-bundle-format=false não é detalhe: no cosign 3 essa opção
+          # vem LIGADA, e a assinatura vira um bundle Sigstore anexado pela
+          # API de referrers. O GHCR não suporta essa API, então o cosign cai
+          # numa tag de índice 'sha256-<digest>' — e o podman e o bootc não
+          # procuram ali. Eles leem a sigstore attachment clássica, a tag
+          # 'sha256-<digest>.sig', que no formato novo nem existe: o resultado
+          # é uma imagem que o cosign valida e a máquina recusa no upgrade.
+          cosign sign --yes --new-bundle-format=false \
+            --key env://COSIGN_PRIVATE_KEY \
             "${IMAGE_REGISTRY}/${IMAGE}@${DIGEST}"
 
       # A assinatura é o que a máquina instalada vai exigir para atualizar.
@@ -201,7 +209,11 @@ jobs:
         env:
           DIGEST: ${{ steps.push.outputs.digest }}
         run: |
-          cosign verify --key files/etc/pki/containers/arkmos.pub \
+          # A mesma opção aqui, e pelo mesmo motivo: o verify também espera o
+          # bundle por padrão. Sem ela, esta verificação passaria a cobrar o
+          # formato que a máquina não usa.
+          cosign verify --new-bundle-format=false \
+            --key files/etc/pki/containers/arkmos.pub \
             "${IMAGE_REGISTRY}/${IMAGE}@${DIGEST}"
 
       # --- Retenção -------------------------------------------------------
