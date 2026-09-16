@@ -1167,7 +1167,10 @@ Detalhes do desenho:
 - **Nome do registry em minúsculas.** O dono da conta é `AlexRogaleski`, e `github.repository_owner` vem com as maiúsculas; o podman recusa o nome ("repository name must be lowercase"). O workflow monta `ghcr.io/alexrogaleski` num passo de shell e passa o mesmo valor ao build, para a política de assinatura apontar para onde a imagem é publicada.
 - **O digest assinado é o publicado.** O push recomprime as camadas, e o manifesto no registry tem outro digest que o da imagem local — que o `podman inspect` continua mostrando mesmo depois do push. O workflow assina o digest do `--digestfile` e para se as três tags saírem com digests diferentes.
 
-Esses dois só apareceram ao preparar a primeira publicação, porque é o único trecho que um push comum não executa.
+- **O cosign faz login próprio.** Ele não lê o arquivo de autenticação do podman, e sim a configuração do Docker: sem `cosign login`, a assinatura falha com `UNAUTHORIZED` depois de o push ter dado certo. Foi assim que a primeira publicação terminou com a imagem no registry e sem assinatura.
+- **O CI confere a assinatura publicada**, com a mesma chave pública que vai dentro da imagem. É a verificação que a máquina instalada vai exigir no `bootc upgrade`.
+
+Esses três só apareceram ao publicar de verdade, porque é o único trecho que um push comum não executa.
 
 ### Como publicar
 

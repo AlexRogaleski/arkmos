@@ -175,6 +175,7 @@ jobs:
       - name: Assinar
         if: env.PUBLICAR == 'true' && env.HAS_SIGNING_KEY == 'true'
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
           # Sem esta variável o cosign tenta PEDIR a senha da chave, e num
           # runner sem terminal isso trava o job até o timeout. Vazia quando o
@@ -182,7 +183,25 @@ jobs:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
           DIGEST: ${{ steps.push.outputs.digest }}
         run: |
+          # O cosign precisa do próprio login: ele não lê o arquivo de
+          # autenticação do podman, e sim a configuração do Docker. Sem isto
+          # ele tenta anônimo e o GHCR responde UNAUTHORIZED — foi o que
+          # quebrou a primeira publicação, já depois de o push ter dado certo.
+          echo "${GH_TOKEN}" \
+            | cosign login ghcr.io -u "${{ github.actor }}" --password-stdin
+
           cosign sign --yes --key env://COSIGN_PRIVATE_KEY \
+            "${IMAGE_REGISTRY}/${IMAGE}@${DIGEST}"
+
+      # A assinatura é o que a máquina instalada vai exigir para atualizar.
+      # Conferir aqui, com a mesma chave pública que vai dentro da imagem, é
+      # mais barato do que descobrir no 'bootc upgrade' que ela não confere.
+      - name: Verificar a assinatura publicada
+        if: env.PUBLICAR == 'true' && env.HAS_SIGNING_KEY == 'true'
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          cosign verify --key files/etc/pki/containers/arkmos.pub \
             "${IMAGE_REGISTRY}/${IMAGE}@${DIGEST}"
 
       # --- Retenção -------------------------------------------------------
