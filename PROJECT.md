@@ -1263,6 +1263,8 @@ O `registries.d` é necessário porque o cosign anexa a assinatura ao próprio r
 
 `signedIdentity` é `matchRepository`, não `matchExact`: as tags `44` e `latest` se movem entre digests.
 
+**A exigência fica gravada na deployment.** Depois de um `bootc switch --enforce-container-sigpolicy`, o `bootc status` mostra `signature: containerPolicy` na imagem — não é efeito momentâneo do comando. Um `bootc upgrade` seguinte continua verificando a assinatura sem repetir a flag.
+
 O `just check` afirma a coerência das duas peças, que só funcionam juntas — chave sem entrada na política não verifica nada, e entrada apontando para chave ausente faz **todo** pull do Arkmos falhar.
 
 ---
@@ -1603,6 +1605,8 @@ recusa de imagem sem assinatura: "A signature was required, but no signature
   exists", antes de baixar camada nenhuma
 login e sessão a partir da imagem publicada, com o greeter compilado para
   linha de base portátil (seção 8.3)
+bootc rollback devolvendo a deployment anterior: os papéis booted e rollback
+  aparecem trocados no bootc status
 ```
 
 ## 35.3 Não validado ainda
@@ -1624,7 +1628,7 @@ travamento antes do assistente no primeiro boot em VM — visto uma vez em
 
 ## Curto prazo
 
-1. `bootc upgrade` e `bootc rollback` de ponta a ponta, a partir da imagem publicada. Para exercitar o upgrade é preciso publicar uma versão nova depois de instalada a atual.
+1. `bootc upgrade` de ponta a ponta: com a imagem publicada instalada, publicar uma versão nova e atualizar por ela. O `bootc rollback` já foi validado (seção 35.2).
 2. Confirmar portais e notificações.
 3. Validar o Nautilus em uso: montagem, lixeira, "mostrar na pasta" (seção 35.3).
 4. Se o travamento antes do assistente voltar num primeiro boot em VM, abrir **View → serial0** antes de fechar a janela (seção 30).
