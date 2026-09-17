@@ -769,6 +769,24 @@ fica declarada por projeto, no `.mise.toml` versionado junto do código.
 valendo para os **serviços** do projeto (`docker compose`, Sail) e para
 ambientes fechados (Distrobox, seção 16), não para a linguagem.
 
+A ativação do zsh fica em `files/usr/share/arkmos/zsh/tools.zsh`, junto das
+outras integrações do shell; a do bash, em `files/etc/profile.d/mise.sh`. As
+duas valem para shell **interativo**: `mise activate` instala um hook de prompt
+que ajusta o PATH ao entrar num diretório com `.mise.toml`. Sem ativação o
+binário está na imagem e não serve para nada, então o `just check` exige as
+duas.
+
+O arquivo do bash tem duas guardas, e nenhuma é decorativa. A primeira é
+`BASH_VERSION`, porque `/etc/profile.d` **não** é exclusivo do bash: o
+`/etc/zshrc` do Fedora também carrega esse diretório, e sem a guarda o zsh
+receberia a ativação em dialeto de bash — antes da correta, ainda. É por isso
+que a verificação do zsh exige `MISE_SHELL=zsh`: é ela que denuncia a guarda
+quebrada. A segunda é shell interativo, pelo mesmo motivo da seção acima.
+
+O arquivo também não usa `return`: o zsh faz o source dele de dentro de uma
+função, e um `return` ali interromperia o laço, deixando os demais scripts de
+`profile.d` sem carregar.
+
 Como o VS Code está na imagem e não em Flatpak (seção 17.1), a extensão da
 linguagem enxerga o binário que o mise instalou sem configuração extra.
 Atenção a um detalhe: o terminal integrado herda o PATH do zsh, mas o processo
@@ -1508,6 +1526,7 @@ arkmos/
     │   ├── niri/config.kdl
     │   ├── nvidia/…
     │   ├── plymouth/plymouthd.conf
+    │   ├── profile.d/mise.sh      ativação do mise no bash
     │   ├── skel/                  defaults de VS Code e Noctalia
     │   ├── xdg-desktop-portal/niri-portals.conf
     │   ├── yum.repos.d/           docker-ce e vscode, enabled=0

@@ -589,6 +589,46 @@ check "config do zsh carrega inteira sem rede" \
         [[ \$EDITOR == *nvim ]]                     || { print -u2 \"EDITOR é \$EDITOR, esperado nvim\"; exit 1; }
     " 2>&1'
 
+# A ativação do mise é o que troca o PATH ao entrar num projeto com
+# .mise.toml. Sem ela o binário está na imagem e não serve para nada — e é uma
+# linha só no tools.zsh, fácil de perder num refactor do shell.
+#
+# HOME=/tmp porque o /root da imagem é symlink para var/roothome, que só nasce
+# no boot: sem HOME gravável o mise apenas reclama, e a verificação passaria a
+# medir o container descartável em vez da imagem.
+check "zsh ativa o mise" \
+    sh -c 'podman run --rm --network=none -e HOME=/tmp "'"$IMAGE"'" zsh -ic "
+        [[ \$MISE_SHELL == zsh ]]             || { print -u2 \"MISE_SHELL=\$MISE_SHELL, esperado zsh\"; exit 1; }
+        (( \$+functions[mise] ))              || { print -u2 \"a função mise não foi definida\"; exit 1; }
+        (( \$+functions[_mise_hook_precmd] )) || { print -u2 \"hook de precmd do mise ausente\"; exit 1; }
+        [[ \$PATH == *mise/shims* ]]          || { print -u2 \"shims do mise fora do PATH\"; exit 1; }
+    " 2>&1'
+
+# O bash tem a ativação dele em /etc/profile.d/mise.sh, e esse diretório não é
+# exclusivo do bash: o /etc/zshrc do Fedora também o carrega. Por isso a
+# verificação do zsh acima exige MISE_SHELL=zsh — se a guarda do arquivo
+# quebrar, o zsh passa a receber a ativação em dialeto de bash e aquela linha
+# falha. Esta aqui é a outra ponta: o bash precisa de fato ativar.
+#
+# Com -l, porque no Fedora o bash interativo NÃO-login não lê /etc/bashrc por
+# conta própria: quem faz essa ponte é o ~/.bashrc do /etc/skel, e é ele que
+# acaba carregando o profile.d. Em shell de login o /etc/profile carrega o
+# diretório direto, o que prova o nosso arquivo sem depender de home nenhum; a
+# ponte do skel é afirmada na verificação seguinte.
+check "bash ativa o mise" \
+    sh -c 'podman run --rm --network=none -e HOME=/tmp "'"$IMAGE"'" bash -lic "
+        [[ \$MISE_SHELL == bash ]] || { echo \"MISE_SHELL=\$MISE_SHELL, esperado bash\" >&2; exit 1; }
+        declare -F mise >/dev/null || { echo \"a função mise não foi definida\" >&2; exit 1; }
+        [[ \$(declare -p PROMPT_COMMAND 2>/dev/null) == *_mise_hook* ]] \
+            || { echo \"hook do mise fora do PROMPT_COMMAND\" >&2; exit 1; }
+    " 2>&1'
+
+# A ponte do caso não-login: sem esta linha no .bashrc que o assistente copia
+# do /etc/skel, um 'bash' aberto dentro do terminal não carrega profile.d, e o
+# mise fica sem ativação sem que nada reclame.
+check "skel liga o bash ao profile.d" \
+    run sh -c 'grep -q "\. /etc/bashrc" /etc/skel/.bashrc'
+
 check "ZDOTDIR aponta para a config da imagem" \
     run sh -c 'test -r /usr/share/arkmos/zsh/.zshrc &&
                grep -q /usr/share/arkmos/zsh /etc/zshenv'

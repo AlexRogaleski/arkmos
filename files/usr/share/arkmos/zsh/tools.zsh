@@ -43,3 +43,15 @@ if (( $+commands[fd] )); then
 fi
 
 export FZF_DEFAULT_OPTS='--height 40% --layout=reverse --border --info=inline'
+
+# --- Toolchains ------------------------------------------------------------
+
+# O mise gerencia versões de linguagem por projeto (seção 17.2). Ativar
+# instala um hook de precmd: ao entrar num diretório com .mise.toml, o PATH
+# passa a apontar para as versões declaradas ali.
+#
+# Aqui, e não em /etc/profile.d: 'mise activate' existe para shell
+# interativo. O que precisa dessas versões fora do shell — tarefa do VS Code,
+# serviço do systemd --user, hook de editor — usa os shims que o próprio mise
+# mantém em ~/.local/share/mise/shims, e que funcionam sem hook nenhum.
+(( $+commands[mise] )) && eval "$(mise activate zsh)"
