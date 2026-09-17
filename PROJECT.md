@@ -1607,6 +1607,8 @@ login e sessão a partir da imagem publicada, com o greeter compilado para
   linha de base portátil (seção 8.3)
 bootc rollback devolvendo a deployment anterior: os papéis booted e rollback
   aparecem trocados no bootc status
+bootc upgrade para uma versão publicada depois da instalada, verificando a
+  assinatura sem repetir a flag (signature: containerPolicy na deployment)
 ```
 
 ## 35.3 Não validado ainda
@@ -1614,8 +1616,6 @@ bootc rollback devolvendo a deployment anterior: os papéis booted e rollback
 ```text
 aparência conferida item a item (prefer-no-csd, tema escuro, terminal)
 docker em uso real / Laravel Sail
-bootc upgrade a partir do GHCR
-rollback
 instalação em hardware real
 Nautilus em uso: montagem, lixeira, "mostrar na pasta"
 travamento antes do assistente no primeiro boot em VM — visto uma vez em
@@ -1628,26 +1628,25 @@ travamento antes do assistente no primeiro boot em VM — visto uma vez em
 
 ## Curto prazo
 
-1. `bootc upgrade` de ponta a ponta: com a imagem publicada instalada, publicar uma versão nova e atualizar por ela. O `bootc rollback` já foi validado (seção 35.2).
-2. Confirmar portais e notificações.
-3. Validar o Nautilus em uso: montagem, lixeira, "mostrar na pasta" (seção 35.3).
-4. Se o travamento antes do assistente voltar num primeiro boot em VM, abrir **View → serial0** antes de fechar a janela (seção 30).
+1. Confirmar portais e notificações.
+2. Validar o Nautilus em uso: montagem, lixeira, "mostrar na pasta" (seção 35.3).
+3. Se o travamento antes do assistente voltar num primeiro boot em VM, abrir **View → serial0** antes de fechar a janela (seção 30).
 
 ## Médio prazo
 
-5. Curar a `flatpaks.list` e criar o mecanismo que a aplica — incluindo a extensão de tema `org.gtk.Gtk3theme.adw-gtk3-dark`, sem a qual Flatpaks GTK3 não usam o tema do sistema (seção 26.1).
-6. Definir a identidade visual (seção 26): escolher o esquema — Tokyo Night ou Dracula, os dois embutidos no Noctalia — e o wallpaper definitivo.
-7. Configurar o Noctalia: barra, dock, notificações, tela de bloqueio.
-8. Declarar os containers Distrobox (`fedora-mobile`, `ubuntu-db`).
+4. Curar a `flatpaks.list` e criar o mecanismo que a aplica — incluindo a extensão de tema `org.gtk.Gtk3theme.adw-gtk3-dark`, sem a qual Flatpaks GTK3 não usam o tema do sistema (seção 26.1).
+5. Definir a identidade visual (seção 26): escolher o esquema — Tokyo Night ou Dracula, os dois embutidos no Noctalia — e o wallpaper definitivo.
+6. Configurar o Noctalia: barra, dock, notificações, tela de bloqueio.
+7. Declarar os containers Distrobox (`fedora-mobile`, `ubuntu-db`).
 
 ## Longo prazo
 
-9. Snapper/Btrfs snapshots.
-10. Avaliar Limine.
-11. Validar instalação em hardware real.
-12. Documentar recuperação.
-13. Definir política de atualização/rollback.
-14. Estabilizar a versão 1.0.0.
+8. Snapper/Btrfs snapshots.
+9. Avaliar Limine.
+10. Validar instalação em hardware real.
+11. Documentar recuperação.
+12. Definir política de atualização/rollback.
+13. Estabilizar a versão 1.0.0.
 
 ---
 
@@ -1747,6 +1746,6 @@ O objetivo final é poder reinstalar o ambiente pessoal com o mínimo possível 
 Próximo marco:
 
 ```text
-0.8.0 → validar bootc upgrade e rollback a partir da imagem publicada
+0.8.0 → marco fechado: imagem publicada, assinada, instalável e atualizável
 0.9.0 → aplicações declaradas e identidade visual
 ```
