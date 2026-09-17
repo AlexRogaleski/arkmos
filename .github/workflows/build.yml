@@ -243,14 +243,20 @@ jobs:
           delete-only-untagged-versions: true
           min-versions-to-keep: 0
 
-      # Cinco publicações de histórico. O rollback do dia a dia é local —
-      # 'bootc rollback' usa o deployment anterior, que já está no disco e não
-      # depende do registry. Isto serve para o outro caso: reinstalar do zero
-      # uma versão que se sabe boa, quando a mais recente não presta.
+      # Histórico de imagem para reinstalar do zero uma versão que se sabe
+      # boa, quando a mais recente não presta. O rollback do dia a dia é
+      # outra coisa, e é local: 'bootc rollback' usa o deployment anterior,
+      # que já está no disco e não depende do registry.
+      #
+      # A conta não é uma versão por publicação: cada publicação cria DUAS
+      # versões no GHCR, a imagem e a assinatura do cosign, que é um artefato
+      # próprio. Então 12 versões são cerca de 6 publicações. Com o valor
+      # anterior (5) sobravam duas, e durante os testes da 0.8.0 as versões
+      # usadas como teste negativo foram apagadas no meio do caminho.
       - name: Manter apenas as últimas versões
         if: env.PUBLICAR == 'true'
         uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5.0.0
         with:
           package-name: ${{ env.IMAGE }}
           package-type: container
-          min-versions-to-keep: 5
+          min-versions-to-keep: 12

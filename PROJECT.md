@@ -1204,7 +1204,7 @@ Cada publicação cria **uma** versão (um digest) carregando três tags: `44.AA
 Dois passos, com critérios diferentes:
 
 - **Versões sem tag são removidas todas.** Mover `44` e `latest` para a versão nova deixa a anterior sem nenhuma tag apontando para ela; não dá para referenciá-la por nome e ela não é alvo de rollback.
-- **Cinco publicações de histórico são mantidas.** O rollback do dia a dia é local — `bootc rollback` usa o deployment anterior, que já está no disco e não depende do registry. As cinco servem para o outro caso: reinstalar do zero uma versão que se sabe boa, quando a mais recente não presta.
+- **Doze versões de histórico são mantidas.** E a conta não é uma versão por publicação: cada publicação cria **duas** versões, a imagem e a assinatura do cosign, que no registry é um artefato próprio. Doze são portanto cerca de seis publicações. O valor era 5, o que deixava duas publicações — pouco o bastante para, durante os testes da 0.8.0, apagar no meio do caminho as versões que serviam de teste negativo. Isto é histórico de imagem, para reinstalar do zero uma versão que se sabe boa; o rollback do dia a dia é local e não depende do registry.
 
 ## 28.3 Assinatura
 
