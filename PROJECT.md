@@ -338,6 +338,18 @@ O greeter não é empacotado pelo Fedora. A documentação dele aponta o reposit
 
 Compilar mantém a política da seção 13.3: versão fixada, nada de snapshot. O estágio de compilação é separado justamente para os ~40 pacotes `-devel` não acabarem na imagem final — o que atravessa são 5 binários e alguns assets, **5,5 MB**, mais o `wlroots` de runtime. O commit é fixado, e não a tag, porque tag pode ser movida.
 
+### O `-march=native` do upstream
+
+Em `buildtype=release`, o `meson.build` do greeter acrescenta `-march=native -mtune=native`, e não há opção para desligar. O binário sai amarrado ao processador de quem compila — e quem compila a imagem publicada é o runner do GitHub, não esta máquina.
+
+O sintoma, na primeira imagem publicada testada em VM: a senha é aceita, a tela pisca e volta para o login. O greeter morre de **SIGILL** dentro de `GreetdClient::sendRequest`, na primeira coisa que faz ao autenticar; o greetd reinicia e nada na tela diz o motivo. O log registra `pam_unix(greetd:auth): conversation failed`, que parece senha errada e não é — o SSH autentica a mesma conta com a mesma senha.
+
+O que atrapalhou o diagnóstico: o `build fingerprint` que o greeter imprime é do código, não do binário, então ele é **igual** nas duas imagens; e o diff de pacotes entre as duas deployments mostrava apenas `code`, `ffmpeg`, `libde265` e `unibilium`. Tudo apontava para "a mesma coisa", e a diferença estava no código de máquina.
+
+A instrução que estoura é `vmovw`, de **AVX512-FP16**: 102 ocorrências no binário vindo do runner e nenhuma no compilado aqui. O Xeon do runner tem essa extensão; o i5-11300H (Tiger Lake), não. Os dois binários usam outras instruções de AVX-512 (`vpermi2b`, `vgf2p8affineqb`, `vmovdqa64`), mas essas o Tiger Lake executa — é só a de FP16 que falta.
+
+O build troca os dois flags por `-march=x86-64-v2 -mtune=generic` e confere, no `compile_commands.json`, que o compilador recebeu o flag certo e nenhum `-march=native`. Verificado no binário resultante: zero instruções de AVX-512, e o AVX2 que resta está apenas nas funções `*_x86_avx2` do wuffs, o decodificador de JPEG, que escolhe o caminho conforme o CPU em tempo de execução. Vale lembrar que este é o **único** componente compilado aqui: todo o resto vem de RPM do Fedora, já construído para a linha de base da distribuição.
+
 ### A armadilha do usuário, de novo
 
 O `tmpfiles.d` que o upstream instala declara:

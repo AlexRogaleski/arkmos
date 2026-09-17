@@ -97,6 +97,17 @@ vm: build
 # chegam na VM, o que torna impossível testar os binds do Niri. Ctrl+Alt+G
 # libera e recaptura o teclado a qualquer momento.
 #
+# A porta 2222 do host cai no ssh da VM (hostfwd). A janela do QEMU não tem
+# clipboard compartilhado, então copiar log de dentro dela é sofrido; com isto,
+# 'ssh -p 2222 usuario@127.0.0.1' roda o comando de fora e a saída fica no host,
+# em arquivo. O sshd já vem habilitado pela base. Só escuta em 127.0.0.1.
+#
+# Cada qcow2 novo tem chaves de host próprias, então o known_hosts do host
+# acumula conflito nessa porta e o ssh chega a bloquear até a senha. Usar:
+#
+#   ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+#       usuario@127.0.0.1 'comando'
+#
 # UEFI via pflash, não '-bios': o firmware precisa de uma cópia GRAVÁVEL das
 # variáveis EFI para guardar a entrada de boot que o bootc instala. Com
 # '-bios' as variáveis são descartadas e o disco pode não dar boot.
@@ -117,7 +128,7 @@ run-vm:
         -drive file={{outdir}}/qcow2/disk.qcow2,if=virtio,format=qcow2 \
         -device virtio-vga-gl,xres=1920,yres=1080 \
         -display gtk,gl=on,grab-on-hover=on \
-        -device virtio-net,netdev=n0 -netdev user,id=n0 \
+        -device virtio-net,netdev=n0 -netdev user,id=n0,hostfwd=tcp:127.0.0.1:2222-:22 \
         -usb -device usb-tablet
 
 [doc("Remove os diretórios de saída das duas variantes")]

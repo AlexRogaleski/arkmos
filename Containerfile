@@ -32,6 +32,15 @@ ARG BASE_IMAGE="ghcr.io/ublue-os/base-main:44"
 #
 # Fixado por commit, e não pela tag: tag pode ser movida.
 # v1.5.0 = 5a450b891067c1f0cd7157f4f1091aa0e3014780
+#
+# O '-march=native' do upstream é removido, e isso não é ajuste de otimização:
+# em release o meson dele acrescenta '-march=native -mtune=native', sem opção
+# para desligar. O binário sai amarrado ao processador de quem compila — e quem
+# compila a imagem publicada é o runner do GitHub, não esta máquina. Numa
+# máquina com outro CPU o greeter morre de SIGILL na primeira coisa que faz ao
+# autenticar (GreetdClient::sendRequest): a senha é aceita, o greetd reinicia e
+# a tela de login pisca e volta, sem nada que aponte a causa. Foi exatamente
+# assim que a primeira imagem publicada se comportou na VM. Ver PROJECT.md 8.3.
 # ---------------------------------------------------------------------------
 FROM ${BASE_IMAGE} AS greeter-builder
 
@@ -54,7 +63,11 @@ RUN git init --quiet /tmp/greeter \
     && git -C /tmp/greeter fetch --quiet --depth=1 origin "${NOCTALIA_GREETER_COMMIT}" \
     && git -C /tmp/greeter checkout --quiet FETCH_HEAD \
     && cd /tmp/greeter \
+    && sed -i "s/'-march=native', '-mtune=native',/'-march=x86-64-v2', '-mtune=generic',/" meson.build \
+    && ! grep -q "march=native" meson.build \
     && meson setup build --prefix=/usr --buildtype=release \
+    && grep -q -- "-march=x86-64-v2" build/compile_commands.json \
+    && ! grep -q -- "-march=native" build/compile_commands.json \
     && meson compile -C build \
     && DESTDIR=/tmp/greeter-root meson install -C build --no-rebuild \
     && test -x /tmp/greeter-root/usr/bin/noctalia-greeter-session
