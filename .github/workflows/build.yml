@@ -56,21 +56,21 @@ jobs:
             base_image: ghcr.io/ublue-os/base-main:44
             publishable: true
 
-          # A variante NVIDIA é construída e verificada, mas não publicada.
+          # A variante NVIDIA também publica, desde que o ciclo de publicar
+          # e atualizar foi validado na padrão (seção 35.2). São ~5 GB por
+          # versão, e em repositório público não há cota de registry.
+          #
+          # Publicar esta variante redistribui o driver NVIDIA, que é
+          # proprietário — a licença dele permite, e as condições que ela
+          # impõe são cumpridas aqui. Ver PROJECT.md 28.4.
           #
           # Ela compartilha a árvore files/ inteira com a padrão: o que pode
           # quebrar só nela é algo vindo da base — a imagem sair do ar, mudar
-          # de nome, deixar de trazer um pacote. Construir a cada push custa
-          # tempo de runner, que em repositório público é gratuito, e evita
-          # que ela apodreça em silêncio.
-          #
-          # Publicar é outra conversa: são ~5 GB por versão de uma imagem que
-          # ninguém usa hoje. Trocar para 'true' quando houver máquina com a
-          # dGPU ligada.
+          # de nome, deixar de trazer um pacote.
           - variant: nvidia
             suffix: "-nvidia"
             base_image: ghcr.io/ublue-os/base-nvidia:44
-            publishable: false
+            publishable: true
 
     env:
       # Avaliado no nível do job porque o 'if' de um passo não enxerga o

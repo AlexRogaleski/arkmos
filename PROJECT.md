@@ -1173,7 +1173,7 @@ O workflow tem duas funções, e elas entram em momentos diferentes do projeto.
 Detalhes do desenho:
 
 - **Uma variante por job** (`strategy.matrix`). O runner do GitHub já precisa de limpeza para caber **uma** imagem de ~11 GB; as duas no mesmo job estouram o disco. Em jobs separados também constroem em paralelo.
-- **A variante NVIDIA é construída e verificada, mas não publicada.** Ela compartilha a árvore `files/` inteira com a padrão, então o que pode quebrar só nela vem da base — a imagem sair do ar, mudar de nome, deixar de trazer um pacote. Construir a cada push custa tempo de runner, que em repositório público é gratuito. Publicar são ~5 GB por versão de uma imagem que ninguém usa hoje.
+- **As duas variantes são construídas, verificadas e publicadas.** A NVIDIA passou a publicar depois que o ciclo de publicar, instalar e atualizar foi validado na padrão (seção 35.2); são ~5 GB por versão, e em repositório público não há cota de registry. Ela compartilha a árvore `files/` inteira com a padrão, então o que pode quebrar só nela vem da base — a imagem sair do ar, mudar de nome, deixar de trazer um pacote.
 - **Sem `schedule` por enquanto.** O cron existe para acompanhar a reconstrução diária da base do Universal Blue — cujas tags, aliás, expiram em 4 semanas — e isso só protege uma imagem que está em uso. Entra quando a publicação virar rotina.
 - **Assina com cosign** quando o secret `SIGNING_SECRET` existe.
 - **Nome do registry em minúsculas.** O dono da conta é `AlexRogaleski`, e `github.repository_owner` vem com as maiúsculas; o podman recusa o nome ("repository name must be lowercase"). O workflow monta `ghcr.io/alexrogaleski` num passo de shell e passa o mesmo valor ao build, para a política de assinatura apontar para onde a imagem é publicada.
@@ -1288,7 +1288,25 @@ Todas permitem redistribuição. Dois grupos merecem nota:
 
 **21 pacotes de firmware** sob `LicenseRef-Callaway-Redistributable-no-modification-permitted` (`linux-firmware`, `iwlwifi-*`, `intel-gpu-firmware`, `amd-*`, `atheros-firmware`…). Redistribuição é permitida; modificação, não — e nada aqui os modifica. São os mesmos que qualquer distribuição Linux redistribui.
 
-**O driver NVIDIA**, na variante correspondente: `nvidia-driver` e `kmod-nvidia` são "NVIDIA License", proprietária. A variante não é publicada hoje (`publishable: false` no CI), então a questão não se apresenta. Antes de publicá-la, avaliar — o Universal Blue publica `base-nvidia` abertamente, o que é um precedente, mas não foi verificado aqui.
+**O driver NVIDIA**, na variante correspondente: `nvidia-driver` e `kmod-nvidia` são "NVIDIA License", proprietária. **Decisão: publicar a variante**, porque a licença permite e as condições dela são cumpridas.
+
+O texto que está dentro da imagem (`/usr/share/licenses/nvidia-driver/LICENSE`) concede, em 1.1(d):
+
+```text
+Distribute the SOFTWARE provided for use with operating system kernels
+distributed under the terms of an OSI-approved open source license [...]
+provided that (i) the binary files thereof are not modified in any way
+(except for uncompressing of compressed files) and (ii) this Agreement is
+provided to each SOFTWARE recipient.
+```
+
+E 2.7 fecha o resto: fora do que é expressamente concedido, não há distribuição. As três coisas que isso exige, no nosso caso:
+
+- **kernel sob licença OSI** — Linux, GPL-2.0;
+- **binários não modificados** — o driver vem inteiro da `base-nvidia` do Universal Blue; esta imagem só acrescenta configuração (`nvidia-cdi-refresh` e o perfil de buffer para compositores Wayland), sem tocar em binário do driver;
+- **o acordo entregue a cada destinatário** — o `LICENSE` viaja dentro da imagem, no caminho acima, que é como quem faz `bootc switch` o recebe.
+
+Vale lembrar que 2.8 limita o **uso** do software GeForce/Titan ao hardware que o usuário possui. É limitação para quem usa, não para quem distribui, e não muda a decisão.
 
 ### O caso do VS Code
 
