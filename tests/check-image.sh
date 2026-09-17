@@ -559,10 +559,14 @@ esac
 
 # --- Terminal --------------------------------------------------------------
 
+# O 'mise' avisa no stderr que não conseguiu gravar em ~/.local/share quando
+# roda como root num container descartável. É ruído esperado aqui e não diz
+# nada sobre a imagem, daí o 2>/dev/null só nele.
 check "binários upstream instalados e executáveis" \
     run sh -c 'starship --version >/dev/null &&
                lazygit --version >/dev/null &&
-               lazydocker --version >/dev/null'
+               lazydocker --version >/dev/null &&
+               mise --version >/dev/null 2>/dev/null'
 
 check "Nerd Font patched presente" \
     run sh -c 'fc-list | grep -qi "JetBrainsMono Nerd Font"'

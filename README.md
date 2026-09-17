@@ -59,7 +59,7 @@ Vale saber: na variante padrão não há driver NVIDIA nenhum. Numa máquina cuj
 | Login | [greetd](https://kl.wtf/projects/greetd) 0.10.3 + [tuigreet](https://github.com/apognu/tuigreet) 0.9.1 |
 | Terminal | [foot](https://codeberg.org/dnkl/foot) 1.27.0, zsh 5.9 com configuração própria + starship, JetBrains Mono Nerd Font |
 | Containers | Podman 5.8, Docker CE 29.8 (+ compose), Distrobox 1.8 |
-| Desenvolvimento | VS Code 1.137, Git, Python, Neovim, lazygit, lazydocker, eza/bat/fd/fzf/ripgrep/zoxide |
+| Desenvolvimento | VS Code 1.137, Git, Python, Neovim, lazygit, lazydocker, mise, eza/bat/fd/fzf/ripgrep/zoxide |
 | Sistema | PipeWire, NetworkManager, BlueZ, TuneD, Flatpak |
 | Aparência | tema escuro padrão (GTK via dconf e portal), decoração pelo compositor, Papirus, cursor Adwaita |
 | Localização | pt_BR.UTF-8, teclado ABNT2, `America/Sao_Paulo` |
@@ -74,7 +74,7 @@ A configuração do Zsh é do Arkmos e vive em [`files/usr/share/arkmos/zsh/`](f
 
 Os plugins vêm de **RPM do Fedora** (`zsh-autosuggestions`, `zsh-syntax-highlighting`): o dnf cuida de atualização e de licença, e o shell não busca nada na primeira abertura — um plugin baixado sob demanda daria shell quebrado numa máquina recém-instalada e sem rede. Busca no histórico por prefixo sai de widgets que o próprio zsh traz, sem plugin.
 
-Só o que o Fedora não empacota é baixado no build, com **versão e checksum SHA256 fixados** ([`build_files/`](build_files/)): starship, lazygit, lazydocker e a Nerd Font patched — o `jetbrains-mono-fonts` do Fedora não tem os glifos que o prompt e o `eza --icons` usam.
+Só o que o Fedora não empacota é baixado no build, com **versão e checksum SHA256 fixados** ([`build_files/`](build_files/)): starship, lazygit, lazydocker, mise e a Nerd Font patched — o `jetbrains-mono-fonts` do Fedora não tem os glifos que o prompt e o `eza --icons` usam.
 
 A configuração vive em `/usr`, read-only, igual para todo usuário. Dois pontos de escape:
 
@@ -199,6 +199,7 @@ Além do [Universal Blue](https://universal-blue.org), o Arkmos é quase inteira
 - [foot](https://codeberg.org/dnkl/foot) — terminal
 - [starship](https://starship.rs) — prompt
 - [lazygit e lazydocker](https://github.com/jesseduffield) — interfaces de terminal para Git e Docker
+- [mise](https://mise.jdx.dev) — gerenciador de versões de linguagens
 - [Nerd Fonts](https://github.com/ryanoasis/nerd-fonts) — JetBrains Mono patched
 
 Cada componente mantém a licença do seu projeto de origem. O que este repositório acrescenta é a definição que os costura: `Containerfile`, `files/`, `build_files/`, `tests/` e o CI.

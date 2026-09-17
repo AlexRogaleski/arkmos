@@ -745,6 +745,7 @@ Python
 OpenSSH (cliente)
 eza / bat / fd / fzf / ripgrep / zoxide
 lazygit / lazydocker
+mise 2026.9.10
 VS Code 1.137
 ```
 
@@ -754,7 +755,28 @@ No Flatpak o terminal integrado roda dentro do sandbox e não enxerga o docker d
 
 Manter o VS Code numa imagem que é publicada tem uma questão de licença, tratada na seção 28.4. Os defaults dele são semeados por `/etc/skel` (seção 26.1).
 
-## 17.2 Stack principal
+## 17.2 Toolchains: mise no sistema, versões no `$HOME`
+
+O `mise` está na imagem; as linguagens que ele gerencia, não.
+
+A imutabilidade trava `/usr`, não o `$HOME` — e toolchain moderna (Go, Node,
+Python, Rust) instala inteiramente no home do usuário, sem root. Declarar uma
+delas na imagem amarraria a versão ao ciclo de build: trocar a versão do Go
+passaria a custar rebuild e reboot. Com o mise, custa um comando, e a versão
+fica declarada por projeto, no `.mise.toml` versionado junto do código.
+
+É também o que dispensa container para desenvolver: o container continua
+valendo para os **serviços** do projeto (`docker compose`, Sail) e para
+ambientes fechados (Distrobox, seção 16), não para a linguagem.
+
+Como o VS Code está na imagem e não em Flatpak (seção 17.1), a extensão da
+linguagem enxerga o binário que o mise instalou sem configuração extra.
+Atenção a um detalhe: o terminal integrado herda o PATH do zsh, mas o processo
+do VS Code herda o de quem o lançou — se a extensão não achar a toolchain que
+o terminal acha, o PATH dos shims precisa estar no `environment.d` do usuário,
+e não só no shell.
+
+## 17.3 Stack principal
 
 ```text
 Laravel
@@ -1707,6 +1729,8 @@ PipeWire / NetworkManager       vêm da base
 GTK como preferência visual
 JetBrains Mono Nerd Font
 Zsh + Starship                  configuração própria, plugins de RPM (seção 13)
+mise na imagem                  toolchain de linguagem no $HOME, por projeto,
+                                fora do ciclo de build (seção 17.2)
 Locale na imagem                não em runtime (seção 11)
 Verificações compartilhadas     um script para just e CI (seção 28)
 ```
