@@ -1549,6 +1549,8 @@ Base, distribuição e robustez:
 - splash de boot próprio — tema `arkmos` do Plymouth, com o initramfs regerado — e wallpaper padrão, os dois gerados no build a partir de fonte e cores (seções 26.1 e 27.2);
 - Nautilus como gerenciador de arquivos, na imagem (seção 25.1), e as pastas do usuário criadas em português (seção 11.1);
 - títulos do overlay de atalhos do niri em português (seção 11.2);
+- primeira imagem publicada no GHCR, assinada e com a assinatura verificada de ponta a ponta — inclusive a recusa de imagem sem assinatura (seções 28.2 e 28.3);
+- greeter compilado para uma linha de base portátil: o `-march=native` do upstream deixava toda imagem publicada inutilizável fora do runner do CI (seção 8.3);
 - correções: conta do greeter, ordenação do firstboot e ruído no console, hostname, `nvidia-cdi-refresh`, fallback de getty, cache do tuigreet, variáveis EFI da VM, prompt de senha do assistente, resolução e captura de teclado da VM;
 - documentação: README e este documento.
 
@@ -1596,6 +1598,11 @@ teclado ABNT2 na sessão gráfica
 clipboard entre terminal e VS Code, nos dois sentidos
 wallpaper padrão aplicado no desktop
 wallpaper escolhido na sessão levado às telas de bloqueio e de login (sync)
+bootc switch para a imagem publicada no GHCR, com --enforce-container-sigpolicy
+recusa de imagem sem assinatura: "A signature was required, but no signature
+  exists", antes de baixar camada nenhuma
+login e sessão a partir da imagem publicada, com o greeter compilado para
+  linha de base portátil (seção 8.3)
 ```
 
 ## 35.3 Não validado ainda
@@ -1617,27 +1624,26 @@ travamento antes do assistente no primeiro boot em VM — visto uma vez em
 
 ## Curto prazo
 
-1. Primeira publicação no GHCR. O CI constrói e verifica a cada push, mas a publicação é disparada à mão (`workflow_dispatch`) e nunca foi feita.
-2. `bootc switch` para a imagem publicada, com a verificação de assinatura, e depois `bootc upgrade` e `bootc rollback` de ponta a ponta.
-3. Confirmar portais e notificações.
-4. Validar o Nautilus em uso: montagem, lixeira, "mostrar na pasta" (seção 35.3).
-5. Se o travamento antes do assistente voltar num primeiro boot em VM, abrir **View → serial0** antes de fechar a janela (seção 30).
+1. `bootc upgrade` e `bootc rollback` de ponta a ponta, a partir da imagem publicada. Para exercitar o upgrade é preciso publicar uma versão nova depois de instalada a atual.
+2. Confirmar portais e notificações.
+3. Validar o Nautilus em uso: montagem, lixeira, "mostrar na pasta" (seção 35.3).
+4. Se o travamento antes do assistente voltar num primeiro boot em VM, abrir **View → serial0** antes de fechar a janela (seção 30).
 
 ## Médio prazo
 
-6. Curar a `flatpaks.list` e criar o mecanismo que a aplica — incluindo a extensão de tema `org.gtk.Gtk3theme.adw-gtk3-dark`, sem a qual Flatpaks GTK3 não usam o tema do sistema (seção 26.1).
-7. Definir a identidade visual (seção 26): escolher o esquema — Tokyo Night ou Dracula, os dois embutidos no Noctalia — e o wallpaper definitivo.
-8. Configurar o Noctalia: barra, dock, notificações, tela de bloqueio.
-9. Declarar os containers Distrobox (`fedora-mobile`, `ubuntu-db`).
+5. Curar a `flatpaks.list` e criar o mecanismo que a aplica — incluindo a extensão de tema `org.gtk.Gtk3theme.adw-gtk3-dark`, sem a qual Flatpaks GTK3 não usam o tema do sistema (seção 26.1).
+6. Definir a identidade visual (seção 26): escolher o esquema — Tokyo Night ou Dracula, os dois embutidos no Noctalia — e o wallpaper definitivo.
+7. Configurar o Noctalia: barra, dock, notificações, tela de bloqueio.
+8. Declarar os containers Distrobox (`fedora-mobile`, `ubuntu-db`).
 
 ## Longo prazo
 
-10. Snapper/Btrfs snapshots.
-11. Avaliar Limine.
-12. Validar instalação em hardware real.
-13. Documentar recuperação.
-14. Definir política de atualização/rollback.
-15. Estabilizar a versão 1.0.0.
+9. Snapper/Btrfs snapshots.
+10. Avaliar Limine.
+11. Validar instalação em hardware real.
+12. Documentar recuperação.
+13. Definir política de atualização/rollback.
+14. Estabilizar a versão 1.0.0.
 
 ---
 
@@ -1737,6 +1743,6 @@ O objetivo final é poder reinstalar o ambiente pessoal com o mínimo possível 
 Próximo marco:
 
 ```text
-0.8.0 → publicar no GHCR e validar bootc upgrade/rollback a partir dela
+0.8.0 → validar bootc upgrade e rollback a partir da imagem publicada
 0.9.0 → aplicações declaradas e identidade visual
 ```
