@@ -238,10 +238,23 @@ RUN dnf -y --setopt=install_weak_deps=False install \
 #
 # O cups-browsed segue desligado, como no preset do próprio Fedora, que só
 # habilita cups.socket e cups.path.
+#
+# O assistente põe o botão Desbloquear na linha do menu, ocupando a altura
+# dela inteira. Sob uma barra de título isso passa despercebido; com o
+# prefer-no-csd do niri não há barra, e o botão encosta na borda da janela. As
+# duas margens o afastam dela. O sed é conferido: se o pacote mudar a linha, o
+# build falha em vez de seguir sem o ajuste. O script roda direto, pelo
+# shebang, e nunca é importado; o .pyc que o pacote traz não entra em jogo.
 RUN dnf -y --setopt=install_weak_deps=False install \
         system-config-printer \
         cups-pk-helper \
-    && dnf clean all
+    && dnf clean all \
+    && sed -i 's/^\( *\)self\.hboxMenuBar\.pack_start (self\.unlock_button, False, False, 12)$/&\n\1self.unlock_button.set_margin_top (6)\n\1self.unlock_button.set_margin_bottom (6)/' \
+        /usr/share/system-config-printer/system-config-printer.py \
+    && test "$(grep -c '^ *self\.unlock_button\.set_margin_\(top\|bottom\) (6)$' \
+        /usr/share/system-config-printer/system-config-printer.py)" = 2 \
+    && python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' \
+        /usr/share/system-config-printer/system-config-printer.py
 
 # Login: greetd + tuigreet, só repositórios Fedora.
 #

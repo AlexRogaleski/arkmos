@@ -1039,6 +1039,8 @@ Entram o `system-config-printer`, que é o assistente, e o `cups-pk-helper`, que
 
 O `cups-browsed` segue desligado, como no preset do próprio Fedora, que só habilita `cups.socket` e `cups.path`.
 
+O assistente recebe um ajuste no build. Ele põe o botão **Desbloquear** na linha do menu, ocupando a altura dela inteira: sob uma barra de título isso passa despercebido, mas com o `prefer-no-csd` do niri não há barra, e o botão encosta na borda da janela. Um `sed` acrescenta 6 px de margem em cima e embaixo, e o build confere o resultado: se o pacote mudar a linha, ele falha em vez de seguir sem o ajuste.
+
 ---
 
 # 26. Identidade Visual
