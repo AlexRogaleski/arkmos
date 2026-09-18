@@ -86,6 +86,33 @@ firstboot_e2e() {
         '
 }
 
+# Rebase a partir de outro Fedora Atomic: a conta já existe, criada pelo
+# Anaconda de lá, e atravessa a troca junto com o /var/home. O assistente tem
+# de sair sozinho e em silêncio, sem exigir senha nova, e dar o grupo docker só
+# a quem já administrava o sistema — estar no docker equivale a ser root.
+firstboot_rebase() {
+    podman run --rm "$IMAGE" bash -c '
+        useradd -u 1000 -m -G wheel ana >/dev/null 2>&1
+        echo "ana:senha-de-teste-longa" | chpasswd
+        useradd -u 1001 -m beto >/dev/null 2>&1
+        echo "beto:senha-de-teste-longa" | chpasswd
+
+        saida=$(timeout 10 bash /usr/libexec/arkmos-firstboot </dev/null 2>&1) \
+            || { echo "o assistente não terminou sozinho: $saida"; exit 1; }
+        [ -z "$saida" ] \
+            || { echo "escreveu no console: $saida"; exit 1; }
+        test -f /var/lib/arkmos/initialized \
+            || { echo "não gravou a marca de inicializado"; exit 1; }
+        id -nG ana | grep -qw docker \
+            || { echo "a conta administradora não entrou no grupo docker"; exit 1; }
+        if id -nG beto | grep -qw docker; then
+            echo "uma conta fora do wheel ganhou o grupo docker"; exit 1
+        fi
+        [ "$(passwd -S ana | awk "{print \$2}")" = P ] \
+            || { echo "a senha da conta existente mudou de estado"; exit 1; }
+    '
+}
+
 echo "Verificando ${IMAGE} (variante: ${VARIANT})"
 echo
 
@@ -144,6 +171,7 @@ check "niri validate" \
 # --- Primeiro boot ---------------------------------------------------------
 
 check "assistente do primeiro boot cria a conta" firstboot_e2e
+check "assistente dispensado em rebase (conta existente)" firstboot_rebase
 
 # --- Sessão: autenticação e localização -------------------------------------
 

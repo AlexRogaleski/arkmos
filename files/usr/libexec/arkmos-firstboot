@@ -27,6 +27,54 @@ fi
 
 mkdir -p "$STATE_DIR"
 
+# --- Conta que já existe: rebase --------------------------------------------
+#
+# Quem chega ao Arkmos por 'bootc switch' a partir de outro Fedora Atomic
+# (Silverblue, Kinoite, Aurora...) já tem conta: foi criada pelo Anaconda, o
+# instalador do sistema de origem, e atravessa a troca junto com o /var/home.
+# Sem esta etapa o assistente encontraria essa conta no UID 1000 sem a marca de
+# inicializado, a trataria como cadastro interrompido e exigiria uma senha nova
+# antes de liberar a tela de login.
+#
+# Conta humana com senha definida quer dizer que alguém já consegue entrar, e
+# não há o que perguntar. O que o rebase não traz é o grupo docker, que é do
+# Arkmos, e sem ele o Laravel Sail não fala com o daemon. O grupo vai só para
+# quem já está no wheel: estar no docker equivale a ser root, e uma conta que
+# não administrava o sistema de origem não passa a administrar este.
+#
+# Um cadastro do próprio assistente interrompido cai aqui só se já tiver
+# passado da senha, que é o último passo antes da marca. Nesse ponto conta e
+# grupos estão feitos, e gravar a marca é exatamente o que falta.
+#
+# Tudo em silêncio, sem tocar no console: o registro vai para o journal.
+
+uid_min="$(awk '$1 == "UID_MIN" { print $2 }' /etc/login.defs 2>/dev/null)"
+uid_max="$(awk '$1 == "UID_MAX" { print $2 }' /etc/login.defs 2>/dev/null)"
+uid_min="${uid_min:-1000}"
+uid_max="${uid_max:-60000}"
+
+existentes=()
+while IFS=: read -r nome _ uid _; do
+    (( uid >= uid_min && uid <= uid_max )) || continue
+    [[ "$(passwd -S "$nome" 2>/dev/null | awk '{ print $2 }')" == "P" ]] || continue
+    existentes+=("$nome")
+done < <(getent passwd)
+
+if (( ${#existentes[@]} > 0 )); then
+    for nome in "${existentes[@]}"; do
+        if id -nG "$nome" | tr ' ' '\n' | grep -qx wheel \
+                && getent group docker >/dev/null 2>&1; then
+            usermod -aG docker "$nome" \
+                || logger -t arkmos-firstboot "não foi possível pôr '$nome' no grupo docker"
+        fi
+    done
+
+    touch "$STATE_FILE"
+    chmod 600 "$STATE_FILE"
+    logger -t arkmos-firstboot "conta já existente, assistente dispensado: ${existentes[*]}"
+    exit 0
+fi
+
 # Cala o status do systemd no console antes de escrever qualquer coisa.
 #
 # SIGRTMIN+21 ao PID 1 desliga a impressão de status no console e

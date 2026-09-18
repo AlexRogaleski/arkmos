@@ -52,6 +52,14 @@ sudo podman run --rm --privileged --pid=host \
 
 O primeiro boot abre um assistente que cria a conta e define a senha — só isso. Locale, teclado e timezone já vêm na imagem, e nada pessoal fica versionado aqui.
 
+Ou por rebase, a partir de um Fedora Atomic já instalado (Silverblue, Kinoite, Aurora…), mantendo a conta e os arquivos:
+
+```bash
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/alexrogaleski/arkmos:44
+```
+
+A flag faz toda atualização seguinte exigir a assinatura. A troca em si é verificada pela política do sistema de origem, que ainda não conhece a chave do Arkmos.
+
 ## Atualizar e voltar atrás
 
 ```bash

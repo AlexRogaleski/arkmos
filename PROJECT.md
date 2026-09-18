@@ -539,6 +539,16 @@ Estado:
 
 O arquivo é gravado somente ao final, depois de conta, grupos e senha confirmados. Qualquer interrupção antes disso faz o assistente rodar de novo no próximo boot e retomar de onde parou: se já existe conta no UID 1000, ele retoma a partir da senha em vez de pedir um nome novo — pedir travaria o assistente para sempre, já que o nome original seria rejeitado por "usuário já existe".
 
+### Rebase: a conta já existe
+
+Quem chega ao Arkmos por `bootc switch` a partir de outro Fedora Atomic (Silverblue, Kinoite, Aurora…) já tem conta: foi criada pelo Anaconda do sistema de origem e atravessa a troca junto com o `/var/home`. Antes deste ajuste, o assistente via essa conta no UID 1000 sem a marca de inicializado, a tratava como cadastro interrompido e exigia uma senha nova antes de liberar a tela de login.
+
+Agora, antes de escrever qualquer coisa no console, ele procura contas humanas (UID entre `UID_MIN` e `UID_MAX` do `login.defs`) com senha definida. Se encontra, alguém já consegue entrar e não há o que perguntar: ele grava a marca e sai em silêncio, registrando no journal.
+
+O que o rebase não traz é o grupo `docker`, que é do Arkmos, e sem ele o Laravel Sail não fala com o daemon. O assistente o acrescenta só às contas que já estão no `wheel`: estar no `docker` equivale a ser root, e uma conta que não administrava o sistema de origem não passa a administrar este.
+
+O cadastro que o próprio assistente interrompeu continua sendo retomado: a conta nasce sem senha, e a senha é o último passo antes da marca. O `just check` cobre os dois caminhos, com uma conta criada pelo assistente e com contas preexistentes, dentro e fora do `wheel`.
+
 ## 12.2 Senha
 
 O assistente pede a senha com prompt próprio, e não chamando `passwd`.
@@ -1575,7 +1585,9 @@ O mesmo console serial é útil quando a tela congela: na janela do QEMU, **View
 
 # 31. Instalação e Atualização
 
-Instalação:
+Há dois caminhos de instalação, e os dois terminam no mesmo sistema.
+
+**Instalação direta**, num disco, a partir de qualquer Linux com podman (um pendrive live, por exemplo):
 
 ```bash
 sudo podman run --rm --privileged --pid=host \
@@ -1584,6 +1596,20 @@ sudo podman run --rm --privileged --pid=host \
     ghcr.io/<owner>/arkmos:44 \
     bootc install to-disk --wipe /dev/sdX
 ```
+
+A imagem não tem conta nenhuma, e é o assistente do primeiro boot que a cria (seção 12). É o caminho que torna a imagem autossuficiente, e o que o `just vm` usa.
+
+**Rebase**, a partir de um Fedora Atomic já instalado (Silverblue, Kinoite, Aurora…):
+
+```bash
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/<owner>/arkmos:44
+```
+
+A conta e o `/var/home` vêm do sistema de origem, e o assistente se dispensa sozinho (seção 12.1).
+
+A flag é o que faz as atualizações seguintes serem verificadas: ela grava na deployment que o pull obedece à política de assinatura (`signature: containerPolicy` no `bootc status`). Sem ela, nenhum `bootc upgrade` posterior checaria nada.
+
+Esse primeiro switch, porém, não verifica a assinatura do Arkmos. Quem decide é a política do sistema de origem, que não conhece a chave, e nela uma imagem sem regra própria cai no `insecureAcceptAnything`. A política do Arkmos chega com a nova deployment e vale a partir do upgrade seguinte, desde que o `/etc/containers/policy.json` do sistema de origem não tenha sido editado: arquivo alterado localmente em `/etc` prevalece sobre o da imagem. Para conferir antes da troca, o `cosign verify` com a chave pública do repositório (seção 28).
 
 Atualização:
 
