@@ -728,7 +728,19 @@ Responsável principalmente por:
 MySQL Workbench
 ```
 
-Ambos ainda não estão declarados no repositório — ver seção 36.
+## Aplicativos que não podem ir na imagem
+
+Container em uso:
+
+```text
+fedora-app
+```
+
+Responsável pelos aplicativos cuja licença não permite redistribuição — hoje, o Insync. Os termos dele concedem uma licença "non-transferable, without the right to sublicense" e proíbem distribuir o software. Como a imagem do Arkmos é pública no GHCR, colocá-lo nela seria redistribuí-lo. No container, quem instala é o próprio usuário, e o atalho chega ao desktop por `distrobox-export`.
+
+A regra vale além do Insync: software proprietário que a licença impede de redistribuir fica fora da imagem, mesmo que seja de uso diário.
+
+Nenhum dos três está declarado no repositório — ver seção 36.
 
 ---
 
@@ -1755,7 +1767,7 @@ travamento antes do assistente no primeiro boot em VM — visto uma vez em
 3. Curar a `flatpaks.list` e criar o mecanismo que a aplica — incluindo a extensão de tema `org.gtk.Gtk3theme.adw-gtk3-dark`, sem a qual Flatpaks GTK3 não usam o tema do sistema (seção 26.1).
 4. Definir a identidade visual (seção 26): escolher o esquema — Tokyo Night ou Dracula, os dois embutidos no Noctalia — e o wallpaper definitivo.
 5. Configurar o Noctalia: barra, dock, notificações, tela de bloqueio.
-6. Declarar os containers Distrobox (`fedora-mobile`, `ubuntu-db`).
+6. Declarar os containers Distrobox (`fedora-mobile`, `ubuntu-db`, `fedora-app`).
 
 ## Longo prazo
 
