@@ -210,9 +210,37 @@ RUN dnf -y --setopt=install_weak_deps=False --enablerepo=code install \
 # preset do Fedora já habilita (a entrada de autostart dele vem marcada para o
 # systemd pular). Os nomes saem em português porque o LANG do systemd --user
 # vem do environment.d do Arkmos.
+#
+# Discos (gnome-disk-utility) e o gerenciador de compactação (file-roller)
+# entram pelo mesmo motivo: são integração com o sistema de arquivos e com o
+# hardware, não aplicativo isolado. O Discos traz o montador de imagem que o
+# Nautilus usa no clique duplo numa .iso, além de formatar pendrive, gravar
+# imagem e mostrar o SMART do disco. O gerenciador abre um arquivo compactado
+# para navegar e extrair só parte dele — o "Comprimir" e o "Extrair aqui" do
+# Nautilus já funcionavam sozinhos, pelo gnome-autoar. Os formatos vêm da base
+# (7zip, zip, xz, zstd, bzip2, libarchive); o 7zip do Fedora não traz o codec
+# RAR, por licença, e quem lê RAR é a libarchive. Os dois juntos custam 12 MiB.
 RUN dnf -y --setopt=install_weak_deps=False install \
         nautilus \
         xdg-user-dirs \
+        gnome-disk-utility \
+        file-roller \
+    && dnf clean all
+
+# Impressão: o assistente, e o que ele precisa para funcionar.
+#
+# A base já traz o obrigatório do grupo 'printing' do Fedora (cups,
+# cups-filters, ghostscript) e quase todos os padrões dele — hplip, gutenprint,
+# ipp-usb, colord, nss-mdns, samba-client, system-config-printer-udev. Faltava
+# a parte que se usa: nenhum programa permitia CADASTRAR uma impressora. O
+# system-config-printer é o assistente, e o cups-pk-helper é o que o deixa
+# fazer isso sem root, pedindo autorização ao polkit em vez de exigir sudo.
+#
+# O cups-browsed segue desligado, como no preset do próprio Fedora, que só
+# habilita cups.socket e cups.path.
+RUN dnf -y --setopt=install_weak_deps=False install \
+        system-config-printer \
+        cups-pk-helper \
     && dnf clean all
 
 # Login: greetd + tuigreet, só repositórios Fedora.

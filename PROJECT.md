@@ -996,6 +996,10 @@ O gerenciador de arquivos fica na camada do sistema, não em Flatpak. Ele não �
 
 O seletor de arquivos dos aplicativos continua no backend `gtk` do portal (`niri-portals.conf`). O backend do GNOME delega o seletor ao próprio Nautilus.
 
+**Discos e compactação vão junto**, pelo mesmo motivo: são integração com o sistema de arquivos e com o hardware. O `gnome-disk-utility` traz o montador de imagem que o Nautilus usa no clique duplo numa `.iso`, e o aplicativo Discos — formatar pendrive, gravar imagem, ver o SMART do disco. O `file-roller` abre um arquivo compactado para navegar e extrair só parte dele; o "Comprimir" e o "Extrair aqui" do Nautilus já funcionavam sozinhos, pelo `gnome-autoar`. Os dois custam 12 MiB.
+
+Os formatos vêm da base: `7zip`, `zip`, `xz`, `zstd`, `bzip2` e a `libarchive`. O `7zip` do Fedora não traz o codec RAR, por licença, e quem lê RAR é a `libarchive` — verificado extraindo, na imagem, os arquivos de teste RAR e RAR5 do próprio projeto libarchive. Dois limites ficam: **criar** RAR não é possível (o formato de escrita é proprietário) e RAR **com senha** a `libarchive` não abre; isso exigiria o `unrar`, que só existe no RPM Fusion *nonfree*.
+
 ### O indexador, e por que ele não subia
 
 O `localsearch` (antigo `tracker-miners`) vem da base e é o que dá busca por conteúdo e "recentes" ao Nautilus. Ele não subia, e o modo de falhar é o pior possível: a unit traz `ConditionEnvironment=XDG_SESSION_CLASS=user` e o systemd a **pula** — não é falha, é condição não satisfeita. O único sinal é uma linha no journal, mais o Nautilus reclamando no stderr que não conseguiu ativar `org.freedesktop.Tracker3.Miner.Files`.
@@ -1014,6 +1018,14 @@ org.freedesktop.DBus.Error.InvalidArgs: Invalid service client type
 ```
 
 É inofensivo, e não há o que corrigir deste lado. O Nautilus pede ao compositor uma conexão Wayland especial pela interface `org.gnome.Mutter.ServiceChannel`, do compositor do GNOME. O niri implementa essa interface por compatibilidade, mas só para o tipo de cliente que ele atende, e recusa o do Nautilus — as duas pontas estão nos binários: `OpenWaylandServiceConnection` no Nautilus, e a mensagem exata no niri. O Nautilus registra a recusa e segue normalmente. Aqui essa conexão não faz falta: o seletor de arquivos usa o backend `gtk` do portal (`niri-portals.conf`).
+
+## 25.2 Impressão
+
+A base já traz o obrigatório do grupo `printing` do Fedora (`cups`, `cups-filters`, `ghostscript`) e quase todos os padrões dele: `hplip`, `gutenprint`, `ipp-usb`, `colord`, `nss-mdns`, `samba-client`, `system-config-printer-udev`, além do `sane-backends` para scanner. Faltava a parte que se usa — nenhum programa permitia **cadastrar** uma impressora.
+
+Entram o `system-config-printer`, que é o assistente, e o `cups-pk-helper`, que o deixa cadastrar sem root, pedindo autorização ao polkit em vez de exigir `sudo`. O assistente puxa o `dbus-daemon` como dependência; o barramento do sistema continua no `dbus-broker`, e o `just check` afirma isso, porque essa troca não daria erro nenhum.
+
+O `cups-browsed` segue desligado, como no preset do próprio Fedora, que só habilita `cups.socket` e `cups.path`.
 
 ---
 

@@ -463,6 +463,33 @@ check "grub-boot-success mascarada" \
         done
     '
 
+# O Discos traz o montador que o Nautilus usa no clique duplo numa .iso, e o
+# gerenciador de compactação abre um arquivo compactado para navegar. Os dois
+# são integração com o sistema de arquivos, e faltavam sem nada reclamar.
+check "Discos e gerenciador de compactação" \
+    run sh -c '
+        for f in gnome-disk-image-mounter org.gnome.DiskUtility org.gnome.FileRoller; do
+            test -e "/usr/share/applications/$f.desktop" || { echo "falta $f.desktop"; exit 1; }
+        done
+    '
+
+# O assistente de impressão abre sem o cups-pk-helper, mas não consegue
+# cadastrar impressora sem root: a janela funciona e a operação falha.
+check "impressão: assistente, cups-pk-helper e CUPS" \
+    run sh -c '
+        rpm -q system-config-printer cups-pk-helper >/dev/null \
+            || { echo "assistente ou cups-pk-helper ausente"; exit 1; }
+        [ "$(systemctl is-enabled cups.socket 2>&1)" = enabled ] \
+            || { echo "cups.socket não está habilitado"; exit 1; }
+    '
+
+# O assistente de impressão puxa o dbus-daemon como dependência. O barramento
+# do sistema tem de continuar sendo o dbus-broker, que é o do Fedora — uma
+# troca aqui não dá erro, só muda o barramento de todo o sistema por tabela.
+check "barramento D-Bus continua no dbus-broker" \
+    run sh -c 'readlink -f /etc/systemd/system/dbus.service | grep -q "/dbus-broker.service$" \
+        || { echo "dbus.service aponta para $(readlink -f /etc/systemd/system/dbus.service)"; exit 1; }'
+
 # Sem o xdg-user-dirs-update na sessão, o home nasce sem Documentos, Downloads,
 # Imagens… A unit de usuário do pacote cuida disso, mas só se estiver
 # habilitada — e os nomes só saem em português com o LANG certo.
