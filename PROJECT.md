@@ -1718,6 +1718,9 @@ tema do Plymouth e conteúdo do initramfs (tema, ostree, ABNT2, /root)
 wallpaper padrão e config do Noctalia semeados, sem avisos do validador
 Nautilus atendendo org.freedesktop.FileManager1
 pastas do usuário em português e overlay do niri com títulos traduzidos
+Discos, gerenciador de compactação e assistente de impressão; barramento do
+  sistema ainda no dbus-broker
+ícones Papirus-Dark nos três caminhos de leitura, pastas em violeta
 ```
 
 ## 35.2 Validado em VM
@@ -1751,6 +1754,13 @@ portais, notificações e seletor de arquivos na sessão: arkmos-diag sem
 mise ativado no zsh e no bash interativo (MISE_SHELL=zsh, MISE_SHELL=bash)
 nenhuma unit de usuário falhada na sessão (grub-boot-success mascarada)
 indexador do Nautilus (localsearch-3) ativo ao abrir o Nautilus
+Nautilus em uso: busca, lixeira, "mostrar na pasta", e ISO montada pelo Discos
+  no clique duplo
+extração de RAR4 e RAR5 pelo gerenciador de compactação
+assistente de impressão abrindo, com o Desbloquear afastado da borda
+mise sem oferecer atualização que não consegue fazer
+ícones Papirus-Dark com pastas violeta, e ícones de ferramenta claros
+avatar trocado pelo Centro de controle do Noctalia
 ```
 
 ## 35.3 Não validado ainda
@@ -1759,7 +1769,7 @@ indexador do Nautilus (localsearch-3) ativo ao abrir o Nautilus
 aparência conferida item a item (prefer-no-csd, tema escuro, terminal)
 docker em uso real / Laravel Sail
 instalação em hardware real
-Nautilus em uso: montagem, lixeira, "mostrar na pasta"
+cadastro de uma impressora de verdade
 travamento antes do assistente no primeiro boot em VM — visto uma vez em
   2026-09-15, com a janela GTK/GL; não reproduzido no boot seguinte
 ```
@@ -1770,24 +1780,23 @@ travamento antes do assistente no primeiro boot em VM — visto uma vez em
 
 ## Curto prazo
 
-1. Validar o Nautilus em uso: montagem, lixeira, "mostrar na pasta" (seção 35.3).
-2. Se o travamento antes do assistente voltar num primeiro boot em VM, abrir **View → serial0** antes de fechar a janela (seção 30).
+1. Se o travamento antes do assistente voltar num primeiro boot em VM, abrir **View → serial0** antes de fechar a janela (seção 30).
 
 ## Médio prazo
 
-3. Curar a `flatpaks.list` e criar o mecanismo que a aplica — incluindo a extensão de tema `org.gtk.Gtk3theme.adw-gtk3-dark`, sem a qual Flatpaks GTK3 não usam o tema do sistema (seção 26.1).
-4. Definir a identidade visual (seção 26): escolher o esquema — Tokyo Night ou Dracula, os dois embutidos no Noctalia — e o wallpaper definitivo.
-5. Configurar o Noctalia: barra, dock, notificações, tela de bloqueio.
-6. Declarar os containers Distrobox (`fedora-mobile`, `ubuntu-db`, `fedora-app`).
+2. Curar a `flatpaks.list` e criar o mecanismo que a aplica — incluindo a extensão de tema `org.gtk.Gtk3theme.adw-gtk3-dark`, sem a qual Flatpaks GTK3 não usam o tema do sistema (seção 26.1).
+3. Definir a identidade visual (seção 26): escolher o esquema — Tokyo Night ou Dracula, os dois embutidos no Noctalia — e o wallpaper definitivo.
+4. Configurar o Noctalia: barra, dock, notificações, tela de bloqueio.
+5. Declarar os containers Distrobox (`fedora-mobile`, `ubuntu-db`, `fedora-app`).
 
 ## Longo prazo
 
-7. Snapper/Btrfs snapshots.
-8. Avaliar Limine.
-9. Validar instalação em hardware real.
-10. Documentar recuperação.
-11. Definir política de atualização/rollback.
-12. Estabilizar a versão 1.0.0.
+6. Snapper/Btrfs snapshots.
+7. Avaliar Limine.
+8. Validar instalação em hardware real.
+9. Documentar recuperação.
+10. Definir política de atualização/rollback.
+11. Estabilizar a versão 1.0.0.
 
 ---
 
