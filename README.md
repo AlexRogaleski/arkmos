@@ -86,4 +86,4 @@ O Arkmos parte das imagens do [Universal Blue](https://universal-blue.org), o pr
 
 Além deles: [Fedora Project](https://fedoraproject.org), [niri](https://github.com/niri-wm/niri), [Noctalia](https://github.com/noctalia-dev/noctalia), [greetd](https://kl.wtf/projects/greetd), [foot](https://codeberg.org/dnkl/foot), [starship](https://starship.rs), [lazygit e lazydocker](https://github.com/jesseduffield), [mise](https://mise.jdx.dev) e [Nerd Fonts](https://github.com/ryanoasis/nerd-fonts).
 
-Cada componente mantém a licença do seu projeto. O que este repositório acrescenta é a definição que os costura — e a arte do sistema, gerada no build a partir de fonte e cores (a logo acima inclusive).
+Cada componente mantém a licença do seu projeto.
