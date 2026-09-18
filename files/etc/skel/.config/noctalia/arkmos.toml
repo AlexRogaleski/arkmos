@@ -20,3 +20,9 @@ path = "/usr/share/backgrounds/arkmos/arkmos.webp"
 # para o grupo wheel.
 [shell.greeter_sync]
 auto_sync = true
+
+# Capturas na mesma pasta das do niri (screenshot-path em /etc/niri/config.kdl).
+# Sem isto o Noctalia salva direto em ~/Imagens, e as capturas ficariam
+# divididas entre duas pastas conforme a tecla usada.
+[shell.screenshot]
+directory = "~/Imagens/Capturas de tela"

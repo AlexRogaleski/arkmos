@@ -1,0 +1,33 @@
+# Arkmos — instala os Flatpaks declarados na imagem.
+#
+# A lista está em /usr/share/flatpak/preinstall.d/arkmos.preinstall. O
+# 'flatpak preinstall' sincroniza a instalação de sistema com ela, e o próprio
+# Flatpak pede que o sistema o rode a cada boot (flatpak-preinstall(1)): é o
+# que faz uma entrada acrescentada numa imagem nova chegar à máquina depois do
+# 'bootc upgrade'. Com tudo já instalado, ele termina sem baixar nada.
+#
+# Precisa de rede. Sem ela, falha e tenta de novo a cada minuto, por até dez
+# tentativas; o que não der nesta sessão fica para o boot seguinte.
+#
+# Type=exec, e não oneshot: um oneshot seguraria o multi-user.target até o fim
+# da instalação, que no primeiro boot são alguns GB, e com ele tudo o que vem
+# depois. Assim o boot segue, e a instalação corre em segundo plano, com
+# prioridade baixa de CPU e disco.
+[Unit]
+Description=Instalar os Flatpaks declarados na imagem do Arkmos
+Documentation=man:flatpak-preinstall(1)
+Wants=network-online.target
+After=network-online.target flatpak-add-fedora-repos.service
+StartLimitIntervalSec=15min
+StartLimitBurst=10
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/flatpak preinstall --system --noninteractive -y
+Restart=on-failure
+RestartSec=60
+Nice=10
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=multi-user.target

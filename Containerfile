@@ -109,6 +109,11 @@ COPY files/etc/yum.repos.d/ /etc/yum.repos.d/
 # Sem o pacote, portanto, nada falha e nada avisa: o chaveiro simplesmente não
 # é destravado com a senha do login, e a sessão abre com um prompt pedindo a
 # mesma senha de novo.
+#
+# 'fuse-libs' é a libfuse.so.2, que a base não traz (traz o fusermount e a
+# fuse3). AppImages com o runtime clássico a carregam para se montar, e sem
+# ela nem abrem: "dlopen(): error loading libfuse.so.2". Os com runtime novo,
+# como o do AppManager, não precisam dela.
 # ---------------------------------------------------------------------------
 RUN dnf -y --setopt=install_weak_deps=False install \
         git \
@@ -119,6 +124,7 @@ RUN dnf -y --setopt=install_weak_deps=False install \
         python3-pip \
         python3-devel \
         glibc-langpack-pt \
+        fuse-libs \
         openssh-clients \
         tuned \
         tuned-ppd \
@@ -401,6 +407,7 @@ json.dump(d, open(p, "w"), indent=4)' "$ARKMOS_REGISTRY" \
 RUN chmod 0755 /usr/libexec/arkmos-firstboot /usr/libexec/arkmos-greeter \
                 /usr/bin/arkmos-diag \
     && systemctl enable arkmos-firstboot.service \
+    && systemctl enable arkmos-flatpak-preinstall.service \
     && systemctl enable docker.service \
     && systemctl enable greetd.service \
     && systemctl --global mask grub-boot-success.timer grub-boot-success.service

@@ -983,18 +983,66 @@ Distrobox      →  ambientes específicos
 AppImage       →  aplicações independentes
 ```
 
-Lista declarada:
+Onde fica cada aplicativo em uso:
+
+| Aplicativo | Camada |
+| --- | --- |
+| Podman, Distrobox, Docker CE | imagem |
+| VS Code | imagem: precisa do docker do host (seção 17.1) |
+| Nautilus, Discos, compactação, assistente de impressão | imagem: integração com o sistema (25.1, 25.2) |
+| Chrome, Thunderbird, Spotify, Discord, OnlyOffice, Inkscape, Switcheroo, AnyDesk | Flatpak |
+| Papers (PDF), Loupe (imagens), Showtime (vídeo), Calculadora | Flatpak |
+| Mission Center, Fedora Media Writer, LocalSend, Galaxy Buds Client, Mecalin | Flatpak |
+| Flatseal, Warehouse, Bazaar (loja), Embellish (Nerd Fonts), DistroShelf (Distrobox) | Flatpak |
+| Insync, Android Studio com emulador, MySQL Workbench | Distrobox (seção 16) |
+| Tolaria, Tabularis | AppImage, pelo AppManager |
+| Captura de tela com anotação | Noctalia, no `Shift+Print` |
+
+Lista declarada de Flatpaks:
 
 ```text
-flatpaks.list
+files/usr/share/flatpak/preinstall.d/arkmos.preinstall
 ```
 
-**Estado:** a lista existe e está versionada, mas nada a aplica ainda, e o conteúdo é a captura crua do Aurora — contém aplicações KDE que vieram do ambiente atual e podem não fazer sentido sob Niri (`kcalc`, `kclock`, `kontact`, `gwenview`, `okular`, `kpat`, `kweather`, `skanpage`…). Precisa de curadoria e de um mecanismo que a reconcilie. Ver seção 36.
+Ela substituiu a `flatpaks.list`, que era a captura crua do Aurora, com aplicações KDE que não faziam sentido sob o niri. A lista nova parte do que de fato é usado; dos extras do Aurora ficaram só os que não são do KDE e têm uso, e o Kontainer deu lugar ao DistroShelf, que faz o mesmo com interface GNOME.
 
-AppImages específicas:
+### Como a lista é aplicada
 
-- Tolaria;
-- Tabularis.
+Pelo `flatpak preinstall`, que existe desde o Flatpak 1.16 justamente para isto: o sistema declara os Flatpaks que o acompanham num arquivo em `/usr/share/flatpak/preinstall.d/`, e o comando sincroniza a instalação de sistema com ele. O `arkmos-flatpak-preinstall.service` o roda a cada boot, como o próprio Flatpak recomenda:
+
+- instala o que está na lista e falta;
+- desinstala o que saiu da lista numa imagem nova, se tinha sido instalado por ela;
+- não reinstala o que a pessoa desinstalou por conta própria.
+
+É o que faz um aplicativo acrescentado aqui chegar à máquina depois do `bootc upgrade`, e um retirado sair dela, sem script de reconciliação próprio.
+
+O arquivo não diz de qual remoto instalar. O `preinstall` resolve pelos remotos ativos, e o único é o Flathub: a base o configura e deixa os repositórios do Fedora desativados. As atualizações também são da base, pelo `flatpak-system-update.timer`, uma vez por dia. O `just check` confere que o Flathub continua configurado, porque sem ele nada seria instalado e nada reclamaria.
+
+O serviço é `Type=exec`, e não `oneshot`. Um oneshot seguraria o `multi-user.target` até o fim da instalação, que no primeiro boot são alguns GB. Assim o boot segue, e a instalação corre em segundo plano com prioridade baixa. Sem rede, ele tenta de novo a cada minuto, por até dez vezes; o que não der fica para o boot seguinte.
+
+A lista também leva a extensão de tema `org.gtk.Gtk3theme.adw-gtk3-dark`, como runtime. O sandbox não vê o `/usr/share/themes` do host, e sem ela um Flatpak GTK3 cai no Adwaita do runtime (seção 26.1).
+
+### Aplicativos padrão
+
+`/etc/xdg/mimeapps.list` aponta PDF para o Papers, imagens para o Loupe e vídeo para o Showtime. Sem ele, o clique duplo num PDF abriria o Chrome. Os padrões do Fedora apontam para Evince, Eye of GNOME e Totem, que não existem aqui, e o sistema então escolhe qualquer aplicativo que se declare capaz de abrir o tipo — e o Chrome se declara para PDF e imagens.
+
+Os tipos são os que cada aplicativo declara no próprio `.desktop`. O `just check` confere que todo padrão aponta para um aplicativo da lista de preinstall. O "Abrir com" do Nautilus continua mudando o padrão da conta, porque `~/.config/mimeapps.list` vence o de `/etc/xdg`.
+
+### Captura de tela
+
+O niri captura sozinho: `Print` para uma região, `Ctrl+Print` para a tela e `Alt+Print` para a janela. Para anotar, `Shift+Print` chama o `screenshot-annotate` do Noctalia, que congela a tela, deixa desenhar e escrever por cima, e então copia ou salva. É o papel que o Spectacle tinha no KDE; ele não está no Flathub e depende do KWin.
+
+Os dois salvam em `~/Imagens/Capturas de tela`, o nome que o GNOME usa. O padrão do niri era um caminho fixo em inglês, `~/Pictures/Screenshots`, que criaria um `~/Pictures` ao lado do `~/Imagens`; o do Noctalia era a raiz de `~/Imagens`. A pasta do Noctalia vem no `arkmos.toml` do skel, então vale para conta nova.
+
+### AppImage
+
+Tolaria e Tabularis são AppImages, e ficam com quem usa: não entram na imagem nem na lista. Quem os instala e atualiza é o [AppManager](https://github.com/kem-a/AppManager), também um AppImage, que se instala sozinho. Ele tem interface GTK4 e comandos de terminal (`app-manager install`, `app-manager --update-all`).
+
+A imagem traz a `fuse-libs`, que a base não tem. AppImages com o runtime clássico a carregam para se montar, e sem ela nem abrem: `dlopen(): error loading libfuse.so.2`. O AppManager usa um runtime novo e não depende dela.
+
+### AnyDesk sob o niri
+
+Usar esta máquina para controlar outra funciona. Esta máquina ser controlada não: o niri compartilha a tela, mas não implementa o controle remoto de entrada (`org.gnome.Mutter.RemoteDesktop`), e sem ele o outro lado não move mouse nem digita.
 
 ## 25.1 Gerenciador de arquivos: Nautilus, na imagem
 
@@ -1100,7 +1148,7 @@ Um Flatpak não vê `/etc/xdg/gtk-3.0/settings.ini` nem o banco do dconf do host
 
 O que não atravessa é o **tema GTK3 em si**: para um Flatpak aplicar `adw-gtk3-dark`, o tema precisa estar instalado como extensão Flatpak (`org.gtk.Gtk3theme.adw-gtk3-dark`). Sem isso ele usa o Adwaita do runtime, que respeita claro/escuro mas não é o mesmo tema.
 
-Isso entra junto com o mecanismo que vai aplicar a `flatpaks.list` (seção 36) — instalar a extensão de tema é parte da mesma tarefa, não uma segunda.
+A extensão está na lista de preinstall (seção 25) e chega junto com os aplicativos.
 
 ### Aplicativo com tema próprio: /etc/skel
 
@@ -1577,7 +1625,6 @@ arkmos/
 ├── Containerfile                  a imagem: base, pacotes, configuração
 ├── Justfile                       build, verificação, VM
 ├── config.toml                    bootc-image-builder (a MÍDIA, não a imagem)
-├── flatpaks.list                  aplicações gráficas declaradas
 ├── README.md                      uso
 ├── PROJECT.md                     arquitetura e decisões
 ├── .gitignore
@@ -1592,6 +1639,7 @@ arkmos/
 ├── build_files/                   rodam no build e NÃO ficam na imagem
 │   ├── install-upstream-bins.sh   starship, lazygit, lazydocker (sha256)
 │   ├── install-nerd-font.sh       JetBrains Mono patched (sha256)
+│   ├── papirus-folders.sh         pastas do Papirus em violeta
 │   └── render-artwork.sh          splash de boot e wallpaper padrão
 │
 └── files/                         copiado para dentro da imagem
@@ -1605,6 +1653,7 @@ arkmos/
     │   ├── plymouth/plymouthd.conf
     │   ├── profile.d/mise.sh      ativação do mise no bash
     │   ├── skel/                  defaults de VS Code e Noctalia
+    │   ├── xdg/mimeapps.list      aplicativos padrão por tipo de arquivo
     │   ├── xdg-desktop-portal/niri-portals.conf
     │   ├── yum.repos.d/           docker-ce e vscode, enabled=0
     │   └── zshenv
@@ -1612,12 +1661,14 @@ arkmos/
         ├── lib/
         │   ├── bootc/install/     filesystem raiz
         │   ├── bootc/kargs.d/     argumentos de kernel
-        │   ├── systemd/system/    firstboot + drop-ins de greetd e nvidia
+        │   ├── systemd/system/    firstboot, preinstall de Flatpaks, drop-ins
         │   ├── sysusers.d/        grupo docker
         │   └── tmpfiles.d/        conteúdo de /var
         ├── libexec/
         │   ├── arkmos-firstboot
         │   └── arkmos-greeter
+        ├── share/flatpak/preinstall.d/
+        │   └── arkmos.preinstall  Flatpaks que acompanham o sistema
         ├── share/arkmos/
         │   ├── starship.toml      prompt
         │   └── zsh/               configuração do shell, em módulos
@@ -1721,6 +1772,8 @@ pastas do usuário em português e overlay do niri com títulos traduzidos
 Discos, gerenciador de compactação e assistente de impressão; barramento do
   sistema ainda no dbus-broker
 ícones Papirus-Dark nos três caminhos de leitura, pastas em violeta
+Flatpaks declarados legíveis pelo flatpak preinstall, padrões de aplicativo
+  apontando para eles, libfuse.so.2 para AppImage, capturas em pt-BR
 ```
 
 ## 35.2 Validado em VM
@@ -1770,6 +1823,8 @@ aparência conferida item a item (prefer-no-csd, tema escuro, terminal)
 docker em uso real / Laravel Sail
 instalação em hardware real
 cadastro de uma impressora de verdade
+instalação dos Flatpaks pelo preinstall no primeiro boot, e a remoção de um
+  item retirado da lista depois de um bootc upgrade
 travamento antes do assistente no primeiro boot em VM — visto uma vez em
   2026-09-15, com a janela GTK/GL; não reproduzido no boot seguinte
 ```
@@ -1784,19 +1839,18 @@ travamento antes do assistente no primeiro boot em VM — visto uma vez em
 
 ## Médio prazo
 
-2. Curar a `flatpaks.list` e criar o mecanismo que a aplica — incluindo a extensão de tema `org.gtk.Gtk3theme.adw-gtk3-dark`, sem a qual Flatpaks GTK3 não usam o tema do sistema (seção 26.1).
-3. Definir a identidade visual (seção 26): escolher o esquema — Tokyo Night ou Dracula, os dois embutidos no Noctalia — e o wallpaper definitivo.
-4. Configurar o Noctalia: barra, dock, notificações, tela de bloqueio.
-5. Declarar os containers Distrobox (`fedora-mobile`, `ubuntu-db`, `fedora-app`).
+2. Definir a identidade visual (seção 26): escolher o esquema — Tokyo Night ou Dracula, os dois embutidos no Noctalia — e o wallpaper definitivo.
+3. Configurar o Noctalia: barra, dock, notificações, tela de bloqueio.
+4. Declarar os containers Distrobox (`fedora-mobile`, `ubuntu-db`, `fedora-app`).
 
 ## Longo prazo
 
-6. Snapper/Btrfs snapshots.
-7. Avaliar Limine.
-8. Validar instalação em hardware real.
-9. Documentar recuperação.
-10. Definir política de atualização/rollback.
-11. Estabilizar a versão 1.0.0.
+5. Snapper/Btrfs snapshots.
+6. Avaliar Limine.
+7. Validar instalação em hardware real.
+8. Documentar recuperação.
+9. Definir política de atualização/rollback.
+10. Estabilizar a versão 1.0.0.
 
 ---
 

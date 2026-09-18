@@ -99,6 +99,7 @@ check "systemd-analyze verify (units do Arkmos)" \
     run systemd-analyze verify \
         /usr/lib/systemd/system/arkmos-firstboot.service \
         /usr/lib/systemd/system/arkmos-login-fallback.service \
+        /usr/lib/systemd/system/arkmos-flatpak-preinstall.service \
         /usr/lib/systemd/system/greetd.service
 
 # --- Localização -----------------------------------------------------------
@@ -530,6 +531,52 @@ faltando = [a for a in acoes if not any(re.search(r"hotkey-overlay-title=\"[^\"]
 assert not faltando, "sem título: " + ", ".join(faltando)
 '
 
+# --- Aplicativos -----------------------------------------------------------
+
+# O 'flatpak preinstall' ignora em silêncio um grupo que não entende, e não diz
+# de qual remoto instala: resolve pelos remotos ativos, e o único é o Flathub,
+# que a base configura. Se a base deixar de trazê-lo, nada é instalado e nada
+# reclama. Os padrões do mimeapps.list, por sua vez, só valem se apontarem para
+# um aplicativo que a lista de fato instala.
+check "Flatpaks declarados e padrões coerentes" \
+    run python3 -c '
+import configparser, os
+p = configparser.ConfigParser(interpolation=None)
+p.read("/usr/share/flatpak/preinstall.d/arkmos.preinstall")
+apps = {}
+for s in p.sections():
+    assert s.startswith("Flatpak Preinstall "), "grupo inesperado: " + s
+    assert p[s].get("branch"), "sem Branch: " + s
+    apps[s.split(" ", 2)[2]] = p[s]
+assert len(apps) >= 10, "lista curta demais: %d" % len(apps)
+tema = apps.get("org.gtk.Gtk3theme.adw-gtk3-dark")
+assert tema and tema.get("isruntime") == "true", "sem a extensão de tema GTK3 como runtime"
+assert os.path.exists("/etc/flatpak/remotes.d/flathub.flatpakrepo"), "Flathub não configurado pela base"
+m = configparser.ConfigParser(interpolation=None, delimiters=("=",))
+m.read("/etc/xdg/mimeapps.list")
+alvos = {v.split(";")[0].removesuffix(".desktop") for v in m["Default Applications"].values()}
+fora = alvos - set(apps)
+assert not fora, "padrão aponta para app fora da lista: " + ", ".join(sorted(fora))
+'
+
+# A libfuse.so.2 não vem da base. Sem ela, um AppImage de runtime clássico
+# morre com "dlopen(): error loading libfuse.so.2" antes de abrir.
+check "AppImage: libfuse.so.2 presente" \
+    run sh -c 'test -e /usr/lib64/libfuse.so.2'
+
+# niri e Noctalia salvam capturas cada um por conta própria. O padrão do niri
+# é um caminho fixo em inglês, e o do Noctalia é a raiz de ~/Imagens: sem
+# alinhar os dois, as capturas se dividem em pastas conforme a tecla.
+check "capturas de tela na mesma pasta, em português" \
+    run sh -c '
+        grep -q "^screenshot-path \"~/Imagens/Capturas de tela/" /etc/niri/config.kdl \
+            || { echo "screenshot-path do niri fora de ~/Imagens/Capturas de tela"; exit 1; }
+        grep -qx "directory = \"~/Imagens/Capturas de tela\"" /etc/skel/.config/noctalia/arkmos.toml \
+            || { echo "pasta de capturas do Noctalia diferente da do niri"; exit 1; }
+        grep -q "Shift+Print .*screenshot-annotate" /etc/niri/config.kdl \
+            || { echo "sem atalho para captura com anotação"; exit 1; }
+    '
+
 # --- tmpfiles --------------------------------------------------------------
 
 # O dry-run resolve usuários e grupos de verdade, então uma entrada apontando
@@ -560,7 +607,7 @@ check "podman-docker ausente" \
 
 check "serviços habilitados" \
     run sh -c '
-        for u in arkmos-firstboot.service docker.service greetd.service; do
+        for u in arkmos-firstboot.service arkmos-flatpak-preinstall.service docker.service greetd.service; do
             state=$(systemctl is-enabled "$u" 2>&1)
             [ "$state" = enabled ] || { echo "$u esta \"$state\""; exit 1; }
         done

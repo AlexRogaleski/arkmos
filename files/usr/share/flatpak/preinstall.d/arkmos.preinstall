@@ -1,0 +1,110 @@
+# Arkmos — Flatpaks que acompanham o sistema.
+#
+# Lido pelo 'flatpak preinstall', que o arkmos-flatpak-preinstall.service roda
+# a cada boot. Ele sincroniza a instalação de sistema com esta lista: instala
+# o que falta, desinstala o que sair daqui numa imagem futura e não reinstala
+# o que a pessoa tiver desinstalado por conta própria (ver flatpak-preinstall(1)).
+#
+# Nenhum grupo indica o remoto: o único ativo é o Flathub. A base o adiciona
+# pelo flatpak-add-fedora-repos.service e deixa os repositórios do Fedora
+# desativados, então é de lá que tudo vem. As atualizações são da base também,
+# pelo flatpak-system-update.timer, uma vez por dia.
+#
+# O que precisa enxergar o docker e o PATH do host (VS Code) está na imagem, e
+# o que é ambiente inteiro (Android Studio, MySQL Workbench) vai para
+# Distrobox. Ver PROJECT.md, seção 25.
+
+# Navegador
+[Flatpak Preinstall com.google.Chrome]
+Branch=stable
+
+# E-mail
+[Flatpak Preinstall org.mozilla.Thunderbird]
+Branch=stable
+
+# Música
+[Flatpak Preinstall com.spotify.Client]
+Branch=stable
+
+# Conversa
+[Flatpak Preinstall com.discordapp.Discord]
+Branch=stable
+
+# Escritório
+[Flatpak Preinstall org.onlyoffice.desktopeditors]
+Branch=stable
+
+# Desenho vetorial
+[Flatpak Preinstall org.inkscape.Inkscape]
+Branch=stable
+
+# Conversor de imagens (Switcheroo)
+[Flatpak Preinstall io.gitlab.adhami3310.Converter]
+Branch=stable
+
+# Acesso remoto
+[Flatpak Preinstall com.anydesk.Anydesk]
+Branch=stable
+
+# Leitor de PDF
+[Flatpak Preinstall org.gnome.Papers]
+Branch=stable
+
+# Visualizador de imagens
+[Flatpak Preinstall org.gnome.Loupe]
+Branch=stable
+
+# Vídeo
+[Flatpak Preinstall org.gnome.Showtime]
+Branch=stable
+
+# Calculadora
+[Flatpak Preinstall org.gnome.Calculator]
+Branch=stable
+
+# Monitor de sistema
+[Flatpak Preinstall io.missioncenter.MissionCenter]
+Branch=stable
+
+# Gravar ISO em pendrive
+[Flatpak Preinstall org.fedoraproject.MediaWriter]
+Branch=stable
+
+# Enviar arquivos entre dispositivos na rede
+[Flatpak Preinstall org.localsend.localsend_app]
+Branch=stable
+
+# Permissões dos Flatpaks
+[Flatpak Preinstall com.github.tchx84.Flatseal]
+Branch=stable
+
+# Gerenciar Flatpaks instalados
+[Flatpak Preinstall io.github.flattool.Warehouse]
+Branch=stable
+
+# Loja de Flatpaks
+[Flatpak Preinstall io.github.kolunmi.Bazaar]
+Branch=stable
+
+# Nerd Fonts
+[Flatpak Preinstall io.github.getnf.embellish]
+Branch=stable
+
+# Containers Distrobox, com interface GNOME
+[Flatpak Preinstall com.ranfdev.DistroShelf]
+Branch=stable
+
+# Fones Galaxy Buds
+[Flatpak Preinstall me.timschneeberger.GalaxyBudsClient]
+Branch=stable
+
+# Treino de digitação
+[Flatpak Preinstall io.github.nacho.mecalin]
+Branch=stable
+
+# Tema GTK3 para os Flatpaks. O sandbox não vê o /usr/share/themes do host:
+# sem esta extensão, um aplicativo GTK3 em Flatpak recebe o nome
+# 'adw-gtk3-dark' pelo portal, não encontra o tema e cai no Adwaita do runtime.
+[Flatpak Preinstall org.gtk.Gtk3theme.adw-gtk3-dark]
+Branch=3.22
+IsRuntime=true

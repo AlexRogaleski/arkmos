@@ -1,0 +1,105 @@
+# Arkmos — aplicativos padrão por tipo de arquivo.
+#
+# Os padrões que vêm do Fedora, em /usr/share/applications/mimeapps.list,
+# apontam para Evince, Eye of GNOME e Totem, que o Arkmos não tem. Sem um
+# padrão instalado, o sistema escolhe qualquer aplicativo que se declare capaz
+# de abrir o tipo, e o Chrome se declara para PDF e para imagens: o clique
+# duplo num PDF abriria o navegador.
+#
+# Aqui cada tipo aponta para o Flatpak que a imagem instala (arkmos.preinstall).
+# Os tipos são os que cada aplicativo declara no próprio .desktop. O TIFF,
+# declarado pelos dois, fica com o visualizador de imagens.
+#
+# /etc/xdg vence /usr/share/applications, e perde para o ~/.config/mimeapps.list
+# de cada conta: o "Abrir com" do Nautilus continua mudando o padrão.
+
+[Default Applications]
+image/apng=org.gnome.Loupe.desktop
+image/bmp=org.gnome.Loupe.desktop
+image/gif=org.gnome.Loupe.desktop
+image/jp2=org.gnome.Loupe.desktop
+image/jpeg=org.gnome.Loupe.desktop
+image/png=org.gnome.Loupe.desktop
+image/qoi=org.gnome.Loupe.desktop
+image/tiff=org.gnome.Loupe.desktop
+image/vnd.microsoft.icon=org.gnome.Loupe.desktop
+image/webp=org.gnome.Loupe.desktop
+image/x-dds=org.gnome.Loupe.desktop
+image/x-exr=org.gnome.Loupe.desktop
+image/x-portable-anymap=org.gnome.Loupe.desktop
+image/x-portable-bitmap=org.gnome.Loupe.desktop
+image/x-portable-graymap=org.gnome.Loupe.desktop
+image/x-portable-pixmap=org.gnome.Loupe.desktop
+image/x-qoi=org.gnome.Loupe.desktop
+image/x-tga=org.gnome.Loupe.desktop
+image/x-win-bitmap=org.gnome.Loupe.desktop
+image/x-xbitmap=org.gnome.Loupe.desktop
+image/x-xpixmap=org.gnome.Loupe.desktop
+image/svg+xml=org.gnome.Loupe.desktop
+image/svg+xml-compressed=org.gnome.Loupe.desktop
+image/avif=org.gnome.Loupe.desktop
+image/heic=org.gnome.Loupe.desktop
+image/jxl=org.gnome.Loupe.desktop
+application/vnd.comicbook-rar=org.gnome.Papers.desktop
+application/vnd.comicbook+zip=org.gnome.Papers.desktop
+application/x-cb7=org.gnome.Papers.desktop
+application/x-cbr=org.gnome.Papers.desktop
+application/x-cbt=org.gnome.Papers.desktop
+application/x-cbz=org.gnome.Papers.desktop
+application/x-ext-cb7=org.gnome.Papers.desktop
+application/x-ext-cbr=org.gnome.Papers.desktop
+application/x-ext-cbt=org.gnome.Papers.desktop
+application/x-ext-cbz=org.gnome.Papers.desktop
+application/x-ext-djv=org.gnome.Papers.desktop
+application/x-ext-djvu=org.gnome.Papers.desktop
+image/vnd.djvu=org.gnome.Papers.desktop
+image/vnd.djvu+multipage=org.gnome.Papers.desktop
+application/pdf=org.gnome.Papers.desktop
+application/x-bzpdf=org.gnome.Papers.desktop
+application/x-ext-pdf=org.gnome.Papers.desktop
+application/x-gzpdf=org.gnome.Papers.desktop
+application/x-xzpdf=org.gnome.Papers.desktop
+application/illustrator=org.gnome.Papers.desktop
+video/3gp=org.gnome.Showtime.desktop
+video/3gpp=org.gnome.Showtime.desktop
+video/3gpp2=org.gnome.Showtime.desktop
+video/dv=org.gnome.Showtime.desktop
+video/divx=org.gnome.Showtime.desktop
+video/fli=org.gnome.Showtime.desktop
+video/flv=org.gnome.Showtime.desktop
+video/mp2t=org.gnome.Showtime.desktop
+video/mp4=org.gnome.Showtime.desktop
+video/mp4v-es=org.gnome.Showtime.desktop
+video/mpeg=org.gnome.Showtime.desktop
+video/mpeg-system=org.gnome.Showtime.desktop
+video/msvideo=org.gnome.Showtime.desktop
+video/ogg=org.gnome.Showtime.desktop
+video/quicktime=org.gnome.Showtime.desktop
+video/vivo=org.gnome.Showtime.desktop
+video/vnd.divx=org.gnome.Showtime.desktop
+video/vnd.mpegurl=org.gnome.Showtime.desktop
+video/vnd.rn-realvideo=org.gnome.Showtime.desktop
+video/vnd.vivo=org.gnome.Showtime.desktop
+video/webm=org.gnome.Showtime.desktop
+video/x-anim=org.gnome.Showtime.desktop
+video/x-avi=org.gnome.Showtime.desktop
+video/x-flc=org.gnome.Showtime.desktop
+video/x-fli=org.gnome.Showtime.desktop
+video/x-flic=org.gnome.Showtime.desktop
+video/x-flv=org.gnome.Showtime.desktop
+video/x-m4v=org.gnome.Showtime.desktop
+video/x-matroska=org.gnome.Showtime.desktop
+video/x-mjpeg=org.gnome.Showtime.desktop
+video/x-mpeg=org.gnome.Showtime.desktop
+video/x-mpeg2=org.gnome.Showtime.desktop
+video/x-ms-asf=org.gnome.Showtime.desktop
+video/x-ms-asf-plugin=org.gnome.Showtime.desktop
+video/x-ms-asx=org.gnome.Showtime.desktop
+video/x-msvideo=org.gnome.Showtime.desktop
+video/x-ms-wm=org.gnome.Showtime.desktop
+video/x-ms-wmv=org.gnome.Showtime.desktop
+video/x-ms-wvx=org.gnome.Showtime.desktop
+video/x-nsv=org.gnome.Showtime.desktop
+video/x-ogm+ogg=org.gnome.Showtime.desktop
+video/x-theora=org.gnome.Showtime.desktop
+video/x-theora+ogg=org.gnome.Showtime.desktop
