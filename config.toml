@@ -8,9 +8,13 @@
 # registry, então é o lugar certo caso um dia seja preciso injetar algo
 # específico de uma instalação.
 
+# 40 GiB porque a imagem instala os Flatpaks da lista no primeiro boot, alguns
+# GB entre aplicativos e runtimes, e o disco ainda guarda duas ou três
+# deployments para o rollback. O qcow2 é esparso: no host ele só ocupa o que
+# foi escrito, não o tamanho declarado.
 [[customizations.filesystem]]
 mountpoint = "/"
-minsize = "20 GiB"
+minsize = "40 GiB"
 
 # O builder acrescenta console=tty0 console=ttyS0 na linha de boot do qcow2. Com
 # console serial o Plymouth alterna entre o splash e o modo texto de reserva, e
