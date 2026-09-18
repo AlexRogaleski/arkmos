@@ -131,6 +131,18 @@ run-vm:
         -device virtio-net,netdev=n0 -netdev user,id=n0,hostfwd=tcp:127.0.0.1:2222-:22 \
         -usb -device usb-tablet
 
+# A logo do README sai do mesmo script que desenha o splash de boot — mesma
+# fonte, mesmas cores —, para o repositório não divergir do que a máquina mostra
+# ao ligar. Precisa de uma imagem construída: a fonte vem de dentro dela.
+[doc("Gera a logo do README a partir da arte do boot")]
+logo:
+    mkdir -p .github/assets
+    podman run --rm --security-opt label=disable \
+        -v ./build_files/render-artwork.sh:/render.sh:ro \
+        -v ./.github/assets:/out \
+        -e ARTWORK_LOGO=/out/logo.png \
+        {{image}}:{{tag}} bash /render.sh
+
 [doc("Remove os diretórios de saída das duas variantes")]
 clean:
     rm -rf output output-nvidia

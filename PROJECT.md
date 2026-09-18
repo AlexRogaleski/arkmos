@@ -1076,6 +1076,8 @@ O `just check` verifica as duas pontas: que o arquivo está na imagem com os val
 
 O splash de boot e o wallpaper padrão não são imagens versionadas: saem de `build_files/render-artwork.sh`, a partir de fonte, cores e formas. O repositório e a imagem publicada são públicos, e arte tirada de site de wallpaper não tem autor nem licença identificáveis (seção 28.4).
 
+A logo do README também sai desse script: `just logo` o roda com `ARTWORK_LOGO` e grava `.github/assets/logo.png` — mesma fonte e mesmas cores do splash, para o repositório não divergir do que a máquina mostra no boot. É o único produto do script que vai para o Git, porque o README precisa de um arquivo.
+
 As cores são as que o Tokyo Night e o Dracula têm em comum — fundo índigo quase preto e lavanda como destaque (`#bb9af7` num, `#bd93f9` no outro) —, para que o boot e o desktop combinem com qualquer um dos dois. Os dois esquemas vêm embutidos no Noctalia.
 
 O Noctalia só lê configuração do home, então o wallpaper padrão chega pelo `/etc/skel` (`.config/noctalia/arkmos.toml`), como os defaults do VS Code. A tela de bloqueio usa o wallpaper do desktop enquanto a dela estiver vazia, que é o padrão.
@@ -1411,6 +1413,7 @@ A imagem deriva do Fedora, mas não se chama Fedora nem usa a marca — que é o
 just build                  # localhost/arkmos:dev
 just variant=nvidia build   # localhost/arkmos-nvidia:dev
 just check-all              # constrói e verifica as duas
+just logo                   # logo do README, a partir da arte do boot
 ```
 
 Por baixo:
@@ -1515,8 +1518,9 @@ arkmos/
 ├── PROJECT.md                     arquitetura e decisões
 ├── .gitignore
 │
-├── .github/workflows/
-│   └── build.yml                  build, verificação, publicação, assinatura
+├── .github/
+│   ├── workflows/build.yml        build, verificação, publicação, assinatura
+│   └── assets/logo.png            logo do README, gerada por 'just logo'
 │
 ├── tests/
 │   └── check-image.sh             verificações, compartilhadas com o CI

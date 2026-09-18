@@ -38,6 +38,27 @@ case "$FONTE" in
     *) echo "fonte do wordmark não encontrada (fc-match devolveu $FONTE)" >&2; exit 1 ;;
 esac
 
+# --- Logo do repositório -------------------------------------------------------
+
+# A mesma fonte e as mesmas cores do splash, num banner para o README. Não vai
+# para a imagem: 'just logo' chama este script com ARTWORK_LOGO apontando para
+# .github/assets/logo.png, e o arquivo gerado é versionado. Sai daqui, e não de
+# um desenho à parte, para o README não divergir do que a máquina mostra no boot.
+if [ -n "${ARTWORK_LOGO:-}" ]; then
+    # -alpha set na base: sem canal alfa, a máscara dos cantos arredondados não
+    # tem onde agir e os cantos saem pretos — quinas escuras no tema claro do
+    # GitHub. PNG32 garante a saída em RGBA de 8 bits.
+    magick -size 1600x400 gradient:"$FUNDO_ALTO-$FUNDO" -alpha set \
+        \( -background none -fill "$TEXTO" -font "$FONTE" \
+           -pointsize 170 -kerning 36 label:arkmos -trim +repage \) \
+        -gravity center -composite \
+        \( -size 1600x400 xc:none -fill white \
+           -draw "roundrectangle 0,0,1599,399,40,40" \) \
+        -compose DstIn -composite \
+        -depth 8 -strip "PNG32:$ARTWORK_LOGO"
+    exit 0
+fi
+
 install -d "$THEME" "$BACKGROUNDS"
 
 # --- Plymouth ----------------------------------------------------------------
