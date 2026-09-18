@@ -139,6 +139,7 @@ RUN dnf -y --setopt=install_weak_deps=False install \
         jetbrains-mono-fonts \
         google-noto-emoji-fonts \
         papirus-icon-theme \
+        papirus-icon-theme-dark \
         adw-gtk3-theme \
         neovim \
         eza \
@@ -165,6 +166,16 @@ COPY build_files/ /tmp/build_files/
 RUN /tmp/build_files/install-upstream-bins.sh \
     && /tmp/build_files/install-nerd-font.sh \
     && rm -rf /tmp/build_files
+
+# Ícones: Papirus-Dark, com as pastas em violeta.
+#
+# A Papirus-Dark, e não a Papirus, porque é a variante feita para tema escuro:
+# os ícones pequenos de barra e de ferramenta vêm claros. Ela só traz o que
+# difere e aponta para a Papirus em todo o resto, por isso os dois pacotes.
+# As pastas trocam o azul padrão pelo violeta, o tom de destaque do Arkmos —
+# ver o script sobre como, e por que ele falha o build se a troca não pegar.
+COPY build_files/papirus-folders.sh /tmp/papirus-folders.sh
+RUN bash /tmp/papirus-folders.sh violet && rm -f /tmp/papirus-folders.sh
 
 # Noctalia v5 — shell do desktop.
 #

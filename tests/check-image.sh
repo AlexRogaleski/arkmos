@@ -234,6 +234,17 @@ assert c.get("update.mode") == "none", "auto-update ligado numa imagem read-only
 check "tema GTK declarado também fora do dconf" \
     run sh -c 'grep -qx "gtk-theme-name=adw-gtk3-dark" /etc/xdg/gtk-3.0/settings.ini && grep -qx "gtk-application-prefer-dark-theme=1" /etc/xdg/gtk-3.0/settings.ini'
 
+# O mesmo tema de ícones nos três caminhos de leitura, e o tema instalado: um
+# nome que não existe não dá erro nenhum, o GTK só cai nos ícones de fallback.
+# E as pastas em violeta, que o build troca repontando symlinks do Papirus.
+check "ícones Papirus-Dark, com as pastas em violeta" \
+    run sh -c 'test -f /usr/share/icons/Papirus-Dark/index.theme &&
+               grep -qx "gtk-icon-theme-name=Papirus-Dark" /etc/xdg/gtk-3.0/settings.ini &&
+               grep -qx "gtk-icon-theme-name=Papirus-Dark" /etc/xdg/gtk-4.0/settings.ini &&
+               DCONF_PROFILE=user dconf read /org/gnome/desktop/interface/icon-theme | grep -q "Papirus-Dark" &&
+               test "$(readlink /usr/share/icons/Papirus/64x64/places/folder.svg)" = folder-violet.svg &&
+               test "$(readlink /usr/share/icons/Papirus/48x48/places/user-home.svg)" = user-violet-home.svg'
+
 # O parser TOML do greetd é mais restrito que o TOML 1.0, e rejeita
 # construções que outros parsers aceitam — uma string multi-linha com barra
 # invertida no fim da linha, por exemplo. Validar o arquivo com o tomllib do

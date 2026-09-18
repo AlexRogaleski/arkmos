@@ -1058,6 +1058,7 @@ prefer-no-csd no niri            decoração desenhada pelo compositor
   10-arkmos-appearance           (color-scheme, gtk-theme, ícones, cursor, fontes)
 /etc/xdg/gtk-3.0/settings.ini    o mesmo tema, por um caminho que não depende
 /etc/xdg/gtk-4.0/settings.ini    de portal nem de D-Bus
+/usr/share/icons/Papirus         ícones Papirus-Dark, pastas em violeta
 /etc/xdg-desktop-portal/         backend gtk para a interface Settings
   niri-portals.conf
 /etc/greetd/config.toml          tela de login com nome, cores e retorno ao digitar
@@ -1127,6 +1128,14 @@ Isto é um **default semeado**, não configuração imposta: a partir daí o arq
 
 O `just check` verifica as duas pontas: que o arquivo está na imagem com os valores que importam, e que o assistente de primeiro boot realmente o entrega no home.
 
+### Ícones: Papirus-Dark, pastas em violeta
+
+O tema de ícones é a **Papirus-Dark**, a variante da Papirus feita para tema escuro: os ícones pequenos de barra e de ferramenta vêm claros. Ela traz só o que difere e aponta, por symlink, para os diretórios da Papirus em todo o resto, por isso a imagem instala os dois pacotes (`papirus-icon-theme` e `papirus-icon-theme-dark`). Antes a imagem usava a Papirus comum, que é a variante para tema claro.
+
+As pastas trocam o azul padrão pelo violeta, o tom de destaque do Arkmos. A Papirus traz cada pasta em todas as cores, e o nome sem cor é um symlink para a padrão (`folder.svg -> folder-blue.svg`). O `build_files/papirus-folders.sh` reponta esses symlinks, que é o que faz o `papirus-folders` do próprio projeto; o Fedora não o empacota. O script falha o build se trocar menos links do que o esperado, para que uma mudança de estrutura no tema não publique pastas azuis sem aviso.
+
+A escolha saiu de uma comparação lado a lado com Adwaita, Yaru, Breeze, Numix, Pop e Colloid. O Colloid, que tem uma variante Dracula própria, ficou de fora por não estar nos repositórios do Fedora.
+
 ### Arte gerada no build
 
 O splash de boot e o wallpaper padrão não são imagens versionadas: saem de `build_files/render-artwork.sh`, a partir de fonte, cores e formas. O repositório e a imagem publicada são públicos, e arte tirada de site de wallpaper não tem autor nem licença identificáveis (seção 28.4).
@@ -1154,7 +1163,7 @@ A personalização deverá abranger:
 - Qt;
 - terminal;
 - Zsh;
-- ícones (hoje `papirus-icon-theme`);
+- ícones (hoje Papirus-Dark com pastas em violeta, seção 26.1);
 - cursores;
 - wallpapers (hoje, o padrão gerado da seção 26.1);
 - cores (base comum a Tokyo Night e Dracula; esquema final a escolher);
