@@ -338,11 +338,20 @@ json.dump(d, open(p, "w"), indent=4)' "$ARKMOS_REGISTRY" \
         rm -f /etc/containers/registries.d/arkmos.yaml; \
     fi
 
+# A grub-boot-success é mascarada, e não é frescura: o preset do Fedora a
+# habilita para todo usuário, ela roda 'grub2-set-bootflag boot_success' dois
+# minutos depois do login, e num sistema bootc o /boot é somente leitura —
+# "Creating tmpfile failed: Read-only file system", unit falhada em toda
+# sessão. Ela existe para alimentar o menu automático do GRUB gravando no
+# grubenv, coisa que aqui não acontece: quem cuida das entradas de boot é o
+# bootc. Mascarar é dizer isso de forma explícita, em vez de conviver com uma
+# unit vermelha no 'systemctl --user' de todo boot.
 RUN chmod 0755 /usr/libexec/arkmos-firstboot /usr/libexec/arkmos-greeter \
                 /usr/bin/arkmos-diag \
     && systemctl enable arkmos-firstboot.service \
     && systemctl enable docker.service \
-    && systemctl enable greetd.service
+    && systemctl enable greetd.service \
+    && systemctl --global mask grub-boot-success.timer grub-boot-success.service
 
 # O que só faz sentido com a pilha NVIDIA sai da variante que não a tem.
 #

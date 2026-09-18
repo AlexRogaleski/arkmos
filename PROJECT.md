@@ -978,6 +978,14 @@ O gerenciador de arquivos fica na camada do sistema, não em Flatpak. Ele não �
 
 O seletor de arquivos dos aplicativos continua no backend `gtk` do portal (`niri-portals.conf`). O backend do GNOME delega o seletor ao próprio Nautilus.
 
+### O indexador, e por que ele não subia
+
+O `localsearch` (antigo `tracker-miners`) vem da base e é o que dá busca por conteúdo e "recentes" ao Nautilus. Ele não subia, e o modo de falhar é o pior possível: a unit traz `ConditionEnvironment=XDG_SESSION_CLASS=user` e o systemd a **pula** — não é falha, é condição não satisfeita. O único sinal é uma linha no journal, mais o Nautilus reclamando no stderr que não conseguiu ativar `org.freedesktop.Tracker3.Miner.Files`.
+
+A condição não está errada sobre esta máquina: a sessão é classe `user` para o logind (`Class=user`, `Service=greetd`). O que falta é a variável no ambiente do `systemd --user` — com greetd e `niri-session`, o `import-environment` traz `XDG_SEAT`, `XDG_VTNR`, `XDG_SESSION_ID` e as demais, mas não `XDG_SESSION_CLASS`.
+
+O drop-in em `files/usr/lib/systemd/user/localsearch-3.service.d/` **zera** a lista de condições, em vez de trocá-la por outra. O propósito dela no upstream — não indexar em sessão de greeter ou de background — segue garantido por quem dispara a unit: o autostart da sessão gráfica e a ativação D-Bus do Nautilus, e a conta do greeter não roda nenhum dos dois. Uma condição nova no lugar (`XDG_CURRENT_DESKTOP=niri`, por exemplo) voltaria a quebrar em silêncio no dia em que esse valor mudasse de forma. O `just check` falha também se o upstream mudar a condição, para o drop-in não envelhecer calado.
+
 ---
 
 # 26. Identidade Visual
@@ -1143,6 +1151,7 @@ O `just check` confere o initramfs, e não só o `/usr`: tema, `plymouthd.conf`,
 - **`greetd` em loop de restart** — seção 8.3.
 - **Pausa final do assistente sem prazo**, que em janela pequena parecia travamento — seção 12.2.
 - **Config do greetd rejeitada pelo parser dele**, e o fallback de vt1 brigando com o `Restart=always` do greetd — seção 8.3. Foram as duas falhas do segundo teste em VM.
+- **`grub-boot-success.service` falhando em toda sessão.** O preset do Fedora habilita essa unit de usuário; ela roda `grub2-set-bootflag boot_success` dois minutos depois do login e grava no `grubenv`, e no bootc o `/boot` é somente leitura ("Creating tmpfile failed: Read-only file system"). Ela serve ao menu automático do GRUB, que aqui não se usa — quem cuida das entradas de boot é o bootc. Mascarada no build.
 
 ## 27.4 Ruído conhecido e aceito
 
@@ -1668,6 +1677,9 @@ bootc rollback devolvendo a deployment anterior: os papéis booted e rollback
   aparecem trocados no bootc status
 bootc upgrade para uma versão publicada depois da instalada, verificando a
   assinatura sem repetir a flag (signature: containerPolicy na deployment)
+portais, notificações e seletor de arquivos na sessão: arkmos-diag sem
+  pendência, notify-send aparecendo, xdg-open abrindo o Nautilus e o "salvar
+  como" do Firefox abrindo o seletor
 ```
 
 ## 35.3 Não validado ainda
@@ -1687,25 +1699,24 @@ travamento antes do assistente no primeiro boot em VM — visto uma vez em
 
 ## Curto prazo
 
-1. Confirmar portais e notificações.
-2. Validar o Nautilus em uso: montagem, lixeira, "mostrar na pasta" (seção 35.3).
-3. Se o travamento antes do assistente voltar num primeiro boot em VM, abrir **View → serial0** antes de fechar a janela (seção 30).
+1. Validar o Nautilus em uso: montagem, lixeira, "mostrar na pasta" (seção 35.3).
+2. Se o travamento antes do assistente voltar num primeiro boot em VM, abrir **View → serial0** antes de fechar a janela (seção 30).
 
 ## Médio prazo
 
-4. Curar a `flatpaks.list` e criar o mecanismo que a aplica — incluindo a extensão de tema `org.gtk.Gtk3theme.adw-gtk3-dark`, sem a qual Flatpaks GTK3 não usam o tema do sistema (seção 26.1).
-5. Definir a identidade visual (seção 26): escolher o esquema — Tokyo Night ou Dracula, os dois embutidos no Noctalia — e o wallpaper definitivo.
-6. Configurar o Noctalia: barra, dock, notificações, tela de bloqueio.
-7. Declarar os containers Distrobox (`fedora-mobile`, `ubuntu-db`).
+3. Curar a `flatpaks.list` e criar o mecanismo que a aplica — incluindo a extensão de tema `org.gtk.Gtk3theme.adw-gtk3-dark`, sem a qual Flatpaks GTK3 não usam o tema do sistema (seção 26.1).
+4. Definir a identidade visual (seção 26): escolher o esquema — Tokyo Night ou Dracula, os dois embutidos no Noctalia — e o wallpaper definitivo.
+5. Configurar o Noctalia: barra, dock, notificações, tela de bloqueio.
+6. Declarar os containers Distrobox (`fedora-mobile`, `ubuntu-db`).
 
 ## Longo prazo
 
-8. Snapper/Btrfs snapshots.
-9. Avaliar Limine.
-10. Validar instalação em hardware real.
-11. Documentar recuperação.
-12. Definir política de atualização/rollback.
-13. Estabilizar a versão 1.0.0.
+7. Snapper/Btrfs snapshots.
+8. Avaliar Limine.
+9. Validar instalação em hardware real.
+10. Documentar recuperação.
+11. Definir política de atualização/rollback.
+12. Estabilizar a versão 1.0.0.
 
 ---
 

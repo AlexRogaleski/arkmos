@@ -433,6 +433,36 @@ assert not bloqueiam, "declarado no greeter.toml: " + ", ".join(bloqueiam)
 check "gerenciador de arquivos atende FileManager1" \
     run sh -c 'rpm -q nautilus gvfs >/dev/null && grep -rqx "Name=org.freedesktop.FileManager1" /usr/share/dbus-1/services/'
 
+# O indexador do Nautilus não subia: a unit do localsearch trazia
+# ConditionEnvironment=XDG_SESSION_CLASS=user e era PULADA, porque essa
+# variável não chega ao systemd --user numa sessão greetd + niri. Não é falha,
+# é condição não satisfeita — o único sinal é uma linha no journal e a busca
+# por conteúdo não funcionar. O drop-in zera a condição; ver o comentário nele.
+#
+# A segunda parte da verificação é contra o drop-in envelhecer em silêncio: se
+# o upstream mudar ou remover essa condição, zerar a lista poderia passar a
+# apagar uma condição legítima, e é melhor falhar aqui e revisar.
+check "indexador do Nautilus livre da condição de classe" \
+    run sh -c '
+        f=/usr/lib/systemd/user/localsearch-3.service.d/50-arkmos-classe-de-sessao.conf
+        test -e "$f" || { echo "drop-in ausente: $f"; exit 1; }
+        grep -qx "ConditionEnvironment=" "$f" \
+            || { echo "o drop-in não zera a condição"; exit 1; }
+        grep -qx "ConditionEnvironment=XDG_SESSION_CLASS=user" \
+            /usr/lib/systemd/user/localsearch-3.service \
+            || { echo "o upstream mudou a condição da unit: revisar o drop-in"; exit 1; }
+    '
+
+# Habilitada pelo preset do Fedora, escreve no grubenv, e o /boot do bootc é
+# somente leitura: falhava em toda sessão. Ver o comentário no Containerfile.
+check "grub-boot-success mascarada" \
+    run sh -c '
+        for u in grub-boot-success.timer grub-boot-success.service; do
+            [ "$(readlink /etc/systemd/user/$u)" = /dev/null ] \
+                || { echo "$u não está mascarada"; exit 1; }
+        done
+    '
+
 # Sem o xdg-user-dirs-update na sessão, o home nasce sem Documentos, Downloads,
 # Imagens… A unit de usuário do pacote cuida disso, mas só se estiver
 # habilitada — e os nomes só saem em português com o LANG certo.
