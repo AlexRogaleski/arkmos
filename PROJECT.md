@@ -787,6 +787,24 @@ O arquivo também não usa `return`: o zsh faz o source dele de dentro de uma
 função, e um `return` ali interromperia o laço, deixando os demais scripts de
 `profile.d` sem carregar.
 
+**O mise se atualiza com a imagem, não sozinho.** Ele está em `/usr/bin`,
+somente leitura, com a versão fixada em `build_files/install-upstream-bins.sh`.
+Do jeito que vem, ele avisava de versão nova e sugeria `mise self-update` — que
+falharia ao tentar se substituir, e apontaria para uma atualização fora do
+alcance de quem usa. Dois arquivos resolvem:
+
+```text
+files/etc/mise/config.toml                            disable_update_warning = true
+files/usr/lib/mise/mise-self-update-instructions.toml "atualizado junto com o sistema"
+```
+
+O primeiro fica em `/etc` porque é de lá que o mise lê a configuração de
+sistema, e desligar o aviso também elimina a consulta periódica ao GitHub. O
+segundo é o mecanismo que o mise oferece a empacotadores: com ele presente, o
+self-update fica indisponível, e onde o mise orienta a atualizar aparece a
+mensagem do Arkmos. O mise procura esse arquivo em `<instalação>/lib/mise/`,
+com `<instalação>` sendo o binário canonizado dois níveis acima — `/usr`.
+
 Como o VS Code está na imagem e não em Flatpak (seção 17.1), a extensão da
 linguagem enxerga o binário que o mise instalou sem configuração extra.
 Atenção a um detalhe: o terminal integrado herda o PATH do zsh, mas o processo
@@ -985,6 +1003,17 @@ O `localsearch` (antigo `tracker-miners`) vem da base e é o que dá busca por c
 A condição não está errada sobre esta máquina: a sessão é classe `user` para o logind (`Class=user`, `Service=greetd`). O que falta é a variável no ambiente do `systemd --user` — com greetd e `niri-session`, o `import-environment` traz `XDG_SEAT`, `XDG_VTNR`, `XDG_SESSION_ID` e as demais, mas não `XDG_SESSION_CLASS`.
 
 O drop-in em `files/usr/lib/systemd/user/localsearch-3.service.d/` **zera** a lista de condições, em vez de trocá-la por outra. O propósito dela no upstream — não indexar em sessão de greeter ou de background — segue garantido por quem dispara a unit: o autostart da sessão gráfica e a ativação D-Bus do Nautilus, e a conta do greeter não roda nenhum dos dois. Uma condição nova no lugar (`XDG_CURRENT_DESKTOP=niri`, por exemplo) voltaria a quebrar em silêncio no dia em que esse valor mudasse de forma. O `just check` falha também se o upstream mudar a condição, para o drop-in não envelhecer calado.
+
+### Ruído conhecido: "Invalid service client type"
+
+Ao abrir o Nautilus pelo terminal aparece:
+
+```text
+Failed to initialize display server connection: GDBus.Error:
+org.freedesktop.DBus.Error.InvalidArgs: Invalid service client type
+```
+
+É inofensivo, e não há o que corrigir deste lado. O Nautilus pede ao compositor uma conexão Wayland especial pela interface `org.gnome.Mutter.ServiceChannel`, do compositor do GNOME. O niri implementa essa interface por compatibilidade, mas só para o tipo de cliente que ele atende, e recusa o do Nautilus — as duas pontas estão nos binários: `OpenWaylandServiceConnection` no Nautilus, e a mensagem exata no niri. O Nautilus registra a recusa e segue normalmente. Aqui essa conexão não faz falta: o seletor de arquivos usa o backend `gtk` do portal (`niri-portals.conf`).
 
 ---
 
@@ -1684,6 +1713,9 @@ bootc upgrade para uma versão publicada depois da instalada, verificando a
 portais, notificações e seletor de arquivos na sessão: arkmos-diag sem
   pendência, notify-send aparecendo, xdg-open abrindo o Nautilus e o "salvar
   como" do Firefox abrindo o seletor
+mise ativado no zsh e no bash interativo (MISE_SHELL=zsh, MISE_SHELL=bash)
+nenhuma unit de usuário falhada na sessão (grub-boot-success mascarada)
+indexador do Nautilus (localsearch-3) ativo ao abrir o Nautilus
 ```
 
 ## 35.3 Não validado ainda

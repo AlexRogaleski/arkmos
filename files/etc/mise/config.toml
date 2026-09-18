@@ -1,0 +1,13 @@
+# Arkmos — configuração de sistema do mise.
+#
+# O mise desta imagem está em /usr/bin, com a versão fixada em
+# build_files/install-upstream-bins.sh, e só muda quando a imagem muda. O aviso
+# "mise version X available" apontaria para uma atualização fora do alcance de
+# quem usa: a versão nova só chega quando o build fixar outra. Com ele
+# desligado, o mise também deixa de consultar o GitHub para saber disso.
+#
+# /etc, e não /usr, porque é daqui que o mise lê a configuração de sistema
+# (MISE_SYSTEM_CONFIG_DIR). Vale para toda conta; a configuração de cada
+# usuário, em ~/.config/mise, tem precedência sobre esta.
+[settings]
+disable_update_warning = true

@@ -1,0 +1,12 @@
+# Arkmos — o que o mise responde a 'mise self-update'.
+#
+# O binário está em /usr, somente leitura, e é atualizado junto com a imagem.
+# Sem este arquivo o mise sugeriria 'mise self-update' e tentaria substituir a
+# si mesmo, sem conseguir. Com ele o self-update fica indisponível — o comando
+# responde "mise is installed via a package manager, cannot update" — e, nos
+# pontos em que o mise orienta a atualizar, ele mostra a mensagem abaixo em vez
+# de sugerir o self-update.
+#
+# O mise procura este arquivo em <instalação>/lib/mise/, onde <instalação> é o
+# binário canonizado subindo dois níveis: /usr/bin/mise dá /usr.
+message = "O mise faz parte da imagem do Arkmos, com a versão fixada no build, e é atualizado junto com o sistema: sudo bootc upgrade."

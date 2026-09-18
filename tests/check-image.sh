@@ -598,6 +598,19 @@ check "binários upstream instalados e executáveis" \
                lazydocker --version >/dev/null &&
                mise --version >/dev/null 2>/dev/null'
 
+# O mise está em /usr, somente leitura, e é atualizado com a imagem, com a
+# versão fixada no build. Sem a configuração de sistema e o arquivo de
+# instruções, ele avisaria de versão nova que ninguém consegue instalar e
+# sugeriria 'mise self-update', que falharia ao tentar se substituir.
+check "mise sem self-update nem aviso de versão nova" \
+    run sh -c '
+        export HOME=/tmp
+        [ "$(mise settings get disable_update_warning 2>/dev/null)" = true ] \
+            || { echo "o aviso de versão nova continua ligado"; exit 1; }
+        mise self-update --yes 2>&1 | grep -q "package manager, cannot update" \
+            || { echo "o self-update continua disponível"; exit 1; }
+    '
+
 check "Nerd Font patched presente" \
     run sh -c 'fc-list | grep -qi "JetBrainsMono Nerd Font"'
 
