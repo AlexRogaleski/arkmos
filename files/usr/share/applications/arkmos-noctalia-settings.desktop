@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Configurações do Noctalia
+Comment=Barra, aparência, papel de parede, tela de bloqueio e inatividade
+Keywords=noctalia;configurações;ajustes;settings;aparência;bloqueio;inatividade;
+Icon=noctalia
+Exec=sh -c "noctalia msg settings-open || { noctalia --daemon && noctalia msg settings-open; }"
+Terminal=false
+Categories=Settings;DesktopSettings;

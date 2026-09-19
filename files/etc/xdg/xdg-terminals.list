@@ -1,0 +1,7 @@
+# Arkmos — terminal padrão para o xdg-terminal-exec.
+#
+# É por aqui que o GLib descobre em qual terminal abrir um programa de
+# terminal (btop, nvim) pedido pelo Nautilus ou pelo "Abrir com". A lista
+# embutida no GLib não conhece o foot. Um ~/.config/xdg-terminals.list vence
+# este arquivo.
+foot.desktop

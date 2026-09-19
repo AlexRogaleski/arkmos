@@ -297,7 +297,8 @@ Personalizações em relação à configuração de exemplo:
 
 - `spawn-at-startup "noctalia"` no lugar da Waybar;
 - `Mod+T` abre o Foot;
-- `Mod+D` abre o Fuzzel;
+- `Mod+D` e `Mod+Space` abrem o lançador do Noctalia, e `Super+Alt+L` bloqueia a tela pelo Noctalia. A configuração de exemplo apontava para o fuzzel e o swaylock, dois programas à parte, e o lançador do Noctalia ficava sem atalho;
+- `Shift+Print` faz captura com anotação (seção 25);
 - `prefer-no-csd` ligado.
 
 O `prefer-no-csd` faz o niri anunciar decoração do lado do servidor e desenhar ele mesmo a borda e o anel de foco. Sem ele, cada aplicativo desenha a própria barra de título com o tema que conseguir adivinhar — ver seção 9.
@@ -449,6 +450,8 @@ Objetivos:
 - integração GTK/Wayland.
 
 Os portais seguem listados explicitamente no `Containerfile` mesmo vindo da base: o Niri depende deles, e o Universal Blue vem podando imagens intermediárias. Se a base parar de trazê-los, é melhor o build continuar correto do que a sessão quebrar de forma confusa.
+
+**Agente SSH: o do gcr.** O `gnome-keyring` deixou de ser agente SSH, e o papel passou para o `gcr-ssh-agent`, do pacote `gcr`. O socket é habilitado para todo usuário (`systemctl --global`) e define o `SSH_AUTH_SOCK` no `systemd --user`, de onde o niri e tudo o que ele abre herdam. A senha da chave fica no chaveiro, que o login já destrava. Sem agente nenhum, cada `git push` pedia a senha da chave, e o VS Code, que não tem onde perguntar, falhava.
 
 ---
 
@@ -685,7 +688,7 @@ JetBrains Mono Nerd Font 3.5.1
 
 O `jetbrains-mono-fonts` do Fedora **não** é a versão patched; o `starship.toml` e o `eza --icons` dependem dos glifos Nerd Font, então a versão patched é baixada no build, com versão e checksum SHA256 fixados em `build_files/install-nerd-font.sh`.
 
-Também instaladas: `google-noto-emoji-fonts`.
+Também instaladas: `google-noto-emoji-fonts`, e `google-carlito-fonts` e `google-crosextra-caladea-fonts`, que têm as mesmas medidas da Calibri e da Cambria, as fontes padrão do Word. Sem elas, um documento aberto aqui troca de fonte e desalinha. As Liberation, que cobrem Arial, Times e Courier, vêm da base.
 
 ---
 
@@ -916,9 +919,19 @@ BlueZ 5.87
 
 ```text
 NetworkManager 1.56
+tailscale
+firewalld, zona FedoraWorkstation
 ```
 
 Objetivos: Ethernet, Wi-Fi, VPN, integração com desktop.
+
+O painel do Noctalia conecta em Wi-Fi e cabo. O que ele não cobre (IP fixo, hotspot, VPN, Wi-Fi corporativo) fica no `nm-connection-editor`.
+
+**Tailscale** vem do Fedora, com o `tailscaled` habilitado. A máquina entra na rede com `sudo tailscale up`, uma vez.
+
+**Firewall na zona FedoraWorkstation**, a mesma do Fedora Workstation: portas altas liberadas na rede local. A `public`, que vinha da base, bloqueava sem avisar o LocalSend (porta 53317) e um servidor de desenvolvimento acessado pelo celular.
+
+**Servidor SSH desligado.** A base o habilita, e com a zona que o libera, num Wi-Fi público qualquer um tentaria entrar com senha. Desabilitar na imagem não bastava: o `/etc/machine-id` nasce vazio, o systemd trata o primeiro boot como tal e reaplica os presets, e o `90-default.preset` do Fedora o habilitaria de novo. O `10-arkmos.preset` vem antes e vence; o `just check` confere o estado e o preset. A VM de teste o liga pela linha de boot (seção 30).
 
 ---
 
@@ -932,6 +945,8 @@ tuned-ppd
 Objetivos: gerenciamento de performance, perfis de energia, autonomia em notebook.
 
 Os diretórios que o tuned espera em `/var` são declarados em `tmpfiles.d` e não assados na imagem — ver seção 3.4.
+
+**Bloqueio por inatividade.** O Noctalia vem com toda ação por inatividade desligada: a tela nunca bloqueava nem apagava sozinha. O `arkmos.toml` do skel liga o bloqueio e a tela apagada, com os tempos do próprio Noctalia (10 e 11 minutos). A suspensão por inatividade fica desligada, para não interromper um build ou um download longo; fechar a tampa já bloqueia antes de suspender (`lock_before_suspend`, ligado por padrão). Como é skel, vale para conta nova. Os tempos se mudam nas configurações do Noctalia (`noctalia msg settings-open`, seção de inatividade), que gravam em `~/.local/state/noctalia/settings.toml` e vencem o padrão.
 
 ---
 
@@ -1002,7 +1017,8 @@ Onde fica cada aplicativo em uso:
 | Nautilus, Discos, compactação, assistente de impressão | imagem: integração com o sistema (25.1, 25.2) |
 | Chrome, Thunderbird, Spotify, Discord, OnlyOffice, Inkscape, Switcheroo, AnyDesk | Flatpak |
 | Papers (PDF), Loupe (imagens), Showtime (vídeo), Calculadora | Flatpak |
-| Mission Center, Fedora Media Writer, LocalSend, Galaxy Buds Client, Mecalin | Flatpak |
+| Fedora Media Writer, LocalSend, Galaxy Buds Client, Mecalin | Flatpak |
+| Monitor de sistema: btop, no lugar do htop da base | imagem |
 | Flatseal, Warehouse, Bazaar (loja), Embellish (Nerd Fonts), DistroShelf (Distrobox) | Flatpak |
 | Insync, Android Studio com emulador, MySQL Workbench | Distrobox (seção 16) |
 | Tolaria, Tabularis | AppImage, pelo AppManager |
@@ -1036,7 +1052,19 @@ A lista também leva a extensão de tema `org.gtk.Gtk3theme.adw-gtk3-dark`, como
 
 `/etc/xdg/mimeapps.list` aponta PDF para o Papers, imagens para o Loupe e vídeo para o Showtime. Sem ele, o clique duplo num PDF abriria o Chrome. Os padrões do Fedora apontam para Evince, Eye of GNOME e Totem, que não existem aqui, e o sistema então escolhe qualquer aplicativo que se declare capaz de abrir o tipo — e o Chrome se declara para PDF e imagens.
 
-Os tipos são os que cada aplicativo declara no próprio `.desktop`. O `just check` confere que todo padrão aponta para um aplicativo da lista de preinstall. O "Abrir com" do Nautilus continua mudando o padrão da conta, porque `~/.config/mimeapps.list` vence o de `/etc/xdg`.
+Arquivos de texto (`text/plain`, Markdown, JSON, YAML, TOML, scripts) abrem no VS Code. O padrão do Fedora para `text/plain` é o nvim, um programa de terminal: o clique duplo num `.txt` abria um terminal, ou nada.
+
+Os tipos de mídia são os que cada aplicativo declara no próprio `.desktop`. O `just check` confere que todo padrão aponta para um aplicativo da lista de preinstall ou da imagem. O "Abrir com" do Nautilus continua mudando o padrão da conta, porque `~/.config/mimeapps.list` vence o de `/etc/xdg`.
+
+### Menu de aplicativos
+
+Três tipos de entrada apareciam no menu sem servir para nada:
+- o modo servidor e o cliente do foot, que o pacote traz junto do terminal;
+- a do Noctalia, que inicia um shell que o niri já iniciou no login, e por isso, clicada, não faz nada.
+
+As três recebem `NoDisplay=true` no build, e o build falha se um pacote renomear o arquivo. No lugar da do Noctalia entra **Configurações do Noctalia**, até aqui a única forma de chegar às configurações dele era pela linha de comando.
+
+O **nvtop**, monitor de GPU que vem da base, é um programa de terminal. Sem uma GPU que ele reconheça, como na VM, ele mostra "No GPU to monitor." e fecha na hora, levando a janela do terminal junto, e parece que nada aconteceu. No notebook, com Intel e NVIDIA, funciona. Os programas de terminal abrem pelo lançador do Noctalia, que procura o terminal por conta própria e acha o foot.
 
 ### Captura de tela
 
@@ -1065,6 +1093,10 @@ O gerenciador de arquivos fica na camada do sistema, não em Flatpak. Ele não �
 | Dolphin | 85 pacotes | KDE; Qt coberto só pelo portal |
 
 O seletor de arquivos dos aplicativos continua no backend `gtk` do portal (`niri-portals.conf`). O backend do GNOME delega o seletor ao próprio Nautilus.
+
+**Os backends do gvfs que a base não traz** entram junto: `gvfs-mtp` faz o celular ligado por USB aparecer, `gvfs-smb` abre pastas compartilhadas na rede, e `gvfs-fuse` dá a esses locais um caminho de verdade (`/run/user/UID/gvfs`), sem o qual um Flatpak ou o VS Code não abrem um arquivo que está no celular. O `sushi` é a pré-visualização da tecla Espaço, e o `papers-thumbnailer` gera as miniaturas de PDF, porque o Papers da lista de Flatpaks não exporta o dele para o host.
+
+**Programas de terminal abertos pelo Nautilus.** O GLib descobre em qual terminal abrir um programa como o btop ou o nvim por uma lista embutida que não conhece o foot, e a ação simplesmente não acontecia. O `xdg-terminal-exec` resolve, com o foot declarado em `/etc/xdg/xdg-terminals.list`.
 
 **Discos e compactação vão junto**, pelo mesmo motivo: são integração com o sistema de arquivos e com o hardware. O `gnome-disk-utility` traz o montador de imagem que o Nautilus usa no clique duplo numa `.iso`, e o aplicativo Discos — formatar pendrive, gravar imagem, ver o SMART do disco. O `file-roller` abre um arquivo compactado para navegar e extrair só parte dele; o "Comprimir" e o "Extrair aqui" do Nautilus já funcionavam sozinhos, pelo `gnome-autoar`. Os dois custam 12 MiB.
 
@@ -1579,6 +1611,8 @@ Cada variante tem seu próprio diretório de saída (`output/`, `output-nvidia/`
 
 **A linha de boot da VM não é a da imagem.** O bootc-image-builder acrescenta `console=tty0 console=ttyS0` no qcow2; isso não vem do `kargs.d`. Com console serial o Plymouth alterna entre o splash e o modo texto de reserva (três pontos), e o que aparece muda de um boot para outro. Por isso o `config.toml` acrescenta `plymouth.ignore-serial-consoles` na mídia de teste: o Plymouth ignora o serial e desenha o splash na tela, como numa máquina real. É configuração da mídia, não da imagem publicada.
 
+O mesmo `config.toml` acrescenta `systemd.wants=sshd.service`, que liga o servidor SSH só na VM: a imagem o deixa desligado (seção 22), e é por ele que o ssh na porta 2222 do host funciona.
+
 O mesmo console serial é útil quando a tela congela: na janela do QEMU, **View → serial0** mostra o console do sistema, e um `arkmos login:` ali significa que o sistema subiu e o problema é só a exibição.
 
 ---
@@ -1678,8 +1712,9 @@ arkmos/
     │   ├── nvidia/…
     │   ├── plymouth/plymouthd.conf
     │   ├── profile.d/mise.sh      ativação do mise no bash
-    │   ├── skel/                  defaults de VS Code e Noctalia
+    │   ├── skel/                  defaults de VS Code, Noctalia e btop
     │   ├── xdg/mimeapps.list      aplicativos padrão por tipo de arquivo
+    │   ├── xdg/xdg-terminals.list terminal padrão (foot)
     │   ├── xdg-desktop-portal/niri-portals.conf
     │   ├── yum.repos.d/           docker-ce e vscode, enabled=0
     │   └── zshenv
@@ -1688,6 +1723,7 @@ arkmos/
         │   ├── bootc/install/     filesystem raiz
         │   ├── bootc/kargs.d/     argumentos de kernel
         │   ├── systemd/system/    firstboot, preinstall de Flatpaks, drop-ins
+        │   ├── systemd/system-preset/  sshd desligado, tailscaled ligado
         │   ├── sysusers.d/        grupo docker
         │   └── tmpfiles.d/        conteúdo de /var
         ├── libexec/
@@ -1800,6 +1836,11 @@ Discos, gerenciador de compactação e assistente de impressão; barramento do
 ícones Papirus-Dark nos três caminhos de leitura, pastas em violeta
 Flatpaks declarados legíveis pelo flatpak preinstall, padrões de aplicativo
   apontando para eles, libfuse.so.2 para AppImage, capturas em pt-BR
+componentes de uso diário (gvfs-mtp/smb/fuse, sushi, miniaturas de PDF,
+  Tailscale, gcr-ssh-agent, xdg-terminal-exec, btop, Carlito e Caladea)
+sshd desligado também no preset, firewall na zona FedoraWorkstation
+lançador e bloqueio do Noctalia nos atalhos, bloqueio por inatividade ligado
+menu sem as entradas que não abrem nada, com as configurações do Noctalia
 ```
 
 ## 35.2 Validado em VM
@@ -1851,6 +1892,8 @@ instalação em hardware real
 cadastro de uma impressora de verdade
 instalação dos Flatpaks pelo preinstall no primeiro boot, e a remoção de um
   item retirado da lista depois de um bootc upgrade
+celular por USB no Nautilus, agente SSH num git push, tailscale up,
+  LocalSend recebendo, bloqueio por inatividade, atalhos do lançador
 travamento antes do assistente no primeiro boot em VM — visto uma vez em
   2026-09-15, com a janela GTK/GL; não reproduzido no boot seguinte
 ```

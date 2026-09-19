@@ -114,6 +114,13 @@ COPY files/etc/yum.repos.d/ /etc/yum.repos.d/
 # fuse3). AppImages com o runtime clássico a carregam para se montar, e sem
 # ela nem abrem: "dlopen(): error loading libfuse.so.2". Os com runtime novo,
 # como o do AppManager, não precisam dela.
+#
+# Carlito e Caladea têm as mesmas medidas da Calibri e da Cambria, as fontes
+# padrão do Word: sem elas um documento aberto aqui troca de fonte e desalinha.
+# As da Liberation, que cobrem Arial, Times e Courier, já vêm da base.
+#
+# O btop substitui o htop que vem da base: mesma função, com gráficos, e com os
+# temas Tokyo Night e Dracula embutidos. Nada depende do htop.
 # ---------------------------------------------------------------------------
 RUN dnf -y --setopt=install_weak_deps=False install \
         git \
@@ -138,12 +145,13 @@ RUN dnf -y --setopt=install_weak_deps=False install \
         gnome-keyring-pam \
         mate-polkit \
         mako \
-        fuzzel \
         brightnessctl \
         playerctl \
         cliphist \
         jetbrains-mono-fonts \
         google-noto-emoji-fonts \
+        google-carlito-fonts \
+        google-crosextra-caladea-fonts \
         papirus-icon-theme \
         papirus-icon-theme-dark \
         adw-gtk3-theme \
@@ -154,6 +162,8 @@ RUN dnf -y --setopt=install_weak_deps=False install \
         fzf \
         ripgrep \
         zoxide \
+        btop \
+    && dnf -y remove htop \
     && dnf clean all
 
 # Ambiente de terminal.
@@ -237,11 +247,24 @@ RUN dnf -y --setopt=install_weak_deps=False --enablerepo=code install \
 # Nautilus já funcionavam sozinhos, pelo gnome-autoar. Os formatos vêm da base
 # (7zip, zip, xz, zstd, bzip2, libarchive); o 7zip do Fedora não traz o codec
 # RAR, por licença, e quem lê RAR é a libarchive. Os dois juntos custam 12 MiB.
+#
+# Os backends do gvfs que a base não traz: gvfs-mtp faz o celular ligado por
+# USB aparecer no Nautilus, gvfs-smb abre pastas compartilhadas na rede, e o
+# gvfs-fuse dá a esses locais um caminho de verdade (/run/user/UID/gvfs), sem
+# o qual um Flatpak ou o VS Code não conseguem abrir um arquivo que está no
+# celular. O sushi é a pré-visualização da tecla Espaço, e o
+# papers-thumbnailer gera as miniaturas de PDF: o Papers da lista de Flatpaks
+# não exporta o dele para o host.
 RUN dnf -y --setopt=install_weak_deps=False install \
         nautilus \
         xdg-user-dirs \
         gnome-disk-utility \
         file-roller \
+        gvfs-mtp \
+        gvfs-smb \
+        gvfs-fuse \
+        sushi \
+        papers-thumbnailer \
     && dnf clean all
 
 # Impressão: o assistente, e o que ele precisa para funcionar.
@@ -272,6 +295,32 @@ RUN dnf -y --setopt=install_weak_deps=False install \
         /usr/share/system-config-printer/system-config-printer.py)" = 2 \
     && python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' \
         /usr/share/system-config-printer/system-config-printer.py
+
+# Rede e sessão: o que o dia a dia de uso pede e a base não traz.
+#
+# tailscale: a VPN em malha usada para chegar às outras máquinas. Vem do
+# Fedora; o tailscaled é habilitado adiante, e a máquina entra na rede com
+# 'sudo tailscale up' uma vez.
+#
+# nm-connection-editor: o painel do Noctalia conecta em Wi-Fi e cabo, mas não
+# configura IP fixo, hotspot, VPN nem Wi-Fi corporativo. Isso fica aqui.
+#
+# gcr: o agente SSH do GNOME (gcr-ssh-agent). Guarda a senha da chave no
+# chaveiro, que o login já destrava, e define o SSH_AUTH_SOCK para a sessão.
+# Sem agente, cada 'git push' pede a senha da chave, e o VS Code, que não tem
+# onde perguntar, falha. O gnome-keyring deixou de ser agente SSH; o papel
+# passou para o gcr. O socket é habilitado para todo usuário adiante.
+#
+# xdg-terminal-exec: é por ele que o GLib descobre o terminal para abrir um
+# programa de terminal (btop, nvim) pelo Nautilus ou pelo "Abrir com". A
+# lista embutida no GLib não conhece o foot, e sem isto a ação simplesmente
+# não acontece. O foot é declarado em /etc/xdg/xdg-terminals.list.
+RUN dnf -y --setopt=install_weak_deps=False install \
+        tailscale \
+        nm-connection-editor \
+        gcr \
+        xdg-terminal-exec \
+    && dnf clean all
 
 # Login: greetd + tuigreet, só repositórios Fedora.
 #
@@ -351,6 +400,22 @@ COPY files/ /
 # futuras atualizações da imagem.
 RUN ln -sf ../usr/share/zoneinfo/America/Sao_Paulo /etc/localtime
 
+# Menu de aplicativos: o que aparece e não deveria.
+#
+# O foot traz três entradas (o terminal, o modo servidor e o cliente dele), e
+# só a primeira serve para abrir pelo menu. A do Noctalia inicia o shell, que o
+# niri já inicia no login: clicada, não faz nada. No lugar dela entra
+# "Configurações do Noctalia" (arkmos-noctalia-settings.desktop), que é o que se
+# espera achar ali. NoDisplay tira do menu sem apagar o arquivo, que outros
+# programas ainda consultam. Cada troca é conferida: se um pacote renomear o
+# arquivo, o build falha em vez de a entrada voltar ao menu sem ninguém notar.
+RUN for f in foot-server footclient dev.noctalia.Noctalia; do \
+        sed -i '/^\[Desktop Entry\]$/a NoDisplay=true' "/usr/share/applications/$f.desktop" \
+        && grep -qx 'NoDisplay=true' "/usr/share/applications/$f.desktop" \
+        || exit 1; \
+    done \
+    && desktop-file-validate /usr/share/applications/arkmos-noctalia-settings.desktop
+
 # O banco de sistema do dconf é um binário compilado a partir dos arquivos em
 # /etc/dconf/db/local.d. Sem este passo, os arquivos ficam na imagem e não têm
 # efeito nenhum — o tema continuaria claro e nada indicaria o motivo.
@@ -396,6 +461,22 @@ json.dump(d, open(p, "w"), indent=4)' "$ARKMOS_REGISTRY" \
         rm -f /etc/containers/registries.d/arkmos.yaml; \
     fi
 
+# O servidor SSH fica desligado. A base o habilita, e com a zona de firewall
+# que o libera, numa rede Wi-Fi pública qualquer um tentaria entrar com senha.
+# Desabilitar aqui não basta: o /etc/machine-id nasce vazio, o systemd trata o
+# primeiro boot como tal e reaplica os presets, e o 90-default.preset do Fedora
+# o habilitaria de novo. O 10-arkmos.preset vem antes e vence. A VM de teste o
+# liga pela linha de boot (config.toml), sem mudar a imagem.
+#
+# A zona padrão do firewall é a FedoraWorkstation, a do Fedora Workstation:
+# portas altas liberadas na rede local, o que o LocalSend (53317) e um servidor
+# de desenvolvimento acessado pelo celular precisam. A 'public', que vinha da
+# base, bloqueia os dois sem avisar.
+#
+# O agente SSH do gcr é habilitado para todo usuário, com --global: o socket
+# nasce com a sessão e define o SSH_AUTH_SOCK no systemd --user, de onde o niri
+# e tudo o que ele abre herdam.
+#
 # A grub-boot-success é mascarada, e não é frescura: o preset do Fedora a
 # habilita para todo usuário, ela roda 'grub2-set-bootflag boot_success' dois
 # minutos depois do login, e num sistema bootc o /boot é somente leitura —
@@ -408,6 +489,10 @@ RUN chmod 0755 /usr/libexec/arkmos-firstboot /usr/libexec/arkmos-greeter \
                 /usr/bin/arkmos-diag \
     && systemctl enable arkmos-firstboot.service \
     && systemctl enable arkmos-flatpak-preinstall.service \
+    && systemctl enable tailscaled.service \
+    && systemctl disable sshd.service \
+    && systemctl --global enable gcr-ssh-agent.socket \
+    && firewall-offline-cmd --set-default-zone=FedoraWorkstation \
     && systemctl enable docker.service \
     && systemctl enable greetd.service \
     && systemctl --global mask grub-boot-success.timer grub-boot-success.service

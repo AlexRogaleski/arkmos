@@ -21,6 +21,17 @@ path = "/usr/share/backgrounds/arkmos/arkmos.webp"
 [shell.greeter_sync]
 auto_sync = true
 
+# O Noctalia vem com toda ação por inatividade desligada: a tela nunca
+# bloqueia nem apaga sozinha. Aqui ligam o bloqueio e a tela apagada, com os
+# tempos do próprio Noctalia (10 e 11 minutos). A suspensão fica desligada, para
+# não interromper um build ou um download longo; fechar a tampa já bloqueia
+# antes de suspender (lock_before_suspend, ligado por padrão).
+[idle.behavior.lock]
+enabled = true
+
+[idle.behavior.screen-off]
+enabled = true
+
 # Capturas na mesma pasta das do niri (screenshot-path em /etc/niri/config.kdl).
 # Sem isto o Noctalia salva direto em ~/Imagens, e as capturas ficariam
 # divididas entre duas pastas conforme a tecla usada.

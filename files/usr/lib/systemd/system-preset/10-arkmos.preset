@@ -1,0 +1,13 @@
+# Arkmos — presets de serviço.
+#
+# O /etc/machine-id da imagem nasce vazio, e por isso o systemd trata o
+# primeiro boot como tal e reaplica os presets. O primeiro arquivo que
+# menciona uma unit decide por ela, e este vem antes do 90-default.preset do
+# Fedora. Ver o Containerfile, na etapa que habilita os serviços.
+
+# O Fedora habilita; aqui ele fica desligado. A VM de teste o liga pela linha
+# de boot (config.toml).
+disable sshd.service
+
+enable tailscaled.service
+enable arkmos-flatpak-preinstall.service

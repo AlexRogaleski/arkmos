@@ -17,10 +17,10 @@ O objetivo não é publicar uma distribuição. É que a configuração da máqu
 | --- | --- |
 | Base | Fedora 44 bootc sobre o [Universal Blue](https://universal-blue.org), Btrfs, SELinux enforcing |
 | Desktop | [niri](https://github.com/niri-wm/niri) (compositor), [Noctalia](https://github.com/noctalia-dev/noctalia) (shell), [Noctalia Greeter](https://github.com/noctalia-dev/noctalia-greeter) (login), Nautilus, Discos, gerenciador de compactação |
-| Terminal | [foot](https://codeberg.org/dnkl/foot), zsh com configuração própria, [starship](https://starship.rs), JetBrains Mono Nerd Font |
+| Terminal | [foot](https://codeberg.org/dnkl/foot), zsh com configuração própria, [starship](https://starship.rs), JetBrains Mono Nerd Font, btop |
 | Desenvolvimento | VS Code, Docker CE + compose, Podman, Distrobox, [mise](https://mise.jdx.dev), Git, Neovim, lazygit, lazydocker |
 | Aplicativos | Flatpaks do Flathub, instalados sozinhos no primeiro boot e mantidos pela lista da imagem: Chrome, Thunderbird, OnlyOffice, Papers, Loupe, Showtime e outros |
-| Sistema | PipeWire, NetworkManager, BlueZ, CUPS com assistente de impressão, TuneD, Flatpak |
+| Sistema | PipeWire, NetworkManager, Tailscale, BlueZ, CUPS com assistente de impressão, TuneD, Flatpak |
 | Localização | pt_BR.UTF-8, teclado ABNT2, `America/Sao_Paulo` |
 
 Docker CE e VS Code estão **na imagem**, e não como `podman-docker` e Flatpak, por causa do [Laravel Sail](https://laravel.com/docs/sail): ele é dirigido inteiramente por `docker compose`, e no sandbox do Flatpak o terminal integrado não enxerga o docker do host.
