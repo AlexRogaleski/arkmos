@@ -708,52 +708,31 @@ O grupo `docker` é declarado em `files/usr/lib/sysusers.d/arkmos-docker.conf`, 
 
 # 16. Ambientes Distrobox
 
-## Fedora Mobile
+A imagem entrega a ferramenta, e não os ambientes: `distrobox` e `podman`, que vêm da base, e o DistroShelf (Flatpak) para gerenciar os containers pela interface.
 
-Container planejado:
+Os containers em si **não são declarados neste repositório**. Ficam num repositório privado do usuário, recriados a partir de lá com `distrobox assemble`. Três motivos:
 
-```text
-fedora-mobile
-```
-
-Responsável por:
-
-- Android Studio;
-- Android SDK;
-- Android Emulator;
-- Flutter;
-- Dart;
-- FVM;
-- JDK;
-- Gradle.
-
-## Ubuntu Database
-
-Container planejado:
-
-```text
-ubuntu-db
-```
-
-Responsável principalmente por:
-
-```text
-MySQL Workbench
-```
-
-## Aplicativos que não podem ir na imagem
-
-Container em uso:
-
-```text
-fedora-app
-```
-
-Responsável pelos aplicativos cuja licença não permite redistribuição — hoje, o Insync. Os termos dele concedem uma licença "non-transferable, without the right to sublicense" e proíbem distribuir o software. Como a imagem do Arkmos é pública no GHCR, colocá-lo nela seria redistribuí-lo. No container, quem instala é o próprio usuário, e o atalho chega ao desktop por `distrobox-export`.
+- **São escolhas pessoais.** Quais ferramentas, de qual distribuição, em qual versão: nada disso é o sistema, e o repositório e a imagem são públicos.
+- **Um deles guarda software que não pode ser redistribuído.** O Insync tem licença "non-transferable, without the right to sublicense", que proíbe distribuí-lo. Declarar o container publicamente não o redistribuiria, mas misturaria no repositório do sistema algo que só faz sentido na conta de uma pessoa.
+- **Não moram na imagem de qualquer forma.** Um container Distrobox vive no storage do usuário, em `~/.local/share/containers`, e sobrevive a `bootc upgrade` e a rollback sem depender da imagem.
 
 A regra vale além do Insync: software proprietário que a licença impede de redistribuir fica fora da imagem, mesmo que seja de uso diário.
 
-Nenhum dos três está declarado no repositório — ver seção 36.
+## O que a imagem garante para esses ambientes
+
+Os ambientes em uso hoje servem de referência do que a imagem precisa suportar:
+
+| Container | Para |
+| --- | --- |
+| `fedora-app` | Insync |
+| `fedora-mobile` | Android Studio com emulador, SDK, Flutter, Dart, FVM, JDK, Gradle |
+| `ubuntu-db` | MySQL Workbench |
+
+E o que eles precisam do sistema, verificado na imagem:
+
+- **Emulador Android:** o `/dev/kvm` é liberado para todos (`MODE="0666"`, na regra padrão do udev do systemd).
+- **Celular por USB para o `adb`:** o `70-uaccess.rules` do systemd libera dispositivos ADB e fastboot ao usuário logado. O `adb` de dentro do container enxerga o celular sem regra extra no host.
+- **Atalhos no menu:** `distrobox-export --app` põe o aplicativo do container no lançador do Noctalia.
 
 ---
 
@@ -1020,7 +999,7 @@ Onde fica cada aplicativo em uso:
 | Fedora Media Writer, LocalSend, Galaxy Buds Client, Mecalin | Flatpak |
 | Monitor de sistema: btop, no lugar do htop da base | imagem |
 | Flatseal, Warehouse, Bazaar (loja), Embellish (Nerd Fonts), DistroShelf (Distrobox) | Flatpak |
-| Insync, Android Studio com emulador, MySQL Workbench | Distrobox (seção 16) |
+| Insync, Android Studio com emulador, MySQL Workbench | Distrobox, declarado num repositório privado (seção 16) |
 | Tolaria, Tabularis | AppImage, pelo AppManager |
 | Captura de tela com anotação | Noctalia, no `Shift+Print` |
 
@@ -1910,16 +1889,15 @@ travamento antes do assistente no primeiro boot em VM — visto uma vez em
 
 2. Definir a identidade visual (seção 26): escolher o esquema — Tokyo Night ou Dracula, os dois embutidos no Noctalia — e o wallpaper definitivo.
 3. Configurar o Noctalia: barra, dock, notificações, tela de bloqueio.
-4. Declarar os containers Distrobox (`fedora-mobile`, `ubuntu-db`, `fedora-app`).
 
 ## Longo prazo
 
-5. Snapper/Btrfs snapshots.
-6. Avaliar Limine.
-7. Validar instalação em hardware real.
-8. Documentar recuperação.
-9. Definir política de atualização/rollback.
-10. Estabilizar a versão 1.0.0.
+4. Snapper/Btrfs snapshots.
+5. Avaliar Limine.
+6. Validar instalação em hardware real.
+7. Documentar recuperação.
+8. Definir política de atualização/rollback.
+9. Estabilizar a versão 1.0.0.
 
 ---
 
