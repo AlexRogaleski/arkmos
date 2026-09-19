@@ -10,6 +10,10 @@
 # Os tipos são os que cada aplicativo declara no próprio .desktop. O TIFF,
 # declarado pelos dois, fica com o visualizador de imagens.
 #
+# Texto vai para o VS Code, que está na imagem. O padrão do Fedora para
+# text/plain é o nvim, um programa de terminal: o clique duplo num .txt abriria
+# um terminal em vez de um editor.
+#
 # /etc/xdg vence /usr/share/applications, e perde para o ~/.config/mimeapps.list
 # de cada conta: o "Abrir com" do Nautilus continua mudando o padrão.
 
@@ -103,3 +107,12 @@ video/x-nsv=org.gnome.Showtime.desktop
 video/x-ogm+ogg=org.gnome.Showtime.desktop
 video/x-theora=org.gnome.Showtime.desktop
 video/x-theora+ogg=org.gnome.Showtime.desktop
+text/plain=code.desktop
+text/markdown=code.desktop
+text/x-log=code.desktop
+application/json=code.desktop
+application/xml=code.desktop
+application/x-yaml=code.desktop
+application/toml=code.desktop
+application/x-shellscript=code.desktop
+text/x-python=code.desktop

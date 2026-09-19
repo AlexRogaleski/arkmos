@@ -62,10 +62,6 @@ Branch=stable
 [Flatpak Preinstall org.gnome.Calculator]
 Branch=stable
 
-# Monitor de sistema
-[Flatpak Preinstall io.missioncenter.MissionCenter]
-Branch=stable
-
 # Gravar ISO em pendrive
 [Flatpak Preinstall org.fedoraproject.MediaWriter]
 Branch=stable

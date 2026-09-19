@@ -583,8 +583,9 @@ assert os.path.exists("/etc/flatpak/remotes.d/flathub.flatpakrepo"), "Flathub n�
 m = configparser.ConfigParser(interpolation=None, delimiters=("=",))
 m.read("/etc/xdg/mimeapps.list")
 alvos = {v.split(";")[0].removesuffix(".desktop") for v in m["Default Applications"].values()}
-fora = alvos - set(apps)
-assert not fora, "padrão aponta para app fora da lista: " + ", ".join(sorted(fora))
+na_imagem = {a for a in alvos if os.path.exists("/usr/share/applications/%s.desktop" % a)}
+fora = alvos - set(apps) - na_imagem
+assert not fora, "padrão aponta para app que não está nem na lista nem na imagem: " + ", ".join(sorted(fora))
 '
 
 # A libfuse.so.2 não vem da base. Sem ela, um AppImage de runtime clássico
@@ -604,6 +605,58 @@ check "capturas de tela na mesma pasta, em português" \
         grep -q "Shift+Print .*screenshot-annotate" /etc/niri/config.kdl \
             || { echo "sem atalho para captura com anotação"; exit 1; }
     '
+
+# O que o uso diário pede e a base não traz. Cada item falha em silêncio:
+# celular que não aparece no Nautilus, arquivo do celular que um Flatpak não
+# abre, PDF sem miniatura, programa de terminal que não abre pelo Nautilus,
+# documento do Word desalinhado.
+check "componentes de uso diário presentes" \
+    run sh -c '
+        rpm -q gvfs-mtp gvfs-smb gvfs-fuse sushi papers-thumbnailer tailscale \
+               nm-connection-editor gcr xdg-terminal-exec btop \
+               google-carlito-fonts google-crosextra-caladea-fonts >/dev/null \
+            || { rpm -q gvfs-mtp gvfs-smb gvfs-fuse sushi papers-thumbnailer tailscale \
+                        nm-connection-editor gcr xdg-terminal-exec btop \
+                        google-carlito-fonts google-crosextra-caladea-fonts | grep "not installed"; exit 1; }
+        ! rpm -q htop >/dev/null 2>&1 || { echo "o htop deveria ter saído"; exit 1; }
+        grep -qx foot.desktop /etc/xdg/xdg-terminals.list || { echo "foot não é o terminal padrão"; exit 1; }
+    '
+
+# O lançador e o bloqueio têm de ser os do Noctalia: a configuração de exemplo
+# do niri apontava para fuzzel e swaylock, e o lançador do Noctalia ficava sem
+# atalho nenhum.
+check "lançador e bloqueio nos atalhos do Noctalia" \
+    run sh -c '
+        grep -q "^ *Mod+D .*spawn \"noctalia\" \"msg\" \"panel-toggle\" \"launcher\"" /etc/niri/config.kdl \
+            || { echo "Mod+D não abre o lançador do Noctalia"; exit 1; }
+        grep -q "^ *Super+Alt+L .*\"session\" \"lock\"" /etc/niri/config.kdl \
+            || { echo "sem atalho de bloqueio"; exit 1; }
+        ! grep -q "^ *[^/]*spawn \"fuzzel\"" /etc/niri/config.kdl || { echo "ainda há atalho para o fuzzel"; exit 1; }
+    '
+
+# Entradas de menu que não servem para abrir: o modo servidor e o cliente do
+# foot, e a do Noctalia, que inicia um shell já iniciado pelo niri e, clicada,
+# não faz nada. As configurações do Noctalia entram no lugar dela.
+check "menu sem entradas que não abrem nada" \
+    run sh -c '
+        for f in foot-server footclient dev.noctalia.Noctalia; do
+            grep -qx "NoDisplay=true" "/usr/share/applications/$f.desktop" \
+                || { echo "$f.desktop continua no menu"; exit 1; }
+        done
+        grep -q "^Exec=.*noctalia msg settings-open" /usr/share/applications/arkmos-noctalia-settings.desktop \
+            || { echo "sem a entrada das configurações do Noctalia"; exit 1; }
+    '
+
+# O Noctalia vem com toda ação por inatividade desligada: sem isto, a tela
+# nunca bloqueia nem apaga sozinha.
+check "bloqueio por inatividade ligado para conta nova" \
+    run python3 -c '
+import tomllib
+c = tomllib.load(open("/etc/skel/.config/noctalia/arkmos.toml", "rb"))
+b = c["idle"]["behavior"]
+assert b["lock"]["enabled"] is True, "bloqueio por inatividade desligado"
+assert b["screen-off"]["enabled"] is True, "tela apagada por inatividade desligada"
+'
 
 # --- tmpfiles --------------------------------------------------------------
 
@@ -635,7 +688,7 @@ check "podman-docker ausente" \
 
 check "serviços habilitados" \
     run sh -c '
-        for u in arkmos-firstboot.service arkmos-flatpak-preinstall.service docker.service greetd.service; do
+        for u in arkmos-firstboot.service arkmos-flatpak-preinstall.service tailscaled.service docker.service greetd.service; do
             state=$(systemctl is-enabled "$u" 2>&1)
             [ "$state" = enabled ] || { echo "$u esta \"$state\""; exit 1; }
         done
@@ -659,6 +712,24 @@ check "política de assinatura coerente" \
         fi
         exit 0
     '
+
+# Desabilitar o sshd na imagem não basta: o primeiro boot reaplica os presets
+# (o /etc/machine-id nasce vazio), e o 90-default.preset do Fedora o
+# habilitaria. A coluna PRESET mostra o que o primeiro boot vai decidir.
+check "servidor SSH desligado, também no preset" \
+    run sh -c '
+        estado=$(systemctl list-unit-files --no-legend sshd.service | awk "{print \$2, \$3}")
+        [ "$estado" = "disabled disabled" ] || { echo "sshd.service: estado e preset = $estado"; exit 1; }
+    '
+
+# A zona 'public' que vinha da base bloqueia o LocalSend e um servidor de dev
+# acessado pelo celular, e não avisa.
+check "firewall na zona FedoraWorkstation" \
+    run sh -c '[ "$(firewall-offline-cmd --get-default-zone 2>/dev/null)" = FedoraWorkstation ]'
+
+# Sem agente SSH, cada 'git push' pede a senha da chave e o VS Code falha.
+check "agente SSH do gcr habilitado para as sessões" \
+    run sh -c '[ "$(systemctl --global is-enabled gcr-ssh-agent.socket 2>&1)" = enabled ]'
 
 check "greetd é o display-manager" \
     run sh -c 'readlink /etc/systemd/system/display-manager.service | grep -q greetd'

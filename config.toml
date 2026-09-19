@@ -18,8 +18,11 @@ minsize = "40 GiB"
 
 # O builder acrescenta console=tty0 console=ttyS0 na linha de boot do qcow2. Com
 # console serial o Plymouth alterna entre o splash e o modo texto de reserva, e
-# o que aparece muda a cada boot. Isto faz o Plymouth ignorar o serial e
-# desenhar o splash na tela da VM, como numa máquina real. O console serial
-# continua funcionando (View → serial0 na janela do QEMU).
+# o que aparece muda a cada boot. O plymouth.ignore-serial-consoles faz o
+# Plymouth ignorar o serial e desenhar o splash na tela da VM, como numa máquina
+# real. O console serial continua funcionando (View → serial0 na janela do QEMU).
+#
+# O systemd.wants=sshd.service liga o servidor SSH só nesta VM: a imagem o
+# deixa desligado, e é por ele que o 'just run-vm' oferece ssh na porta 2222.
 [customizations.kernel]
-append = "plymouth.ignore-serial-consoles"
+append = "plymouth.ignore-serial-consoles systemd.wants=sshd.service"
