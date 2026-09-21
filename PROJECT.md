@@ -925,7 +925,7 @@ Objetivos: gerenciamento de performance, perfis de energia, autonomia em noteboo
 
 Os diretórios que o tuned espera em `/var` são declarados em `tmpfiles.d` e não assados na imagem — ver seção 3.4.
 
-**Bloqueio por inatividade.** O Noctalia vem com toda ação por inatividade desligada: a tela nunca bloqueava nem apagava sozinha. O `arkmos.toml` do skel liga o bloqueio e a tela apagada, com os tempos do próprio Noctalia (10 e 11 minutos). A suspensão por inatividade fica desligada, para não interromper um build ou um download longo; fechar a tampa já bloqueia antes de suspender (`lock_before_suspend`, ligado por padrão). Como é skel, vale para conta nova. Os tempos se mudam nas configurações do Noctalia (`noctalia msg settings-open`, seção de inatividade), que gravam em `~/.local/state/noctalia/settings.toml` e vencem o padrão.
+**Bloqueio por inatividade.** O Noctalia vem com toda ação por inatividade desligada: a tela nunca bloqueava nem apagava sozinha. O `arkmos.toml` do skel liga o bloqueio e a tela apagada, com os tempos do próprio Noctalia (10 e 11 minutos). Cada ação é declarada inteira — ação e tempo, não só `enabled` —, porque o Noctalia **substitui** o bloco em vez de mesclá-lo com o padrão: declarar só `enabled = true` deixava a ação vazia e o tempo em zero, ligado e sem efeito, sem erro nenhum. O `just check` confere a configuração efetiva, como o Noctalia a lê, e não o arquivo. A suspensão por inatividade fica desligada, para não interromper um build ou um download longo; fechar a tampa já bloqueia antes de suspender (`lock_before_suspend`, ligado por padrão). Como é skel, vale para conta nova. Os tempos se mudam nas configurações do Noctalia (`noctalia msg settings-open`, seção de inatividade), que gravam em `~/.local/state/noctalia/settings.toml` e vencem o padrão.
 
 ---
 
@@ -1034,6 +1034,14 @@ A lista também leva a extensão de tema `org.gtk.Gtk3theme.adw-gtk3-dark`, como
 Arquivos de texto (`text/plain`, Markdown, JSON, YAML, TOML, scripts) abrem no VS Code. O padrão do Fedora para `text/plain` é o nvim, um programa de terminal: o clique duplo num `.txt` abria um terminal, ou nada.
 
 Os tipos de mídia são os que cada aplicativo declara no próprio `.desktop`. O `just check` confere que todo padrão aponta para um aplicativo da lista de preinstall ou da imagem. O "Abrir com" do Nautilus continua mudando o padrão da conta, porque `~/.config/mimeapps.list` vence o de `/etc/xdg`.
+
+### Os Flatpaks precisam estar no XDG_DATA_DIRS da sessão
+
+O Fedora só acrescenta as pastas do Flatpak ao `XDG_DATA_DIRS` pelo `/etc/profile.d/flatpak.sh`, que roda em shell de login. O `systemd --user`, que inicia a sessão gráfica, não passa por lá: o niri e tudo o que ele abre nasciam com `XDG_DATA_DIRS=/usr/local/share:/usr/share`.
+
+A consequência não dá erro em lugar nenhum. O Nautilus não encontra aplicativo capaz de abrir o arquivo, e o clique duplo numa imagem, num PDF ou num vídeo não faz nada — com o Flatpak instalado e o padrão declarado no `mimeapps.list`. O lançador do Noctalia não sofria com isso, porque procura os aplicativos por conta própria; foi assim que o sintoma apareceu como "abre pelo menu, não abre pelo arquivo".
+
+O `files/usr/lib/environment.d/20-arkmos-flatpak.conf` declara a lista completa para o `systemd --user`, na mesma ordem do `flatpak.sh`. O `profile.d` continua valendo para os shells e não duplica o que já estiver lá.
 
 ### Menu de aplicativos
 
@@ -1700,6 +1708,7 @@ arkmos/
     └── usr/
         ├── lib/
         │   ├── bootc/install/     filesystem raiz
+        │   ├── environment.d/     locale e XDG_DATA_DIRS do systemd --user
         │   ├── bootc/kargs.d/     argumentos de kernel
         │   ├── systemd/system/    firstboot, preinstall de Flatpaks, drop-ins
         │   ├── systemd/system-preset/  sshd desligado, tailscaled ligado

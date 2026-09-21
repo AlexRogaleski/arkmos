@@ -26,11 +26,26 @@ auto_sync = true
 # tempos do próprio Noctalia (10 e 11 minutos). A suspensão fica desligada, para
 # não interromper um build ou um download longo; fechar a tampa já bloqueia
 # antes de suspender (lock_before_suspend, ligado por padrão).
+# Cada bloco declara a ação e o tempo inteiros de propósito: o Noctalia
+# SUBSTITUI o bloco, não mescla com o padrão dele. Declarar só 'enabled = true'
+# deixava a ação vazia e o tempo em zero, que é o mesmo que desligado — e sem
+# erro nenhum. Os valores abaixo são os padrões do próprio Noctalia.
 [idle.behavior.lock]
 enabled = true
+action = "lock"
+timeout = 600.0
 
 [idle.behavior.screen-off]
 enabled = true
+action = "screen_off"
+timeout = 660.0
+
+# Declarada desligada para continuar aparecendo nas configurações do Noctalia,
+# junto das outras duas.
+[idle.behavior.lock-and-suspend]
+enabled = false
+action = "lock_and_suspend"
+timeout = 900.0
 
 # Capturas na mesma pasta das do niri (screenshot-path em /etc/niri/config.kdl).
 # Sem isto o Noctalia salva direto em ~/Imagens, e as capturas ficariam

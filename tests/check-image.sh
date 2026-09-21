@@ -647,16 +647,42 @@ check "menu sem entradas que não abrem nada" \
             || { echo "sem a entrada das configurações do Noctalia"; exit 1; }
     '
 
-# O Noctalia vem com toda ação por inatividade desligada: sem isto, a tela
-# nunca bloqueia nem apaga sozinha.
+# A sessão gráfica não passa pelo /etc/profile.d, então sem isto o niri e tudo
+# o que ele abre nascem sem as pastas do Flatpak no XDG_DATA_DIRS: o Nautilus
+# não encontra aplicativo para o tipo do arquivo e o clique duplo numa imagem,
+# num PDF ou num vídeo não faz nada, sem erro nenhum.
+check "sessão enxerga os Flatpaks (XDG_DATA_DIRS)" \
+    run sh -c '
+        v=$(sed -n "s/^XDG_DATA_DIRS=//p" /usr/lib/environment.d/20-arkmos-flatpak.conf)
+        case "$v" in
+            *"/var/lib/flatpak/exports/share"*) ;;
+            *) echo "sem a instalação de sistema do Flatpak: $v"; exit 1 ;;
+        esac
+        case "$v" in
+            *"flatpak/exports/share:"*"/usr/share") ;;
+            *) echo "XDG_DATA_DIRS não termina nos diretórios padrão: $v"; exit 1 ;;
+        esac
+    '
+
+# O Noctalia vem com toda ação por inatividade desligada. E ele SUBSTITUI o
+# bloco de cada ação em vez de mesclar com o padrão: declarar só
+# "enabled = true" deixava a ação vazia e o tempo em zero — ligado e sem
+# efeito, sem erro nenhum. Por isso a verificação olha a configuração efetiva,
+# como o Noctalia a lê, e não o arquivo.
 check "bloqueio por inatividade ligado para conta nova" \
-    run python3 -c '
+    run sh -c '
+        mkdir -p /tmp/h/.config && cp -r /etc/skel/.config/noctalia /tmp/h/.config/
+        HOME=/tmp/h noctalia config export full 2>/dev/null > /tmp/efetivo.toml
+        python3 /dev/stdin <<PY
 import tomllib
-c = tomllib.load(open("/etc/skel/.config/noctalia/arkmos.toml", "rb"))
+c = tomllib.load(open("/tmp/efetivo.toml", "rb"))
 b = c["idle"]["behavior"]
-assert b["lock"]["enabled"] is True, "bloqueio por inatividade desligado"
-assert b["screen-off"]["enabled"] is True, "tela apagada por inatividade desligada"
-'
+for nome, acao in (("lock", "lock"), ("screen-off", "screen_off")):
+    assert b[nome]["enabled"] is True, nome + ": desligado"
+    assert b[nome]["action"] == acao, nome + ": ação " + repr(b[nome]["action"])
+    assert b[nome]["timeout"] > 0, nome + ": tempo zerado"
+PY
+    '
 
 # --- tmpfiles --------------------------------------------------------------
 
