@@ -1879,19 +1879,30 @@ assistente de impressão abrindo, com o Desbloquear afastado da borda
 mise sem oferecer atualização que não consegue fazer
 ícones Papirus-Dark com pastas violeta, e ícones de ferramenta claros
 avatar trocado pelo Centro de controle do Noctalia
+instalação dos 22 Flatpaks pelo preinstall no primeiro boot (o Papers exigiu o
+  runtime GNOME 51, publicado no mesmo dia, e só abriu depois dele)
+aplicativos padrão no clique duplo: imagem, PDF e vídeo, depois do
+  XDG_DATA_DIRS da sessão
+bloqueio de tela por inatividade, com o arkmos.toml atualizado na conta
+atalhos do Noctalia: lançador no Mod+D, bloqueio no Super+Alt+L
+menu sem as entradas que não abrem nada, com Configurações do Noctalia, e btop
+  abrindo pelo menu (terminal padrão pelo xdg-terminal-exec)
+Distrobox criando, entrando e removendo container; docker run sem sudo
+firewall na zona FedoraWorkstation; sshd ativo só pela linha de boot da VM
+  (enabled-runtime); SSH_AUTH_SOCK do gcr na sessão; tailscale instalado
+bootc switch da imagem local (localhost/arkmos:dev) para a publicada
 ```
 
 ## 35.3 Não validado ainda
 
 ```text
 aparência conferida item a item (prefer-no-csd, tema escuro, terminal)
-docker em uso real / Laravel Sail
+Laravel Sail em uso real
 instalação em hardware real
 cadastro de uma impressora de verdade
-instalação dos Flatpaks pelo preinstall no primeiro boot, e a remoção de um
-  item retirado da lista depois de um bootc upgrade
+remoção de um Flatpak retirado da lista depois de um bootc upgrade
 celular por USB no Nautilus, agente SSH num git push, tailscale up,
-  LocalSend recebendo, bloqueio por inatividade, atalhos do lançador
+  LocalSend recebendo
 travamento antes do assistente no primeiro boot em VM — visto uma vez em
   2026-09-15, com a janela GTK/GL; não reproduzido no boot seguinte
 ```
