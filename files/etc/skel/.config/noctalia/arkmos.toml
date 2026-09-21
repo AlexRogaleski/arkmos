@@ -23,8 +23,12 @@ mode = "dark"
 # Programas que passam a seguir a paleta do Noctalia. A cada troca de esquema
 # ele reescreve o arquivo de cores de cada um e avisa o programa:
 #
-#   gtk3, gtk4   ~/.config/gtk-{3.0,4.0}/noctalia.css, importado no gtk.css
-#   btop         ~/.config/btop/themes/noctalia.theme, selecionado no btop.conf
+#   gtk3, gtk4     ~/.config/gtk-{3.0,4.0}/noctalia.css, importado no gtk.css
+#   btop           ~/.config/btop/themes/noctalia.theme, no btop.conf
+#   kcolorscheme   ~/.local/share/color-schemes/noctalia.colors, apontado no
+#                  kdeglobals — é por ele que aplicativo Qt/KDE lê cor de
+#                  sistema, inclusive em Flatpak (o Fedora Media Writer, da
+#                  nossa lista, pede justamente o kdeglobals da conta)
 #
 # Só entram os que escrevem em arquivo que o Arkmos não entrega. Os templates
 # de foot e de niri ficam de fora de propósito: os dois criam configuração na
@@ -33,7 +37,7 @@ mode = "dark"
 # imagem. O terminal já é Tokyo Night pelo tema do próprio foot, e o anel de
 # foco do niri usa o roxo do esquema, fixos (seção 26.1 do PROJECT.md).
 [theme.templates]
-builtin_ids = [ "gtk3", "gtk4", "btop" ]
+builtin_ids = [ "gtk3", "gtk4", "btop", "kcolorscheme" ]
 
 # A pasta que a lista de papéis de parede do Noctalia mostra. São os do próprio
 # Arkmos, gerados por IA pelo autor do projeto, mais o arkmos.webp que o

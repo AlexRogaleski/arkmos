@@ -470,7 +470,8 @@ check "Flatpaks podem ler o tema da conta" \
     run sh -c '
         grep -q "^filesystems=.*xdg-config/gtk-3.0:ro" /usr/share/arkmos/flatpak-overrides/global \
             && grep -q "^filesystems=.*xdg-config/gtk-4.0:ro" /usr/share/arkmos/flatpak-overrides/global \
-            || { echo "override sem acesso ao gtk-3.0/gtk-4.0"; exit 1; }
+            && grep -q "^filesystems=.*xdg-config/kdeglobals:ro" /usr/share/arkmos/flatpak-overrides/global \
+            || { echo "override sem acesso a gtk-3.0, gtk-4.0 ou kdeglobals"; exit 1; }
         grep -q "^C /var/lib/flatpak/overrides/global .* /usr/share/arkmos/flatpak-overrides/global$" \
             /usr/lib/tmpfiles.d/arkmos.conf \
             || { echo "o tmpfiles não copia o override para /var"; exit 1; }
@@ -490,7 +491,8 @@ check "templates de paleta: certos ligados, perigosos fora" \
 import tomllib
 c = tomllib.load(open("/etc/skel/.config/noctalia/arkmos.toml", "rb"))
 ids = set(c["theme"]["templates"]["builtin_ids"])
-assert {"gtk3", "gtk4", "btop"} <= ids, "faltando: " + str({"gtk3", "gtk4", "btop"} - ids)
+esperados = {"gtk3", "gtk4", "btop", "kcolorscheme"}
+assert esperados <= ids, "faltando: " + str(esperados - ids)
 proibidos = ids & {"foot", "niri"}
 assert not proibidos, "template que sobrescreve config do sistema: " + ", ".join(sorted(proibidos))
 '

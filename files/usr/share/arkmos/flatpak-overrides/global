@@ -6,9 +6,14 @@
 # importado pelo gtk.css). Alguns aplicativos já pedem esse acesso no próprio
 # manifesto; a maioria não pede, e fica com as cores do runtime.
 #
-# Somente leitura, e só esses dois diretórios: o que há neles é tema.
+# O kdeglobals entra pelo mesmo motivo, para o lado Qt/KDE: é de lá que esses
+# aplicativos leem cor de sistema, e o template kcolorscheme do Noctalia o
+# mantém apontado para a paleta. Vários já pedem esse acesso no manifesto; com
+# o override, vale para todos.
+#
+# Somente leitura, e só esses caminhos: o que há neles é tema.
 #
 # Copiado para /var/lib/flatpak/overrides/global pelo tmpfiles.d do Arkmos. É
 # cópia, e não symlink, para que 'flatpak override' continue funcionando.
 [Context]
-filesystems=xdg-config/gtk-3.0:ro;xdg-config/gtk-4.0:ro;
+filesystems=xdg-config/gtk-3.0:ro;xdg-config/gtk-4.0:ro;xdg-config/kdeglobals:ro;
