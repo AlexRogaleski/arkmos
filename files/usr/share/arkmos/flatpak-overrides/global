@@ -1,0 +1,14 @@
+# Arkmos — permissão extra para todo Flatpak.
+#
+# O sandbox tem o próprio /etc e o próprio XDG_CONFIG_HOME
+# (~/.var/app/<id>/config), então um Flatpak não vê o gtk.css da conta, que é
+# onde a paleta do Noctalia chega (~/.config/gtk-{3.0,4.0}/noctalia.css,
+# importado pelo gtk.css). Alguns aplicativos já pedem esse acesso no próprio
+# manifesto; a maioria não pede, e fica com as cores do runtime.
+#
+# Somente leitura, e só esses dois diretórios: o que há neles é tema.
+#
+# Copiado para /var/lib/flatpak/overrides/global pelo tmpfiles.d do Arkmos. É
+# cópia, e não symlink, para que 'flatpak override' continue funcionando.
+[Context]
+filesystems=xdg-config/gtk-3.0:ro;xdg-config/gtk-4.0:ro;

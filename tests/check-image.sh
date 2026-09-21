@@ -439,7 +439,66 @@ c = tomllib.load(open("/etc/skel/.config/noctalia/arkmos.toml", "rb"))
 p = c["wallpaper"]["default"]["path"]
 assert os.path.getsize(p) > 0, f"{p} vazio"
 assert c["shell"]["greeter_sync"]["auto_sync"] is True, "auto-sync do greeter desligado"
+
+# A pasta que a lista do Noctalia mostra. Caminho errado aqui também não dá
+# erro: a lista abre vazia.
+d = c["wallpaper"]["directory"]
+assert os.path.isdir(d), f"{d} não existe"
+assert os.path.dirname(p) == d.rstrip("/"), f"o padrão {p} está fora de {d}"
+imagens = [f for f in os.listdir(d) if not f.startswith(".")]
+assert len(imagens) >= 2, f"só {len(imagens)} imagem(ns) em {d}"
+
+# O esquema de cores: o nome é validado contra a lista do próprio Noctalia,
+# porque o validador dele aceita qualquer string e um nome errado cai no
+# padrão em silêncio.
+t = c["theme"]
+assert t["source"] == "builtin", "fonte da paleta: " + str(t["source"])
+assert t["builtin"] == "Tokyo-Night", "esquema: " + str(t["builtin"])
+assert t["mode"] == "dark", "modo: " + str(t["mode"])
 '
+
+# O esquema declarado tem de existir na lista de embutidos do binário: o
+# validador do Noctalia aceita qualquer nome, e um nome que ele não conhece cai
+# no padrão sem avisar.
+check "esquema Tokyo-Night existe no Noctalia" \
+    run sh -c 'grep -q -a Tokyo-Night /usr/bin/noctalia'
+
+# A paleta chega ao Flatpak pelo gtk.css da conta, que o sandbox não vê sem
+# esta permissão. Sem ela nada falha: o aplicativo só fica com as cores do
+# runtime.
+check "Flatpaks podem ler o tema da conta" \
+    run sh -c '
+        grep -q "^filesystems=.*xdg-config/gtk-3.0:ro" /usr/share/arkmos/flatpak-overrides/global \
+            && grep -q "^filesystems=.*xdg-config/gtk-4.0:ro" /usr/share/arkmos/flatpak-overrides/global \
+            || { echo "override sem acesso ao gtk-3.0/gtk-4.0"; exit 1; }
+        grep -q "^C /var/lib/flatpak/overrides/global .* /usr/share/arkmos/flatpak-overrides/global$" \
+            /usr/lib/tmpfiles.d/arkmos.conf \
+            || { echo "o tmpfiles não copia o override para /var"; exit 1; }
+    '
+
+# A cor de destaque dos aplicativos libadwaita. Sem ela eles ficam no azul
+# padrão, no meio de um sistema roxo.
+check "cor de destaque roxa no dconf" \
+    run sh -c 'grep -q "purple" /etc/dconf/db/local && DCONF_PROFILE=user dconf read /org/gnome/desktop/interface/accent-color | grep -q purple'
+
+# Os templates fazem outros programas seguirem a paleta. Dois deles são
+# proibidos aqui: os de foot e de niri criam configuração na conta do usuário,
+# e esses programas leem a do usuário EM VEZ da do sistema — o de niri
+# apagaria na prática os atalhos e o prefer-no-csd desta imagem.
+check "templates de paleta: certos ligados, perigosos fora" \
+    run python3 -c '
+import tomllib
+c = tomllib.load(open("/etc/skel/.config/noctalia/arkmos.toml", "rb"))
+ids = set(c["theme"]["templates"]["builtin_ids"])
+assert {"gtk3", "gtk4", "btop"} <= ids, "faltando: " + str({"gtk3", "gtk4", "btop"} - ids)
+proibidos = ids & {"foot", "niri"}
+assert not proibidos, "template que sobrescreve config do sistema: " + ", ".join(sorted(proibidos))
+'
+
+# O anel de foco é a cor que mais aparece na tela. O padrão do niri é um azul
+# claro que não pertence a esquema nenhum.
+check "anel de foco do niri no roxo do Tokyo Night" \
+    run sh -c 'grep -q "^ *active-color \"#bb9af7\"" /etc/niri/config.kdl'
 
 # O validate sai com 0 mesmo quando encontra chave desconhecida — e chave com
 # nome errado é justamente o erro provável, porque o Noctalia a ignora e segue.

@@ -1141,9 +1141,10 @@ prefer-no-csd no niri            decoração desenhada pelo compositor
 /etc/greetd/config.toml          tela de login com nome, cores e retorno ao digitar
 /usr/share/plymouth/themes/      splash de boot com o nome do sistema
   arkmos
-/usr/share/backgrounds/arkmos    wallpaper padrão, gerado no build
-/etc/skel/.config/noctalia/      wallpaper padrão e sync da tela de login
-  arkmos.toml
+/usr/share/backgrounds/arkmos    papéis de parede do projeto, mais o gerado
+                                 no build
+/etc/skel/.config/noctalia/      esquema Tokyo Night, papel de parede padrão,
+  arkmos.toml                    sync do login, bloqueio por inatividade
 ```
 
 ### Por que três lugares para a mesma coisa
@@ -1205,6 +1206,81 @@ Isto é um **default semeado**, não configuração imposta: a partir daí o arq
 
 O `just check` verifica as duas pontas: que o arquivo está na imagem com os valores que importam, e que o assistente de primeiro boot realmente o entrega no home.
 
+### Esquema de cores: Tokyo Night
+
+Escolhido em 2026-09-21, entre os dois que estavam na mesa. É um dos esquemas embutidos no Noctalia, declarado no `arkmos.toml` do skel:
+
+```toml
+[theme]
+source = "builtin"
+builtin = "Tokyo-Night"
+mode = "dark"
+```
+
+O identificador é exatamente `Tokyo-Night`, como no código do Noctalia. O validador dele **não** confere nomes de esquema: um nome errado seria ignorado em silêncio e o shell abriria no esquema padrão. Por isso o `just check` compara o nome declarado com a lista de embutidos do próprio binário.
+
+É do esquema que saem as cores do shell — barra, painéis, notificações, tela de bloqueio —, e o sync as leva para a tela de login (seção 8.3). As cores da arte do build (`#16161e` de fundo, `#bb9af7` de destaque) já eram as do Tokyo Night, então splash e login continuam como estão.
+
+Diferente dos blocos de inatividade, blocos normais como `[theme]` e `[wallpaper]` **mesclam** com o padrão do Noctalia: o que não está declarado segue com o valor dele.
+
+### O que segue a paleta, e o que é fixo
+
+O Noctalia tem um sistema de templates: a cada troca de esquema ele reescreve o arquivo de cores de outros programas e avisa cada um. Os ligados no `arkmos.toml` do skel:
+
+| Template | Escreve | Efeito |
+| --- | --- | --- |
+| `gtk3`, `gtk4` | `~/.config/gtk-{3.0,4.0}/noctalia.css`, importado no `gtk.css` | aplicativos GTK seguem a paleta |
+| `btop` | `~/.config/btop/themes/noctalia.theme`, selecionado no `btop.conf` | o monitor segue a paleta |
+
+**Os templates de `foot` e de `niri` ficam de fora de propósito.** O `apply.sh` de cada um cria configuração na conta do usuário quando ela não existe, e esses dois programas leem a do usuário **em vez** da do sistema: o de niri deixaria a sessão com um `~/.config/niri/config.kdl` de uma linha, sem os atalhos, sem o `prefer-no-csd` e sem o `spawn-at-startup "noctalia"` desta imagem. O de `starship` escreve num caminho que a imagem não lê, porque o `STARSHIP_CONFIG` aponta para `/usr/share/arkmos/starship.toml`; o de `qt` escreve para qt5ct e qt6ct, que não estão na imagem.
+
+Então a divisão é esta:
+
+```text
+segue a paleta       shell do Noctalia (barra, painéis, notificações, bloqueio)
+                     aplicativos GTK 3 e GTK 4
+                     btop
+                     tela de login, pelo sync
+fixo em Tokyo Night  terminal (tema tokyonight-night, do próprio foot)
+                     cor de destaque do libadwaita (accent-color='purple')
+                     prompt (o starship usa cores nomeadas, que vêm do terminal)
+                     anel de foco do niri (#bb9af7)
+                     splash de boot, tela de login e wallpaper gerados no build
+```
+
+### Flatpak e AppImage
+
+Um **AppImage** não tem sandbox: ele lê o `$HOME` de verdade, então um AppImage GTK pega o `gtk.css` da conta e segue a paleta como qualquer aplicativo da imagem. AppImage Electron ou Qt segue só claro/escuro, pelo portal, porque as cores internas são do próprio aplicativo.
+
+Um **Flatpak** tem o próprio `/etc` e o próprio `XDG_CONFIG_HOME` (`~/.var/app/<id>/config`), e por isso não vê o `gtk.css` da conta. O que atravessa, e o que não:
+
+| | Como | Estado |
+| --- | --- | --- |
+| Claro/escuro | portal (`color-scheme`) | funciona |
+| Tema GTK3 (`adw-gtk3-dark`) | extensão `org.gtk.Gtk3theme.adw-gtk3-dark`, na lista de preinstall | funciona |
+| Paleta (o `gtk.css` da conta) | `filesystems=xdg-config/gtk-3.0:ro;xdg-config/gtk-4.0:ro` no override global | funciona |
+| Cor de destaque do libadwaita | portal (`accent-color`) | **não** |
+
+O override global vem de `files/usr/share/arkmos/flatpak-overrides/global` e o `tmpfiles.d` o **copia** para `/var/lib/flatpak/overrides/global` — cópia, e não symlink, para que `flatpak override` continue funcionando depois, e só quando o destino não existe, para não desfazer o que a pessoa mudar.
+
+A cor de destaque é a exceção conhecida. O `accent-color='purple'` do dconf vale para os aplicativos libadwaita **da imagem**; um Flatpak pergunta ao portal, e o backend `gtk`, que é o nosso, não implementa essa chave (o do GNOME implementa, mas ele pressupõe uma sessão GNOME — foi por isso que a interface Settings ficou no backend `gtk`, seção 26.1). Então um Flatpak libadwaita fica com o azul padrão dele até o backend `gtk` ganhar a chave.
+
+**Trocar de esquema**, pela interface do Noctalia, muda a primeira lista na hora — inclusive para uma paleta gerada a partir do papel de parede. A segunda lista continua em Tokyo Night até ser editada: são arquivos da imagem, não da conta. O padrão da imagem (`Tokyo-Night`) vale para conta nova; o que se escolhe depois vive em `~/.local/state/noctalia/settings.toml`.
+
+O `just check` confere as duas pontas: que os três templates certos estão ligados e que os de foot e de niri **não** estão.
+
+### Papéis de parede
+
+Nove imagens geradas por IA pelo autor do projeto, em WebP 1920x1081 de ~250 KB cada, mais o `arkmos.webp` que o `render-artwork.sh` desenha com o nome do sistema. Todas em:
+
+```text
+files/usr/share/backgrounds/arkmos/
+```
+
+O padrão é o `arkmos-default.webp`, e a pasta é declarada no `arkmos.toml` para a lista do Noctalia mostrar todas. O `just check` confere que o padrão existe, que está dentro da pasta declarada e que a pasta não ficou vazia — caminho errado ali não dá erro, o shell só abre com o fundo vazio.
+
+São arte própria, e é isso que as deixa entrar num repositório público: arte de terceiro sem licença clara fica fora do repo e da imagem (seção 28.4).
+
 ### Ícones: Papirus-Dark, pastas em violeta
 
 O tema de ícones é a **Papirus-Dark**, a variante da Papirus feita para tema escuro: os ícones pequenos de barra e de ferramenta vêm claros. Ela traz só o que difere e aponta, por symlink, para os diretórios da Papirus em todo o resto, por isso a imagem instala os dois pacotes (`papirus-icon-theme` e `papirus-icon-theme-dark`). Antes a imagem usava a Papirus comum, que é a variante para tema claro.
@@ -1232,18 +1308,17 @@ Um wallpaper pessoal é escolhido na conta, pela interface do Noctalia, e o sync
 
 ## 26.2 O que falta
 
-A personalização deverá abranger:
+Já definidos: o esquema (Tokyo Night), os ícones (Papirus-Dark com pastas em violeta) e os papéis de parede — os três na seção 26.1.
+
+Falta levar o esquema ao resto:
 
 - Niri;
-- Noctalia;
-- GTK (hoje `adw-gtk3-theme`);
+- Noctalia (barra, dock, notificações, tela de bloqueio);
+- GTK (hoje `adw-gtk3-theme`, que não segue a paleta);
 - Qt;
-- terminal;
+- terminal (fixo em Tokyo Night; o template de foot não é utilizável aqui, seção 26.1);
 - Zsh;
-- ícones (hoje Papirus-Dark com pastas em violeta, seção 26.1);
 - cursores;
-- wallpapers (hoje, o padrão gerado da seção 26.1);
-- cores (base comum a Tokyo Night e Dracula; esquema final a escolher);
 - tipografia;
 - login;
 - notificações;
@@ -1832,6 +1907,11 @@ pastas do usuário em português e overlay do niri com títulos traduzidos
 Discos, gerenciador de compactação e assistente de impressão; barramento do
   sistema ainda no dbus-broker
 ícones Papirus-Dark nos três caminhos de leitura, pastas em violeta
+esquema Tokyo-Night declarado e existente na lista do Noctalia; templates de
+  paleta certos ligados e os de foot e niri fora; anel de foco no roxo do
+  esquema; cor de destaque roxa no dconf; override que deixa o Flatpak ler o
+  tema da conta; papel de parede
+  padrão dentro da pasta declarada, com as outras imagens ao lado
 Flatpaks declarados legíveis pelo flatpak preinstall, padrões de aplicativo
   apontando para eles, libfuse.so.2 para AppImage, capturas em pt-BR
 componentes de uso diário (gvfs-mtp/smb/fuse, sushi, miniaturas de PDF,
@@ -1917,17 +1997,16 @@ travamento antes do assistente no primeiro boot em VM — visto uma vez em
 
 ## Médio prazo
 
-2. Definir a identidade visual (seção 26): escolher o esquema — Tokyo Night ou Dracula, os dois embutidos no Noctalia — e o wallpaper definitivo.
-3. Configurar o Noctalia: barra, dock, notificações, tela de bloqueio.
+2. Configurar o Noctalia: barra, dock, notificações, tela de bloqueio.
 
 ## Longo prazo
 
-4. Snapper/Btrfs snapshots.
-5. Avaliar Limine.
-6. Validar instalação em hardware real.
-7. Documentar recuperação.
-8. Definir política de atualização/rollback.
-9. Estabilizar a versão 1.0.0.
+3. Snapper/Btrfs snapshots.
+4. Avaliar Limine.
+5. Validar instalação em hardware real.
+6. Documentar recuperação.
+7. Definir política de atualização/rollback.
+8. Estabilizar a versão 1.0.0.
 
 ---
 

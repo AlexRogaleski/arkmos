@@ -8,11 +8,44 @@
 # que carrega por último e vence este arquivo: trocar o wallpaper ou o esquema
 # de cores pela interface não exige editar nada aqui.
 
-# Gerado no build por build_files/render-artwork.sh. A tela de bloqueio usa o
-# wallpaper do desktop enquanto [lockscreen] wallpaper estiver vazio, que é o
-# padrão — por isso não é declarado.
+# Esquema de cores do sistema: Tokyo Night, embutido no Noctalia. É dele que
+# saem as cores do shell, e o sync as leva para a tela de login. O identificador
+# é "Tokyo-Night", como no código do Noctalia — o validador não confere nomes de
+# esquema, um nome errado só cairia no padrão em silêncio.
+#
+# Diferente dos blocos de inatividade, blocos normais como este MESCLAM com o
+# padrão do Noctalia: o que não está declarado aqui continua com o valor dele.
+[theme]
+source = "builtin"
+builtin = "Tokyo-Night"
+mode = "dark"
+
+# Programas que passam a seguir a paleta do Noctalia. A cada troca de esquema
+# ele reescreve o arquivo de cores de cada um e avisa o programa:
+#
+#   gtk3, gtk4   ~/.config/gtk-{3.0,4.0}/noctalia.css, importado no gtk.css
+#   btop         ~/.config/btop/themes/noctalia.theme, selecionado no btop.conf
+#
+# Só entram os que escrevem em arquivo que o Arkmos não entrega. Os templates
+# de foot e de niri ficam de fora de propósito: os dois criam configuração na
+# conta do usuário, e esses programas leem a do usuário EM VEZ da do sistema —
+# o de niri apagaria na prática todos os atalhos e o prefer-no-csd desta
+# imagem. O terminal já é Tokyo Night pelo tema do próprio foot, e o anel de
+# foco do niri usa o roxo do esquema, fixos (seção 26.1 do PROJECT.md).
+[theme.templates]
+builtin_ids = [ "gtk3", "gtk4", "btop" ]
+
+# A pasta que a lista de papéis de parede do Noctalia mostra. São os do próprio
+# Arkmos, gerados por IA pelo autor do projeto, mais o arkmos.webp que o
+# build_files/render-artwork.sh desenha com o nome do sistema.
+[wallpaper]
+directory = "/usr/share/backgrounds/arkmos"
+
+# O papel de parede que a conta nova recebe. A tela de bloqueio usa o do
+# desktop enquanto [lockscreen] wallpaper estiver vazio, que é o padrão — por
+# isso não é declarado.
 [wallpaper.default]
-path = "/usr/share/backgrounds/arkmos/arkmos.webp"
+path = "/usr/share/backgrounds/arkmos/arkmos-default.webp"
 
 # Leva wallpaper, paleta e fonte para a tela de login sempre que a aparência
 # muda. Não pede senha: a regra em

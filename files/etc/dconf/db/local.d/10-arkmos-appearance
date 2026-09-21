@@ -17,6 +17,12 @@
 color-scheme='prefer-dark'
 gtk-theme='adw-gtk3-dark'
 icon-theme='Papirus-Dark'
+
+# Cor de destaque roxa, a do Tokyo Night: é ela que colore foco, seleção e link
+# nos aplicativos libadwaita da imagem — Nautilus, Discos, compactação. Um
+# Flatpak libadwaita pergunta ao portal, e o backend gtk, que é o nosso, ainda
+# não responde essa chave (PROJECT.md 26.1).
+accent-color='purple'
 cursor-theme='Adwaita'
 cursor-size=24
 font-name='Cantarell 11'
