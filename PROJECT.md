@@ -1596,6 +1596,14 @@ UEFI via `pflash`, não `-bios`: o firmware precisa de uma cópia **gravável** 
 
 Cada variante tem seu próprio diretório de saída (`output/`, `output-nvidia/`).
 
+**A VM nasce seguindo a imagem local.** O disco é gerado a partir de `localhost/arkmos:dev`, e é isso que fica gravado na deployment: um `bootc upgrade` ali tenta buscar em `localhost/v2/` e falha. Para a VM passar a seguir a imagem publicada, uma vez:
+
+```bash
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/<owner>/arkmos:44
+```
+
+Depois disso o `bootc upgrade` funciona, com a assinatura verificada, e o `/var` não é tocado — os Flatpaks instalados e a conta continuam lá.
+
 **A linha de boot da VM não é a da imagem.** O bootc-image-builder acrescenta `console=tty0 console=ttyS0` no qcow2; isso não vem do `kargs.d`. Com console serial o Plymouth alterna entre o splash e o modo texto de reserva (três pontos), e o que aparece muda de um boot para outro. Por isso o `config.toml` acrescenta `plymouth.ignore-serial-consoles` na mídia de teste: o Plymouth ignora o serial e desenha o splash na tela, como numa máquina real. É configuração da mídia, não da imagem publicada.
 
 O mesmo `config.toml` acrescenta `systemd.wants=sshd.service`, que liga o servidor SSH só na VM: a imagem o deixa desligado (seção 22), e é por ele que o ssh na porta 2222 do host funciona.
