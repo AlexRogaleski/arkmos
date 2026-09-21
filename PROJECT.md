@@ -1604,6 +1604,8 @@ sudo bootc switch --enforce-container-sigpolicy ghcr.io/<owner>/arkmos:44
 
 Depois disso o `bootc upgrade` funciona, com a assinatura verificada, e o `/var` não é tocado — os Flatpaks instalados e a conta continuam lá.
 
+**Mudança em `/etc/skel` não chega a quem já tem conta.** O skel é copiado no momento em que a conta nasce, e nem `bootc upgrade` nem `bootc switch` tocam no `$HOME`. Ao testar um padrão semeado (Noctalia, VS Code, btop), a conta que já existe na VM continua com a versão antiga do arquivo — foi o que fez o bloqueio por inatividade continuar sem funcionar depois de um upgrade que trazia a correção. Para testar: copiar o arquivo (`cp /etc/skel/.config/... ~/.config/...`) ou gerar uma VM nova, com conta nova.
+
 **A linha de boot da VM não é a da imagem.** O bootc-image-builder acrescenta `console=tty0 console=ttyS0` no qcow2; isso não vem do `kargs.d`. Com console serial o Plymouth alterna entre o splash e o modo texto de reserva (três pontos), e o que aparece muda de um boot para outro. Por isso o `config.toml` acrescenta `plymouth.ignore-serial-consoles` na mídia de teste: o Plymouth ignora o serial e desenha o splash na tela, como numa máquina real. É configuração da mídia, não da imagem publicada.
 
 O mesmo `config.toml` acrescenta `systemd.wants=sshd.service`, que liga o servidor SSH só na VM: a imagem o deixa desligado (seção 22), e é por ele que o ssh na porta 2222 do host funciona.
