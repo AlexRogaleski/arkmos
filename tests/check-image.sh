@@ -755,7 +755,7 @@ check "tmpfiles.d do Arkmos resolve usuários e grupos" \
 # --- Pacotes ---------------------------------------------------------------
 
 check "pacotes essenciais instalados" \
-    run rpm -q docker-ce docker-compose-plugin niri noctalia greetd tuigreet code zsh
+    run rpm -q docker-ce docker-compose-plugin niri noctalia greetd tuigreet code zsh gh
 
 # Estes o Arkmos não instala: assume que vêm da base, e o Containerfile diz
 # isso em comentário. O ublue vem podando as imagens intermediárias, então a

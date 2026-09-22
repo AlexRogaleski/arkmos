@@ -742,6 +742,7 @@ Ferramentas na imagem:
 
 ```text
 Git
+GitHub CLI (gh)
 Curl / Wget
 Neovim / Vim
 Zsh

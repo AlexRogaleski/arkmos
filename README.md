@@ -18,7 +18,7 @@ O objetivo não é publicar uma distribuição. É que a configuração da máqu
 | Base | Fedora 44 bootc sobre o [Universal Blue](https://universal-blue.org), Btrfs, SELinux enforcing |
 | Desktop | [niri](https://github.com/niri-wm/niri) (compositor), [Noctalia](https://github.com/noctalia-dev/noctalia) (shell), [Noctalia Greeter](https://github.com/noctalia-dev/noctalia-greeter) (login), Nautilus, Discos, gerenciador de compactação |
 | Terminal | [foot](https://codeberg.org/dnkl/foot), zsh com configuração própria, [starship](https://starship.rs), JetBrains Mono Nerd Font, btop |
-| Desenvolvimento | VS Code, Docker CE + compose, Podman, Distrobox, [mise](https://mise.jdx.dev), Git, Neovim, lazygit, lazydocker |
+| Desenvolvimento | VS Code, Docker CE + compose, Podman, Distrobox, [mise](https://mise.jdx.dev), Git, GitHub CLI, Neovim, lazygit, lazydocker |
 | Aplicativos | Flatpaks do Flathub, instalados sozinhos no primeiro boot e mantidos pela lista da imagem: Chrome, Thunderbird, OnlyOffice, Papers, Loupe, Showtime e outros |
 | Sistema | PipeWire, NetworkManager, Tailscale, BlueZ, CUPS com assistente de impressão, TuneD, Flatpak |
 | Localização | pt_BR.UTF-8, teclado ABNT2, `America/Sao_Paulo` |

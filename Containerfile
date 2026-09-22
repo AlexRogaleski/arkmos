@@ -121,9 +121,13 @@ COPY files/etc/yum.repos.d/ /etc/yum.repos.d/
 #
 # O btop substitui o htop que vem da base: mesma função, com gráficos, e com os
 # temas Tokyo Night e Dracula embutidos. Nada depende do htop.
+#
+# 'gh' é o cliente do GitHub: 'gh pr', 'gh run', 'gh auth'. O repositório deste
+# projeto vive lá, e o CI é acompanhado por ele.
 # ---------------------------------------------------------------------------
 RUN dnf -y --setopt=install_weak_deps=False install \
         git \
+        gh \
         wget \
         zsh \
         zsh-autosuggestions \
