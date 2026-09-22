@@ -261,21 +261,13 @@ Objetivos futuros:
 
 # 7. Bootloader
 
-## Estado atual
-
 ```text
 GRUB
 ```
 
-O GRUB é utilizado durante o desenvolvimento para reduzir variáveis.
+É o bootloader da base, e é com ele que o bootc se integra: as entradas de deployment, o `bootc upgrade` e o `bootc rollback` passam por ele, e isso já está validado em VM (seção 35.2).
 
-## Objetivo futuro
-
-```text
-Limine
-```
-
-A mudança deverá ocorrer somente após a estabilização da base.
+O Limine constou como objetivo futuro até 2026-09-22, quando saiu do plano. Trocar de bootloader num sistema em que o bootc cuida das entradas de boot é risco sem ganho: o GRUB da base vem configurado e testado, inclusive no caminho de rollback, e a única coisa que o Arkmos acrescenta é mascarar a `grub-boot-success`, que não faz sentido aqui (seção 33).
 
 ---
 
@@ -1281,6 +1273,8 @@ O `just check` confere as duas pontas: que os três templates certos estão liga
 
 Vieram de uma sessão de testes na VM: mexer na interface do Noctalia e exportar com `noctalia config export`, que imprime só o que difere do padrão dele. O resultado está no `arkmos.toml` do skel.
 
+O arredondamento da interface do shell está em `corner_radius_scale = 1.25`, escolhido olhando na VM para acompanhar os cantos das janelas. Ele viaja ao login pelo sync, e é por isso que não é declarado no `greeter.toml` (seção 8.3).
+
 A barra leva lançador, captura e papel de parede à esquerda, com espaçadores antes e depois dos workspaces e a janela ativa no fim; relógio e mídia no centro; e à direita o monitor de sistema, RAM, bandeja, notificações, área de transferência, rede, Bluetooth, volume, brilho, bateria, centro de controle, caffeine e sessão. Sem moldura arredondada nem margem nas pontas, com 60% de opacidade. O dock fica oculto e não reserva espaço, com VS Code, Spotify, AnyDesk, Bazaar e Thunderbird fixados.
 
 Três coisas da exportação **não** entraram, e é a regra para as próximas:
@@ -1290,6 +1284,21 @@ Três coisas da exportação **não** entraram, e é a regra para as próximas:
 - **posição dos widgets da tela de bloqueio**, que grava nome de monitor (`Virtual-1`, da VM) e coordenadas em pixels — no notebook o monitor é outro, e isso viraria lixo.
 
 Os ids dos fixados no dock são de `.desktop`: um id que não esteja instalado vira ícone morto. A exportação vinha com `org.mozilla.thunderbird_esr`, que não é o que a lista instala, e foi corrigido para `org.mozilla.Thunderbird`.
+
+### Notificações
+
+Quem implementa o `org.freedesktop.Notifications` é o próprio Noctalia, com daemon ligado por padrão — por isso a imagem **não** instala mako, que ficava desabilitado e nunca iniciado: dois daemons para o mesmo barramento, um deles peso morto.
+
+Dois padrões do Noctalia significam "sem limite", e são os que o `arkmos.toml` muda:
+
+| | Padrão | Arkmos |
+| --- | --- | --- |
+| `max_visible` | `0`, enche a tela numa rajada | `4` |
+| `history_retention_hours` | `0`, guarda para sempre | `168` (sete dias) |
+
+Há também um filtro para o Spotify, que notifica a cada troca de música: o toast e o histórico saem, porque a barra já tem o widget de mídia mostrando o que toca.
+
+O resto fica como vem do Noctalia: canto superior direito, que acompanha a barra; camada `top`, que mantém o toast fora de aplicativo em tela cheia; borda, opacidade e margens. Som de notificação está desligado (`[audio] enable_sounds = false`), e o Noctalia não traz som próprio.
 
 ### Papéis de parede
 
@@ -2044,11 +2053,10 @@ travamento antes do assistente no primeiro boot em VM — visto uma vez em
 ## Longo prazo
 
 3. Snapper/Btrfs snapshots.
-4. Avaliar Limine.
-5. Validar instalação em hardware real.
-6. Documentar recuperação.
-7. Definir política de atualização/rollback.
-8. Estabilizar a versão 1.0.0.
+4. Validar instalação em hardware real.
+5. Documentar recuperação.
+6. Definir política de atualização/rollback.
+7. Estabilizar a versão 1.0.0.
 
 ---
 

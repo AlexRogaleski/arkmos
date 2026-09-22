@@ -15,8 +15,15 @@
 
 # Idioma da interface do Noctalia. O LANG da sessão já é pt_BR, mas o shell tem
 # a própria configuração de idioma.
+#
+# O corner_radius_scale multiplica o arredondamento de toda a interface do
+# shell — barra, painéis, tela de bloqueio. Escolhido em 1.25, na VM, para
+# acompanhar os cantos das janelas. Ele é uma das coisas que o sync leva ao
+# greeter, e é por isso que NÃO é declarado no greeter.toml: valor lá venceria
+# o sync e congelaria o login neste número.
 [shell]
 lang = "pt-BR"
+corner_radius_scale = 1.25
 
 # Esquema de cores do sistema: Tokyo Night, embutido no Noctalia. É dele que
 # saem as cores do shell, e o sync as leva para a tela de login. O identificador
@@ -124,6 +131,30 @@ open_near_click_launcher = true
 # sem GPS.
 [location]
 auto_locate = true
+
+# Notificações. O Noctalia é o daemon do sistema (enable_daemon, ligado por
+# padrão), e por isso a imagem não instala mako.
+#
+# Dois padrões dele são "sem limite", e é o que muda aqui:
+#
+#   max_visible = 0               enche a tela de toasts numa rajada
+#   history_retention_hours = 0   guarda o histórico para sempre
+#
+# O resto fica como vem: canto superior direito, que acompanha a barra; camada
+# 'top', que mantém o toast fora de aplicativo em tela cheia; borda, opacidade
+# e margens.
+[notification]
+max_visible = 4
+history_retention_hours = 168
+
+# O Spotify notifica a cada troca de música, e a barra já tem o widget de mídia
+# mostrando o que toca. O toast sai; o histórico também, porque seria uma
+# entrada por faixa.
+[notification.filter.spotify]
+enabled = true
+match = "spotify"
+show_toast = false
+save_history = false
 
 # Leva wallpaper, paleta e fonte para a tela de login sempre que a aparência
 # muda. Não pede senha: a regra em

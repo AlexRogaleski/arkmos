@@ -455,7 +455,27 @@ t = c["theme"]
 assert t["source"] == "builtin", "fonte da paleta: " + str(t["source"])
 assert t["builtin"] == "Tokyo-Night", "esquema: " + str(t["builtin"])
 assert t["mode"] == "dark", "modo: " + str(t["mode"])
+
+# O arredondamento do shell, que o sync leva ao login. Zero ou ausente deixa a
+# interface quadrada e o login desalinhado do desktop.
+assert c["shell"]["corner_radius_scale"] > 0, "arredondamento do shell zerado"
+
+# Notificações: os dois padrões do Noctalia que significam "sem limite".
+n = c["notification"]
+assert n["max_visible"] > 0, "toasts sem limite na tela"
+assert n["history_retention_hours"] > 0, "histórico de notificações guardado para sempre"
+assert n["filter"]["spotify"]["show_toast"] is False, "o Spotify volta a notificar cada música"
 '
+
+# O Noctalia implementa o org.freedesktop.Notifications e é o daemon da sessão.
+# Com o mako instalado havia dois daemons para o mesmo barramento, um deles
+# desabilitado e nunca iniciado.
+check "um só daemon de notificações" \
+    run sh -c '
+        grep -q -a org.freedesktop.Notifications /usr/bin/noctalia \
+            || { echo "o Noctalia não implementa mais o barramento de notificações"; exit 1; }
+        ! rpm -q mako >/dev/null 2>&1 || { echo "o mako voltou para a imagem"; exit 1; }
+    '
 
 # O esquema declarado tem de existir na lista de embutidos do binário: o
 # validador do Noctalia aceita qualquer nome, e um nome que ele não conhece cai

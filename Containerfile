@@ -124,6 +124,11 @@ COPY files/etc/yum.repos.d/ /etc/yum.repos.d/
 #
 # 'gh' é o cliente do GitHub: 'gh pr', 'gh run', 'gh auth'. O repositório deste
 # projeto vive lá, e o CI é acompanhado por ele.
+#
+# Sem 'mako': quem implementa o org.freedesktop.Notifications aqui é o próprio
+# Noctalia, com daemon ligado por padrão. O mako ficava instalado, desabilitado
+# e nunca iniciado — dois daemons para o mesmo barramento, e um deles peso
+# morto.
 # ---------------------------------------------------------------------------
 RUN dnf -y --setopt=install_weak_deps=False install \
         git \
@@ -148,7 +153,6 @@ RUN dnf -y --setopt=install_weak_deps=False install \
         gnome-keyring \
         gnome-keyring-pam \
         mate-polkit \
-        mako \
         brightnessctl \
         playerctl \
         cliphist \
