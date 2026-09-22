@@ -1971,12 +1971,15 @@ Distrobox criando, entrando e removendo container; docker run sem sudo
 firewall na zona FedoraWorkstation; sshd ativo só pela linha de boot da VM
   (enabled-runtime); SSH_AUTH_SOCK do gcr na sessão; tailscale instalado
 bootc switch da imagem local (localhost/arkmos:dev) para a publicada
+identidade visual em conta nova (useradd -m, que copia o /etc/skel): papel de
+  parede padrão, barra e painéis do Noctalia no Tokyo Night, anel de foco
+  roxo, Nautilus com pastas violeta e destaque roxo, btop nas cores do
+  esquema, e um Flatpak Qt (Fedora Media Writer) seguindo a paleta
 ```
 
 ## 35.3 Não validado ainda
 
 ```text
-aparência conferida item a item (prefer-no-csd, tema escuro, terminal)
 Laravel Sail em uso real
 instalação em hardware real
 cadastro de uma impressora de verdade
