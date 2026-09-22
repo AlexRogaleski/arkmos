@@ -7,6 +7,16 @@
 # O que se escolhe pela interface vai para ~/.local/state/noctalia/settings.toml,
 # que carrega por último e vence este arquivo: trocar o wallpaper ou o esquema
 # de cores pela interface não exige editar nada aqui.
+#
+# Barra, dock e painéis vieram de uma sessão de testes na VM, exportada com
+# 'noctalia config export'. O que é específico de máquina ficou de fora:
+# wallpaper pessoal, último wallpaper usado e posição de widget da tela de
+# bloqueio, que grava o nome do monitor e as coordenadas dele.
+
+# Idioma da interface do Noctalia. O LANG da sessão já é pt_BR, mas o shell tem
+# a própria configuração de idioma.
+[shell]
+lang = "pt-BR"
 
 # Esquema de cores do sistema: Tokyo Night, embutido no Noctalia. É dele que
 # saem as cores do shell, e o sync as leva para a tela de login. O identificador
@@ -15,10 +25,15 @@
 #
 # Diferente dos blocos de inatividade, blocos normais como este MESCLAM com o
 # padrão do Noctalia: o que não está declarado aqui continua com o valor dele.
+#
+# wallpaper_scheme só tem efeito quando a paleta é gerada a partir do papel de
+# parede, o que não é o padrão daqui; fica declarado para essa escolha já vir
+# pronta.
 [theme]
 source = "builtin"
 builtin = "Tokyo-Night"
 mode = "dark"
+wallpaper_scheme = "m3-tonal-spot"
 
 # Programas que passam a seguir a paleta do Noctalia. A cada troca de esquema
 # ele reescreve o arquivo de cores de cada um e avisa o programa:
@@ -35,7 +50,7 @@ mode = "dark"
 # conta do usuário, e esses programas leem a do usuário EM VEZ da do sistema —
 # o de niri apagaria na prática todos os atalhos e o prefer-no-csd desta
 # imagem. O terminal já é Tokyo Night pelo tema do próprio foot, e o anel de
-# foco do niri usa o roxo do esquema, fixos (seção 26.1 do PROJECT.md).
+# foco do niri usa as cores do esquema, fixos (seção 26.1 do PROJECT.md).
 [theme.templates]
 builtin_ids = [ "gtk3", "gtk4", "btop", "kcolorscheme" ]
 
@@ -50,6 +65,65 @@ directory = "/usr/share/backgrounds/arkmos"
 # isso não é declarado.
 [wallpaper.default]
 path = "/usr/share/backgrounds/arkmos/arkmos-default.webp"
+
+# Barra: o que fica em cada terço dela. A fonte não é declarada de propósito —
+# fica a do Noctalia. Os dois espaçadores são declarados logo abaixo: sem a
+# declaração, o nome na lista não corresponde a widget nenhum e o espaço não
+# aparece.
+[bar.default]
+start = [ "launcher", "screenshot", "wallpaper", "spacer_2", "workspaces", "spacer_4", "active_window" ]
+center = [ "clock", "media" ]
+end = [
+    "sysmon",
+    "ram",
+    "tray",
+    "notifications",
+    "clipboard",
+    "network",
+    "bluetooth",
+    "volume",
+    "brightness",
+    "battery",
+    "control-center",
+    "caffeine",
+    "session"
+]
+background_opacity = 0.6
+margin_ends = 0
+radius = 0
+
+[widget.spacer_2]
+type = "spacer"
+
+[widget.spacer_4]
+type = "spacer"
+
+# Dock com ocultação automática e sem reservar espaço: a janela ocupa a tela
+# inteira e o dock aparece ao aproximar o ponteiro.
+#
+# Os fixados são ids de .desktop. O do VS Code é da imagem; os outros quatro
+# são Flatpaks da lista de preinstall — um id que não esteja instalado viraria
+# ícone morto no dock, e é por isso que o Thunderbird aqui é o
+# 'org.mozilla.Thunderbird' da lista, e não a variante ESR.
+[dock]
+enabled = true
+auto_hide = true
+reserve_space = false
+launcher_position = "start"
+background_opacity = 0.6
+pinned = [ "code", "com.spotify.Client", "com.anydesk.Anydesk", "io.github.kolunmi.Bazaar", "org.mozilla.Thunderbird" ]
+
+# Lançador ancorado no canto superior esquerdo, abrindo perto de onde foi
+# clicado.
+[shell.panel]
+launcher_placement = "attached"
+launcher_position = "top_left"
+open_near_click_launcher = true
+
+# O widget de clima precisa saber onde a máquina está. A localização é por IP,
+# sem GPS.
+[location]
+auto_locate = true
 
 # Leva wallpaper, paleta e fonte para a tela de login sempre que a aparência
 # muda. Não pede senha: a regra em

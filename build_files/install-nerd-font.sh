@@ -6,6 +6,12 @@
 # glifos Nerd Font de que o prompt do Starship e o 'eza --icons' dependem.
 # Sem eles o terminal mostra caixas vazias no lugar dos ícones.
 #
+# As ligaduras de código sobrevivem ao patch: a família "JetBrainsMono Nerd
+# Font" tem a tabela 'calt', que é como esta fonte implementa '!=' e '=>'
+# (verificado com fontTools no .ttf instalado). O pacote traz também a família
+# "JetBrainsMonoNL Nerd Font", que é a mesma fonte SEM ligaduras — por isso o
+# nome usado na configuração importa, e não só a pasta.
+#
 # Checksum oficial em <tag>/SHA-256.txt no release do nerd-fonts.
 
 set -euo pipefail

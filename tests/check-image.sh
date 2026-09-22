@@ -538,8 +538,15 @@ check "greeter.toml não bloqueia o sync da aparência" \
     run python3 -c '
 import tomllib
 a = tomllib.load(open("/usr/share/arkmos/noctalia-greeter.toml", "rb")).get("appearance", {})
-bloqueiam = sorted(k for k in ("wallpaper", "wallpapers", "palette") if k in a)
+bloqueiam = sorted(k for k in ("wallpaper", "wallpapers", "palette", "corner_radius_scale") if k in a)
 assert not bloqueiam, "declarado no greeter.toml: " + ", ".join(bloqueiam)
+
+# O que é do greeter e não vem do sync: sem o idle a tela de login fica acesa
+# até a bateria acabar, porque o padrão dele é nunca apagar.
+g = tomllib.load(open("/usr/share/arkmos/noctalia-greeter.toml", "rb"))
+assert 0 < g["idle"]["timeout"] <= 86400, "apagamento de tela no login desligado"
+assert a.get("password_style") == "random", "máscara de senha não é a aleatória"
+assert a.get("hide_logo") is True, "a logo do Noctalia continua na tela de login"
 '
 
 # --- Arquivos ----------------------------------------------------------------
@@ -898,7 +905,20 @@ check "mise sem self-update nem aviso de versão nova" \
     '
 
 check "Nerd Font patched presente" \
-    run sh -c 'fc-list | grep -qi "JetBrainsMono Nerd Font"'
+    run sh -c '
+        fc-list | grep -q "JetBrainsMono Nerd Font" \
+            || { echo "JetBrainsMono Nerd Font ausente"; exit 1; }
+        grep -qx "font=JetBrainsMono Nerd Font:size=11" /etc/xdg/foot/foot.ini \
+            || { echo "o terminal não está na JetBrainsMono Nerd Font"; exit 1; }
+        grep -q "JetBrainsMono Nerd Font" /etc/dconf/db/local \
+            || { echo "monospace-font-name não chegou ao banco do dconf"; exit 1; }
+        python3 -c "
+import json
+c = json.load(open(\"/etc/skel/.config/Code/User/settings.json\"))
+assert c[\"editor.fontLigatures\"] is True, \"ligaduras desligadas no VS Code\"
+assert \"JetBrainsMonoNL\" not in c[\"editor.fontFamily\"], \"a família NL não tem ligaduras\"
+"
+    '
 
 # --network=none é o ponto da verificação, não um detalhe: a configuração tem
 # de carregar inteira sem buscar nada. Plugin baixado na primeira abertura do

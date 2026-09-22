@@ -687,7 +687,13 @@ Fonte padrão:
 JetBrains Mono Nerd Font 3.5.1
 ```
 
+Uma só, e ela cobre os três papéis: terminal e editor, os glifos do prompt e a arte do sistema (a logo do README, o splash do Plymouth e a tela de login, desenhados pelo `render-artwork.sh`).
+
 O `jetbrains-mono-fonts` do Fedora **não** é a versão patched; o `starship.toml` e o `eza --icons` dependem dos glifos Nerd Font, então a versão patched é baixada no build, com versão e checksum SHA256 fixados em `build_files/install-nerd-font.sh`.
+
+**As ligaduras de código sobrevivem ao patch.** A família `JetBrainsMono Nerd Font` tem a tabela `calt`, que é como esta fonte implementa `!=` e `=>` — verificado com o fontTools no `.ttf` instalado. O `editor.fontLigatures` do VS Code fica ligado no `/etc/skel` por causa disso. O pacote traz ainda a família `JetBrainsMonoNL Nerd Font`, a mesma fonte **sem** ligaduras, então o nome na configuração importa, e não só a pasta. No `foot` não há ligaduras: o terminal não implementa isso.
+
+A FiraCode foi considerada e descartada: a JetBrains Mono patched já tem as ligaduras, e duas fontes monoespaçadas na imagem seriam redundância.
 
 Também instaladas: `google-noto-emoji-fonts`, e `google-carlito-fonts` e `google-crosextra-caladea-fonts`, que têm as mesmas medidas da Calibri e da Cambria, as fontes padrão do Word. Sem elas, um documento aberto aqui troca de fonte e desalinha. As Liberation, que cobrem Arial, Times e Courier, vêm da base.
 
@@ -1271,6 +1277,20 @@ A cor de destaque é a exceção conhecida. O `accent-color='purple'` do dconf v
 
 O `just check` confere as duas pontas: que os três templates certos estão ligados e que os de foot e de niri **não** estão.
 
+### Barra, dock e painéis
+
+Vieram de uma sessão de testes na VM: mexer na interface do Noctalia e exportar com `noctalia config export`, que imprime só o que difere do padrão dele. O resultado está no `arkmos.toml` do skel.
+
+A barra leva lançador, captura e papel de parede à esquerda, com espaçadores antes e depois dos workspaces e a janela ativa no fim; relógio e mídia no centro; e à direita o monitor de sistema, RAM, bandeja, notificações, área de transferência, rede, Bluetooth, volume, brilho, bateria, centro de controle, caffeine e sessão. Sem moldura arredondada nem margem nas pontas, com 60% de opacidade. O dock fica oculto e não reserva espaço, com VS Code, Spotify, AnyDesk, Bazaar e Thunderbird fixados.
+
+Três coisas da exportação **não** entraram, e é a regra para as próximas:
+
+- **papel de parede pessoal**, que na VM era uma imagem de site de wallpapers, sem licença clara — arte de terceiro não entra no repositório nem na imagem (seção 28.4);
+- **estado de máquina**: último papel de parede usado e o papel por monitor;
+- **posição dos widgets da tela de bloqueio**, que grava nome de monitor (`Virtual-1`, da VM) e coordenadas em pixels — no notebook o monitor é outro, e isso viraria lixo.
+
+Os ids dos fixados no dock são de `.desktop`: um id que não esteja instalado vira ícone morto. A exportação vinha com `org.mozilla.thunderbird_esr`, que não é o que a lista instala, e foi corrigido para `org.mozilla.Thunderbird`.
+
 ### Papéis de parede
 
 Nove imagens geradas por IA pelo autor do projeto, em WebP 1920x1081 de ~250 KB cada, mais o `arkmos.webp` que o `render-artwork.sh` desenha com o nome do sistema. Todas em:
@@ -1303,10 +1323,14 @@ O Noctalia só lê configuração do home, então o wallpaper padrão chega pelo
 
 A tela de login recebe wallpaper e paleta pelo **sync** do Noctalia, ligado no mesmo arquivo (`auto_sync = true`) e liberado sem senha pela regra `50-arkmos-greeter-sync.rules`. O código do greeter impõe duas consequências:
 
-- **Nada de wallpaper ou paleta no `greeter.toml`.** Ele vence o `sync.toml`, e um valor declarado lá impediria para sempre que a escolha feita no desktop chegasse ao login. O `just check` barra isso.
+- **Nada de wallpaper, paleta ou `corner_radius_scale` no `greeter.toml`.** Ele vence o `sync.toml`, e um valor declarado lá impediria para sempre que a escolha feita no desktop chegasse ao login. Os três são sincronizados; o `just check` barra os três.
 - **Não há semente para o login.** O greeter só usa o `[appearance]` do `sync.toml` com a paleta completa (16 cores): semear só o wallpaper seria ignorado, e semear a paleta seria escolher um esquema. Até a primeira mudança de aparência na sessão, o login usa o tema embutido do greeter.
 
 Um wallpaper pessoal é escolhido na conta, pela interface do Noctalia, e o sync o leva para login e bloqueio. Ele não entra no repositório.
+
+O que é **só do greeter**, e por isso fica declarado nele: a sessão padrão, o teclado, o cursor, o watchdog de autenticação e mais três escolhas — a máscara de senha aleatória (`password_style`), que não revela o tamanho da senha; a logo do Noctalia escondida (`hide_logo`), porque a identidade que aparece no boot é a do Arkmos; e o apagamento de tela em 5 minutos (`[idle] timeout`), já que o padrão do greeter é nunca apagar, e um notebook esquecido na tela de login ficaria aceso até a bateria acabar.
+
+O greeter **não tem relógio nem sistema de widgets** — ele é seleção de usuário, senha, sessão e esquema. O relógio da tela de bloqueio é do Noctalia, que roda dentro da sessão; do desktop para o login viajam só wallpaper, paleta, fonte, arredondamento e layout de monitores.
 
 ## 26.2 O que falta
 
@@ -2015,7 +2039,7 @@ travamento antes do assistente no primeiro boot em VM — visto uma vez em
 
 ## Médio prazo
 
-2. Configurar o Noctalia: barra, dock, notificações, tela de bloqueio.
+2. Continuar a configuração do Noctalia: notificações e tela de bloqueio. Barra, dock e painéis já estão declarados (seção 26.1).
 
 ## Longo prazo
 

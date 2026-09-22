@@ -28,6 +28,25 @@ font_family = "JetBrainsMono Nerd Font"
 power_buttons_position = "bottom-right"
 scheme_selector_position = "top-right"
 
+# Máscara da senha com um número aleatório de caracteres, e não um por tecla:
+# quem estiver olhando não conta quantos caracteres a senha tem.
+password_style = "random"
+
+# A logo do Noctalia sai da tela de login. O sistema tem identidade própria, e
+# quem aparece no boot é o nome dele.
+hide_logo = true
+
+# 'corner_radius_scale' NÃO é declarado aqui de propósito: ele é uma das coisas
+# que o sync traz do desktop ([shell] corner_radius_scale no Noctalia), e valor
+# definido neste arquivo vence o sync — congelaria o arredondamento do login no
+# número escrito aqui. O mesmo vale para wallpaper e paleta.
+
+# A tela apaga depois de cinco minutos sem toque, e uma tecla ou clique a
+# acende de novo. O padrão do greeter é nunca apagar: um notebook esquecido na
+# tela de login ficaria com a tela acesa até a bateria acabar. 0 desliga.
+[idle]
+timeout = 300
+
 [keyboard]
 # Mesmo teclado de /etc/vconsole.conf. Sem isto o login nasce em us e a senha
 # com acento ou ç é digitada errada — no único lugar onde não há retorno visual
