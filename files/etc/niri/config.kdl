@@ -159,7 +159,7 @@ layout {
         // off
 
         // How many logical pixels the ring extends out from the windows.
-        width 4
+        width 3
 
         // Colors can be set in a variety of ways:
         // - CSS named colors: "red"
@@ -168,9 +168,12 @@ layout {
 
         // Color of the ring on the active monitor.
         //
-        // Arkmos: o roxo de destaque do Tokyo Night, o mesmo da arte do boot e
-        // do login. O padrão do niri é um azul claro que não é de esquema
-        // nenhum. O inativo usa o cinza-azulado do mesmo esquema.
+        // Arkmos: gradiente do azul ao roxo do Tokyo Night — as duas cores são
+        // do esquema (o azul padrão do niri, #80c8ff, não é de esquema
+        // nenhum), e o roxo é o mesmo da arte do boot e do login. O active-color fica como
+        // reserva: declarado um gradiente, ele é que vale. O inativo usa o
+        // cinza-azulado do mesmo esquema.
+        active-gradient from="#7aa2f7" to="#bb9af7" angle=45
         active-color "#bb9af7"
 
         // Color of the ring on inactive monitors.
@@ -359,6 +362,16 @@ window-rule {
     open-floating true
 }
 
+// Arkmos: cantos arredondados em todas as janelas.
+//
+// Sem 'match', a regra vale para todas. O clip-to-geometry recorta o conteúdo
+// no mesmo raio: sem ele o arredondamento é só na moldura que o niri desenha, e
+// o conteúdo da janela continua quadrado por baixo, aparecendo nos cantos.
+window-rule {
+    geometry-corner-radius 8
+    clip-to-geometry true
+}
+
 // Example: block out two password managers from screen capture.
 // (This example rule is commented out with a "/-" in front.)
 /-window-rule {
@@ -371,12 +384,9 @@ window-rule {
     // block-out-from "screencast"
 }
 
-// Example: enable rounded corners for all windows.
-// (This example rule is commented out with a "/-" in front.)
-/-window-rule {
-    geometry-corner-radius 12
-    clip-to-geometry true
-}
+// O exemplo comentado de cantos arredondados que vinha aqui foi removido: a
+// regra de verdade está acima, e duas versões da mesma coisa no arquivo — uma
+// delas com "/-" na frente — só confundem quem for editar.
 
 binds {
     // Keys consist of modifiers separated by + signs, followed by an XKB key name

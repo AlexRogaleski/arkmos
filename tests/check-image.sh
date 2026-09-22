@@ -500,7 +500,22 @@ assert not proibidos, "template que sobrescreve config do sistema: " + ", ".join
 # O anel de foco é a cor que mais aparece na tela. O padrão do niri é um azul
 # claro que não pertence a esquema nenhum.
 check "anel de foco do niri no roxo do Tokyo Night" \
-    run sh -c 'grep -q "^ *active-color \"#bb9af7\"" /etc/niri/config.kdl'
+    run sh -c '
+        grep -q "^ *active-gradient .*to=\"#bb9af7\"" /etc/niri/config.kdl \
+            || { echo "o gradiente do anel de foco não termina no roxo do esquema"; exit 1; }
+        grep -q "^ *active-color \"#bb9af7\"" /etc/niri/config.kdl \
+            || { echo "sem a cor de reserva do anel de foco"; exit 1; }
+    '
+
+# O clip-to-geometry é o par do geometry-corner-radius: sem ele o arredondamento
+# fica só na moldura, e o conteúdo da janela aparece quadrado nos cantos.
+check "cantos arredondados com recorte" \
+    run sh -c '
+        grep -q "^ *geometry-corner-radius " /etc/niri/config.kdl \
+            || { echo "sem geometry-corner-radius"; exit 1; }
+        grep -q "^ *clip-to-geometry true" /etc/niri/config.kdl \
+            || { echo "sem clip-to-geometry"; exit 1; }
+    '
 
 # O validate sai com 0 mesmo quando encontra chave desconhecida — e chave com
 # nome errado é justamente o erro provável, porque o Noctalia a ignora e segue.
