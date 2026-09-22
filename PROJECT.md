@@ -1878,6 +1878,19 @@ Base, distribuição e robustez:
 - correções: conta do greeter, ordenação do firstboot e ruído no console, hostname, `nvidia-cdi-refresh`, fallback de getty, cache do tuigreet, variáveis EFI da VM, prompt de senha do assistente, resolução e captura de teclado da VM;
 - documentação: README e este documento.
 
+## 0.9.0
+
+Aplicações declaradas e identidade visual:
+
+- lista de Flatpaks declarada na imagem e aplicada pelo `flatpak preinstall`, com um serviço que instala o que falta a cada boot e remove o que sair da lista (seção 25);
+- aplicativos padrão por tipo de arquivo, com PDF, imagem e vídeo nos visualizadores do GNOME e texto no VS Code, mais o `XDG_DATA_DIRS` da sessão, sem o qual o clique duplo não abria nada (seções 25 e 26.1);
+- o que o uso diário pedia e a base não trazia: celular e rede no Nautilus, miniaturas de PDF, terminal padrão para programas de terminal, Tailscale, agente SSH, firewall na zona do Fedora Workstation, servidor SSH desligado, btop no lugar do htop (seções 22 e 25);
+- esquema **Tokyo Night** como identidade, com nove papéis de parede próprios, ícones Papirus-Dark com pastas em violeta e o anel de foco do niri no roxo do esquema (seção 26.1);
+- a paleta seguida por GTK 3 e 4, btop, Qt e KDE — inclusive em Flatpak, pelo override que dá acesso ao tema da conta (seção 26.1);
+- bloqueio de tela por inatividade, que o Noctalia não liga por padrão (seção 23);
+- assistente de primeiro boot que se dispensa quando a conta já existe, para o caminho de rebase (seção 12.1);
+- atalhos do Noctalia para lançador e bloqueio, menu sem as entradas que não abrem nada, e captura com anotação (seções 8.1 e 25).
+
 ---
 
 # 35. Estado Atual
@@ -1885,7 +1898,7 @@ Base, distribuição e robustez:
 Versão:
 
 ```text
-0.8.0
+0.9.0
 ```
 
 ## 35.1 Validado em container (`just check-all`, as duas variantes)
@@ -2106,11 +2119,13 @@ O objetivo final é poder reinstalar o ambiente pessoal com o mínimo possível 
 
 # Status
 
-**Arkmos 0.8.0 — em desenvolvimento**
+**Arkmos 0.9.0 — em desenvolvimento**
 
-Próximo marco:
+Marcos:
 
 ```text
-0.8.0 → marco fechado: imagem publicada, assinada, instalável e atualizável
-0.9.0 → aplicações declaradas e identidade visual
+0.8.0 → fechado: imagem publicada, assinada, instalável e atualizável
+0.9.0 → fechado: aplicações declaradas e identidade visual
+0.10.0 → Noctalia configurado: barra, dock, notificações, tela de bloqueio
+1.0.0 → ver seção 37, onde o que falta é uso real e hardware real
 ```
