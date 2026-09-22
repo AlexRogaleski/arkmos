@@ -1410,6 +1410,19 @@ O `just check` confere o initramfs, e não só o `/usr`: tema, `plymouthd.conf`,
 
 Dezenas de `Failed to resolve group 'audio' / 'utmp' / 'tty'…` do `systemd-tmpfiles` no initramfs. Comparado com o Aurora instalado: acontece igual lá (167 ocorrências no boot atual). É comportamento do Fedora no initrd, não do Arkmos, e não vale divergir da base por isso.
 
+Duas linhas do `dbus-broker-launch` a cada sessão que sobe, no login e quando a tela de login volta no desligamento:
+
+```text
+Policy to allow eavesdropping in /usr/share/dbus-1/session.conf +31:
+  Eavesdropping is deprecated and ignored
+```
+
+Vêm do `session.conf` do pacote `dbus` do Fedora, que ainda declara a política antiga de *eavesdropping*; o `dbus-broker` a ignora e avisa. É arquivo da distribuição, não do Arkmos, e mexer nele seria divergir da base para calar um aviso sem efeito.
+
+O outro aviso obsoleto, esse **corrigido**, era o `Calling import-environment without a list of variable names is deprecated.`, que aparecia no console entre a senha e o desktop: vinha do `niri-session` do pacote chamando `systemctl --user import-environment` sem lista. O build passa a lista (ver Containerfile), porque a forma sem ela não é só feia — está deprecada, e quando deixar de funcionar a sessão nasceria sem o ambiente do login sem nada avisar.
+
+É **remendo temporário**, e o problema é conhecido no upstream: a issue [niri-wm/niri#3572](https://github.com/niri-wm/niri/issues/3572) acompanha o aviso, a [#4624](https://github.com/niri-wm/niri/issues/4624) descreve exatamente este sintoma num setup greetd + noctalia-greeter (fechada como duplicata) e a [#3776](https://github.com/niri-wm/niri/pull/3776) é a correção em andamento — ela registra que o import sem lista sobrescreve o que o gerenciador já tem do `environment.d`, e é por isso que `LANG` e `XDG_DATA_DIRS` ficam fora da nossa lista. O `sed` confere a linha original antes de alterá-la: quando o pacote vier corrigido, o build falha de propósito e o remendo sai.
+
 ---
 
 # 28. Verificação e CI
