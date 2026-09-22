@@ -18,8 +18,12 @@ DEST="/usr/share/fonts/jetbrains-mono-nerd"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
+# --retry-delay fixa a espera em 10s: o padrão do curl dobra a partir de 1s, e
+# três tentativas se esgotam em 8 segundos. O release do GitHub respondeu 500
+# por mais tempo que isso em 2026-09-22, e o build falhou no CI por causa disso.
 echo "==> JetBrains Mono Nerd Font ${NERD_FONTS_VERSION}"
-curl -fsSL --retry 3 -o "$WORK/JetBrainsMono.tar.xz" \
+curl -fsSL --retry 5 --retry-delay 10 --retry-all-errors \
+    --connect-timeout 20 -o "$WORK/JetBrainsMono.tar.xz" \
     "https://github.com/ryanoasis/nerd-fonts/releases/download/v${NERD_FONTS_VERSION}/JetBrainsMono.tar.xz"
 
 got="$(sha256sum "$WORK/JetBrainsMono.tar.xz" | cut -d' ' -f1)"

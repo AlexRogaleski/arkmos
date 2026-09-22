@@ -35,7 +35,11 @@ trap 'rm -rf "$WORK"' EXIT
 fetch() {
     local url="$1" dest="$2" want="$3" got
     echo "    ${url##*/}"
-    curl -fsSL --retry 3 -o "$dest" "$url"
+    # Espera de 10s entre tentativas, e não o backoff de 1s do curl: uma
+    # indisponibilidade de release do GitHub dura mais que os 8 segundos que
+    # três tentativas somam (ver install-nerd-font.sh).
+    curl -fsSL --retry 5 --retry-delay 10 --retry-all-errors \
+        --connect-timeout 20 -o "$dest" "$url"
     got="$(sha256sum "$dest" | cut -d' ' -f1)"
     if [[ "$got" != "$want" ]]; then
         echo "ERRO: checksum de ${url##*/} não confere." >&2
