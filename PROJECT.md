@@ -1892,19 +1892,32 @@ O Arkmos já traz VS Code e Docker, que no Universal Blue são o que separa a im
 
 A origem é a imagem **publicada**, e não a local: a referência usada na geração é a que fica gravada na deployment, e uma instalação feita a partir de `localhost/arkmos:dev` nasce seguindo um registry que não existe (seção 30). Por isso a receita não depende do `just build`.
 
-O que a ISO faz, verificado nos dois kickstarts que o builder embute nela (`osbuild.ks` e `osbuild-base.ks`, extraíveis com `7z e install.iso osbuild.ks`):
+### O kickstart é nosso, e por dois motivos
+
+O builder gera um kickstart próprio, e o README descreve o tipo `anaconda-iso` como *"an **unattended** Anaconda installer that installs to the **first disk found**"*. Com o `clearpart --all` que ele inclui, é exatamente isso: a mídia apaga o primeiro disco que encontrar, sem perguntar. Numa VM de teste é o comportamento desejado; num computador com mais de um disco é destruição silenciosa.
+
+O segundo motivo é a assinatura. O `%post` dele aponta a deployment para o registry com `bootc switch --mutate-in-place --transport registry <imagem>`, **sem** `--enforce-container-sigpolicy` — e sem essa flag nenhum `bootc upgrade` posterior verifica assinatura (seção 28.3). Como o `--mutate-in-place` só grava a origin, a flag não custa download nenhum: é uma palavra no lugar certo.
+
+Daí o `iso-config.toml`, versionado, que passa o kickstart inteiro:
 
 ```text
-autopart --nohome --type=btrfs        ← o tipo vem do 00-arkmos.toml da imagem
-clearpart --all
-ostreecontainer --url=/run/install/repo/container --transport=oci
-%post: bootc switch --mutate-in-place --transport registry ghcr.io/<dono>/arkmos:44
+rootpw --lock / lang pt_BR.UTF-8 / keyboard br / timezone America/Sao_Paulo
+autopart --nohome --type=btrfs          ← esquema nosso, disco escolhido na tela
+network --device=link --bootproto=dhcp --onboot=on --activate
+%post: bootc switch --mutate-in-place --transport registry \
+           --enforce-container-sigpolicy <imagem>
 ```
 
-Três consequências, todas verificadas na instalação em VM de 2026-09-23:
+Ao receber um kickstart próprio, o builder acrescenta só a linha `ostreecontainer` e mais nada — particionamento, rede e `%post` passam a ser responsabilidade do arquivo. Por isso a receita `just iso` termina extraindo os kickstarts da ISO pronta (com o `7z`) e conferindo quatro coisas: a exigência de assinatura, o `--type=btrfs`, a linha `ostreecontainer` do builder e uma única linha de `autopart`. É a única parte da instalação que o `just check` não alcança, e um erro aqui só apareceria com o disco da máquina já apagado.
+
+O `autopart` fica, e o `clearpart` sai: sem ele o spoke de destino fica incompleto e o Anaconda para na tela de seleção de disco, que é onde essa decisão pertence — mantendo o esquema (Btrfs, sem `/home` separado) declarado por nós.
+
+### O que a instalação de 2026-09-23 mostrou
+
+Com a mídia anterior, ainda com o kickstart padrão do builder:
 
 - **o Btrfs é respeitado.** O builder lê o `[install.filesystem.root]` da imagem e o traduz para o `autopart`. O `--nohome` é o certo num sistema ostree, onde `/home` é link para `/var/home`. Para conferir depois, o alvo é `/sysroot`, e não `/`: a raiz de um sistema bootc é um overlay do composefs, e `btrfs subvolume list /` responde "not a btrfs filesystem" mesmo num disco Btrfs;
-- **o `%post` já aponta a deployment para o registry**, o que faz o `bootc upgrade` funcionar sem nenhum passo extra — mas **sem** `--enforce-container-sigpolicy`, e o `bootc status` sai sem campo de assinatura. A exigência precisa ser gravada uma vez, depois de instalar: `sudo bootc switch --enforce-container-sigpolicy ghcr.io/<dono>/arkmos:44`;
+- **o `%post` já aponta a deployment para o registry**, o que faz o `bootc upgrade` funcionar sem nenhum passo extra — mas a instalação daquele dia saiu sem a exigência de assinatura, e o `bootc status` sem campo nenhum de assinatura. Numa máquina já instalada assim, o conserto é um `sudo bootc switch --enforce-container-sigpolicy ghcr.io/<dono>/arkmos:44`; nas mídias geradas a partir do `iso-config.toml` a flag já vai no kickstart;
 - **o digest instalado não é o do registry.** A imagem viaja na ISO como OCI layout, e a conversão muda o digest do manifest: a máquina instalada mostrou `sha256:493bd810…` para a mesma `44.20260923.75` que no registry é `sha256:3d5fc5fc…`. Mesmo conteúdo, formato diferente — o primeiro `bootc upgrade` depois de instalar pela ISO pode, por isso, baixar mais do que o delta normal entre publicações (seção 28.5).
 
 **Instalação direta**, num disco, a partir de qualquer Linux com podman (um pendrive live, por exemplo):

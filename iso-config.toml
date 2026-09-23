@@ -1,0 +1,68 @@
+# Configuração do bootc-image-builder para a MÍDIA DE INSTALAÇÃO (just iso).
+#
+# Diferente do config.toml, que descreve o qcow2 de teste: aqui não há kargs de
+# console serial nem sshd ligado — isto vira a instalação de uma máquina real.
+#
+# O kickstart é declarado por inteiro de propósito. Ao receber um kickstart
+# próprio, o builder acrescenta apenas o 'ostreecontainer' (a linha que instala
+# a imagem) e mais nada: particionamento, rede e %post passam a ser deste
+# arquivo. O que se ganha em troca é o que falta no padrão dele — a exigência de
+# assinatura na deployment.
+#
+# O padrão do builder, para comparação, era:
+#
+#   rootpw --lock / lang en_US.UTF-8 / keyboard us / timezone UTC
+#   clearpart --all
+#   autopart --nohome --type=btrfs        (o tipo vem da imagem)
+#   network --device=link --bootproto=dhcp --onboot=on --activate
+#   %post: bootc switch --mutate-in-place --transport registry <imagem>
+#
+# As diferenças, e o motivo de cada uma:
+#
+#   --enforce-container-sigpolicy   o padrão grava a deployment SEM exigir
+#                                   assinatura, e aí nenhum 'bootc upgrade'
+#                                   posterior verifica nada. Com --mutate-in-place
+#                                   a flag não custa download: ela só grava a
+#                                   origin (seção 28.3).
+#   lang/keyboard/timezone do       o Anaconda em modo ostreecontainer não
+#   Arkmos                          aplicou esses valores ao sistema instalado
+#                                   na instalação de 2026-09-23 — o /etc ficou
+#                                   com o da imagem. Ficam corretos aqui de
+#                                   todo modo: se um dia passarem a ser
+#                                   aplicados, serão os valores que a imagem já
+#                                   declara, e não en_US/us/UTC.
+#   sem clearpart e sem zerombr     O README do builder descreve o anaconda-iso
+#                                   como "unattended installer that installs to
+#                                   the first disk found", e com 'clearpart
+#                                   --all' é isso mesmo: a mídia apaga o
+#                                   primeiro disco que encontrar, sem perguntar.
+#                                   Serve para VM, e é inaceitável numa máquina
+#                                   com mais de um disco — ou com um disco só,
+#                                   cheio de coisa. Sem essas duas linhas o
+#                                   spoke de destino fica incompleto e o
+#                                   Anaconda para na tela de seleção de disco,
+#                                   que é onde essa decisão pertence.
+#
+# O @IMAGEM@ é substituído pela receita 'iso' do Justfile pela referência que
+# está sendo instalada — é o que faz a variante NVIDIA gerar mídia que aponta
+# para a imagem dela, e não para a padrão.
+#
+# O 'autopart --nohome' é o certo num sistema ostree: /home é link para
+# /var/home, e um volume separado para /home ficaria órfão. A raiz em Btrfs vem
+# daqui e do /usr/lib/bootc/install/00-arkmos.toml — declarada nos dois lugares
+# porque cada caminho de instalação lê um deles (seção 31).
+[customizations.installer.kickstart]
+contents = """
+rootpw --lock
+lang pt_BR.UTF-8
+keyboard br
+timezone America/Sao_Paulo --utc
+autopart --nohome --type=btrfs
+network --device=link --bootproto=dhcp --onboot=on --activate
+%post --erroronfail
+set -e
+bootc switch --mutate-in-place --transport registry \
+    --enforce-container-sigpolicy @IMAGEM@
+%end
+reboot --eject
+"""

@@ -109,23 +109,56 @@ vm: build
 # 7 GB.
 [doc("Gera a ISO instalável a partir da imagem publicada")]
 iso origem=publicado:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    command -v 7z >/dev/null || { echo "precisa do 7z (p7zip) para conferir a ISO no fim"; exit 1; }
     mkdir -p {{ outdir }}
+
+    # O kickstart vive em iso-config.toml, versionado e comentado; só a
+    # referência da imagem é substituída aqui, para a variante NVIDIA gerar
+    # mídia que aponta para a imagem dela.
+    config={{ outdir }}/iso-config.gerado.toml
+    sed 's|@IMAGEM@|{{ origem }}|g' iso-config.toml > "$config"
+
     # O builder roda como root e só enxerga o storage do root; o pull explícito
     # aqui deixa claro no terminal o que está sendo baixado, e de onde.
     sudo podman pull {{ origem }}
     sudo podman run --rm -it --privileged --pull=newer \
         --security-opt label=type:unconfined_t \
+        -v "./$config":/config.toml:ro \
         -v ./{{ outdir }}:/output \
         -v /var/lib/containers/storage:/var/lib/containers/storage \
         {{ builder }} \
         build --type anaconda-iso \
         --chown "$(id -u):$(id -g)" \
         {{ origem }}
-    @echo
-    @ls -lh {{ outdir }}/bootiso/*.iso
-    @echo
-    @echo "Para gravar: confira o device com 'lsblk' e use"
-    @echo "  sudo dd if={{ outdir }}/bootiso/install.iso of=/dev/sdX bs=4M status=progress oflag=direct"
+
+    # O que a mídia carrega de verdade. O kickstart é a única parte da
+    # instalação que não passa pelo 'just check', e um erro aqui só apareceria
+    # com o disco da máquina já apagado.
+    iso={{ outdir }}/bootiso/install.iso
+    ks="$(mktemp -d)"
+    trap 'rm -rf "$ks"' EXIT
+    7z e -o"$ks" "$iso" 'osbuild*.ks' >/dev/null
+    conteudo="$(cat "$ks"/*.ks)"
+
+    falta() { echo "ERRO: a ISO não carrega $1" >&2; exit 1; }
+    grep -q -- "--enforce-container-sigpolicy" <<<"$conteudo" || falta "a exigência de assinatura"
+    grep -q -- "--type=btrfs" <<<"$conteudo" || falta "o autopart em Btrfs"
+    grep -q "ostreecontainer" <<<"$conteudo" || falta "a linha ostreecontainer do builder"
+    grep -q "{{ origem }}" <<<"$conteudo" || falta "a referência {{ origem }}"
+    if [[ "$(grep -c "^autopart" <<<"$conteudo")" != 1 ]]; then
+        echo "ERRO: a ISO tem $(grep -c "^autopart" <<<"$conteudo") linhas de autopart." >&2
+        echo "      O builder mudou a composição do kickstart; reveja iso-config.toml." >&2
+        exit 1
+    fi
+    echo "kickstart conferido: Btrfs, assinatura exigida, {{ origem }}"
+
+    echo
+    ls -lh "$iso"
+    echo
+    echo "Para gravar: confira o device com 'lsblk' e use"
+    echo "  sudo dd if=$iso of=/dev/sdX bs=4M status=progress oflag=direct"
 
 # Sobe o qcow2 no QEMU.
 #
