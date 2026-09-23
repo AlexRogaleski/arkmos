@@ -264,7 +264,21 @@ Daí o escopo, nesta ordem de valor:
 - **snapshots de `/var/home`**, com retenção curta, para desfazer engano em segundos;
 - nada de integração snapshot↔bootloader, que é resposta para um problema que este sistema não tem.
 
-A escolha do filesystem é a parte irreversível, e já está feita do lado certo: a imagem instala em Btrfs e traz o `btrfs-progs`. Os snapshots entram depois, na máquina, sem reinstalar. Uma coisa a conferir na primeira instalação real: `sudo btrfs subvolume list /` — se o `/var/home` não tiver subvolume próprio, o snapshot pega o `/ostree` junto, o que funciona para restaurar arquivo mas é grosseiro.
+A escolha do filesystem é a parte irreversível, e já está feita do lado certo: a imagem instala em Btrfs e traz o `btrfs-progs`. Os snapshots entram depois, na máquina, sem reinstalar.
+
+**O layout, medido na instalação pela ISO em 2026-09-23:** um único subvolume.
+
+```text
+$ findmnt -no SOURCE,FSTYPE /sysroot
+/dev/vda3[/root] btrfs
+
+$ sudo btrfs subvolume list /sysroot
+ID 256 gen 316 top level 5 path root
+```
+
+O `autopart --nohome --type=btrfs` do kickstart cria só o `root`, e o `/var/home` mora dentro dele. Um snapshot desse subvolume levaria o `/ostree` inteiro junto — as deployments, e não apenas os dados. Para o recorte da seção anterior (snapshots de `/var/home`), o `/var/home` precisa de subvolume próprio, o que dá para fazer depois movendo o conteúdo, ou no particionamento manual da instalação.
+
+Note o alvo: `/sysroot`. A raiz de um sistema bootc é um overlay do composefs, e `btrfs subvolume list /` responde `not a btrfs filesystem` mesmo num disco Btrfs.
 
 ---
 
@@ -1878,6 +1892,21 @@ O Arkmos já traz VS Code e Docker, que no Universal Blue são o que separa a im
 
 A origem é a imagem **publicada**, e não a local: a referência usada na geração é a que fica gravada na deployment, e uma instalação feita a partir de `localhost/arkmos:dev` nasce seguindo um registry que não existe (seção 30). Por isso a receita não depende do `just build`.
 
+O que a ISO faz, verificado nos dois kickstarts que o builder embute nela (`osbuild.ks` e `osbuild-base.ks`, extraíveis com `7z e install.iso osbuild.ks`):
+
+```text
+autopart --nohome --type=btrfs        ← o tipo vem do 00-arkmos.toml da imagem
+clearpart --all
+ostreecontainer --url=/run/install/repo/container --transport=oci
+%post: bootc switch --mutate-in-place --transport registry ghcr.io/<dono>/arkmos:44
+```
+
+Três consequências, todas verificadas na instalação em VM de 2026-09-23:
+
+- **o Btrfs é respeitado.** O builder lê o `[install.filesystem.root]` da imagem e o traduz para o `autopart`. O `--nohome` é o certo num sistema ostree, onde `/home` é link para `/var/home`. Para conferir depois, o alvo é `/sysroot`, e não `/`: a raiz de um sistema bootc é um overlay do composefs, e `btrfs subvolume list /` responde "not a btrfs filesystem" mesmo num disco Btrfs;
+- **o `%post` já aponta a deployment para o registry**, o que faz o `bootc upgrade` funcionar sem nenhum passo extra — mas **sem** `--enforce-container-sigpolicy`, e o `bootc status` sai sem campo de assinatura. A exigência precisa ser gravada uma vez, depois de instalar: `sudo bootc switch --enforce-container-sigpolicy ghcr.io/<dono>/arkmos:44`;
+- **o digest instalado não é o do registry.** A imagem viaja na ISO como OCI layout, e a conversão muda o digest do manifest: a máquina instalada mostrou `sha256:493bd810…` para a mesma `44.20260923.75` que no registry é `sha256:3d5fc5fc…`. Mesmo conteúdo, formato diferente — o primeiro `bootc upgrade` depois de instalar pela ISO pode, por isso, baixar mais do que o delta normal entre publicações (seção 28.5).
+
 **Instalação direta**, num disco, a partir de qualquer Linux com podman (um pendrive live, por exemplo):
 
 ```bash
@@ -2265,11 +2294,38 @@ identidade visual em conta nova (useradd -m, que copia o /etc/skel): papel de
   esquema, e um Flatpak Qt (Fedora Media Writer) seguindo a paleta
 ```
 
+## 35.2.1 Instalação pela ISO, em VM (2026-09-23)
+
+Ensaio do caminho que vai ao hardware, com a ISO de 4,5 GB gerada pelo `just iso` a partir da `44.20260923.75` e instalada numa VM do virt-manager (UEFI, Video Virtio com 3D, Display Spice com OpenGL).
+
+```text
+deployment seguindo ghcr.io/alexrogaleski/arkmos:44, versão 44.20260923.75
+raiz em Btrfs (/dev/vda3[/root]), subvolume único 'root'
+conta criada pelo assistente do primeiro boot, com wheel E docker
+38 refs de Flatpak instaladas pelo preinstall, incluindo todos os declarados
+greetd, docker, tailscaled e o preinstall habilitados; sshd desligado
+rpm-ostreed-automatic e flatpak-system-update ligados, bootc-fetch desligado,
+  AutomaticUpdatePolicy=stage
+LANG=pt_BR.UTF-8, VC Keymap br, X11 Layout br (sem xorg.conf.d)
+menu do ujust com as três receitas do Arkmos
+/etc alterado localmente: só o inevitável — chaves de host do ssh, machine-id,
+  passwd/shadow, fstab, crypttab, conexão do NetworkManager, estado do tuned e
+  resíduos do Anaconda. Nada declarado pela imagem ficou congelado.
+```
+
+Duas coisas que o ensaio mostrou e que não são defeito:
+
+- **a tela de login nasce com o tema padrão do Noctalia.** A aparência do greeter chega pelo sync a partir da conta (`[shell.greeter_sync] auto_sync = true`), e antes do primeiro login não existe conta de onde sincronizar;
+- **a área de transferência do SPICE não funciona na sessão.** O socket, o daemon e o `spice-vdagent.service` do usuário estavam todos ativos — o agente é que roda em modo X11 (`spice-vdagent -x`), e no niri, Wayland puro, não há ponte de área de transferência com o X11 como o mutter faz no GNOME. Para trazer saídas de dentro da VM, o caminho é o ssh: `sudo systemctl start sshd` na VM (a imagem o mantém desligado) e `ssh -t usuario@IP 'comando' | tee arquivo` no host.
+
 ## 35.3 Não validado ainda
 
 ```text
 Laravel Sail em uso real
 instalação em hardware real
+o primeiro 'bootc upgrade' de uma máquina instalada pela ISO — o digest local é
+  o da conversão OCI da mídia, então o download pode ser maior que o delta
+  medido entre publicações (seções 28.5 e 31)
 cadastro de uma impressora de verdade
 remoção de um Flatpak retirado da lista depois de um bootc upgrade
 celular por USB no Nautilus, agente SSH num git push, tailscale up,
