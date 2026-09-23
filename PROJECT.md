@@ -250,12 +250,21 @@ Conteúdo:
 type = "btrfs"
 ```
 
-Objetivos futuros:
+## O que o Btrfs acrescenta aqui — e o que não acrescenta
 
-- snapshots;
-- rollback de dados (o rollback do sistema já existe, via bootc);
-- integração com Snapper;
-- recuperação do sistema.
+O snapshot, num sistema de pacotes como o Arch, é a única rede de segurança do sistema: uma atualização quebra e você **boota dentro de um snapshot** do subvolume raiz. É o que o Omarchy monta com o Snapper e o bootloader.
+
+Aqui esse papel já está coberto, e por um mecanismo mais forte. Cada `bootc upgrade` cria uma deployment nova e deixa a anterior intacta no disco; `bootc rollback` volta em um reboot. Não é cópia de arquivos, é a própria unidade de instalação — e o `/usr` é read-only com composefs, então não existe o acúmulo de mudança local que o snapshot protege. Bootar dentro de um snapshot não faz sentido no Arkmos: quem manda no boot são as deployments do ostree, não subvolumes.
+
+O que o rollback do bootc **não** cobre é o `/var`, que é compartilhado entre deployments e atravessa o rollback sem mudar. E é ali que ficam os dados: `/var/home`, `/var/lib/flatpak` (aplicativos e o estado deles), `/var/lib/docker` (volumes do Sail), `/var/lib/containers` (Distrobox). Esse é o recorte onde o snapshot ganha valor: uma pasta apagada por engano, um volume corrompido, uma atualização de Flatpak que estraga os dados do aplicativo.
+
+Daí o escopo, nesta ordem de valor:
+
+- **backup do `/var/home` para fora da máquina** — snapshot não sobrevive à morte do SSD, a um `mkfs` errado nem a roubo;
+- **snapshots de `/var/home`**, com retenção curta, para desfazer engano em segundos;
+- nada de integração snapshot↔bootloader, que é resposta para um problema que este sistema não tem.
+
+A escolha do filesystem é a parte irreversível, e já está feita do lado certo: a imagem instala em Btrfs e traz o `btrfs-progs`. Os snapshots entram depois, na máquina, sem reinstalar. Uma coisa a conferir na primeira instalação real: `sudo btrfs subvolume list /` — se o `/var/home` não tiver subvolume próprio, o snapshot pega o `/ostree` junto, o que funciona para restaurar arquivo mas é grosseiro.
 
 ---
 
@@ -2161,7 +2170,7 @@ travamento antes do assistente no primeiro boot em VM — visto uma vez em
 
 ## Longo prazo
 
-5. Snapper/Btrfs snapshots.
+5. Snapshots do `/var/home` e backup para fora da máquina — o rollback do sistema já vem do bootc (seção 6).
 6. Validar instalação em hardware real.
 7. Documentar recuperação.
 8. Definir política de atualização/rollback.
@@ -2196,7 +2205,7 @@ O Arkmos somente deve ser considerado `1.0.0` quando:
 Universal Blue como base        akmods NVIDIA assinados prontos (seção 5)
 Duas variantes de imagem        dGPU alternável pela BIOS (seção 24)
 Fedora bootc                    sistema como imagem, atualizável e reversível
-Btrfs                           snapshots e rollback de dados no futuro
+Btrfs                           snapshots do /var, que o bootc não cobre
 Niri                            compositor
 Noctalia                        shell do desktop
 greetd + tuigreet               login, com fallback de texto
