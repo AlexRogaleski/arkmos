@@ -156,6 +156,11 @@ clean:
 # cada receita usa o binário local quando existe e cai num container com versão
 # fixada quando não existe. Na imagem do Arkmos os binários existem, e é o
 # caminho local que roda.
+#
+# ARKMOS_LINT_CONTAINER=1 ignora o binário local e força o container. É o que o
+# CI usa: o runner do GitHub traz shellcheck 0.9.0, e a nossa imagem fixada é a
+# 0.11.0 — versões diferentes acusam coisas diferentes, e o lint passava aqui e
+# falhava lá. Com o container, o CI e a máquina rodam a mesma versão.
 shellcheck_image := "docker.io/koalaman/shellcheck:v0.11.0"
 shfmt_image := "docker.io/mvdan/shfmt:v3.12.0"
 actionlint_image := "docker.io/rhysd/actionlint:1.7.7"
@@ -184,14 +189,14 @@ lint:
     fi
     printf 'shellcheck em %d scripts:\n' "${#fontes[@]}"
     printf '  %s\n' "${fontes[@]}"
-    if command -v shellcheck >/dev/null; then
+    if [[ -z "${ARKMOS_LINT_CONTAINER:-}" ]] && command -v shellcheck >/dev/null; then
         shellcheck "${fontes[@]}"
     else
         podman run --rm -v "$PWD:/mnt:ro,Z" -w /mnt {{ shellcheck_image }} "${fontes[@]}"
     fi
 
     echo 'actionlint nos workflows:'
-    if command -v actionlint >/dev/null; then
+    if [[ -z "${ARKMOS_LINT_CONTAINER:-}" ]] && command -v actionlint >/dev/null; then
         actionlint
     else
         podman run --rm -v "$PWD:/repo:ro,Z" -w /repo {{ actionlint_image }}
@@ -206,7 +211,7 @@ format:
     set -euo pipefail
 
     mapfile -t fontes < <(just shell-sources)
-    if command -v shfmt >/dev/null; then
+    if [[ -z "${ARKMOS_LINT_CONTAINER:-}" ]] && command -v shfmt >/dev/null; then
         shfmt --write "${fontes[@]}"
     else
         podman run --rm -v "$PWD:/mnt:Z" -w /mnt {{ shfmt_image }} --write "${fontes[@]}"

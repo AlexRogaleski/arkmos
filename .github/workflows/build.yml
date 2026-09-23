@@ -51,10 +51,20 @@ jobs:
 
       # A mesma action que o image-template do Universal Blue usa, fixada por
       # commit e não por tag.
+      #
+      # A versão do just é fixada na mesma que roda na máquina: o formatador
+      # dele muda de uma versão para outra, e o 'just --fmt --check' passava
+      # aqui e falhava no CI, que instalava a mais recente.
       - name: Instalar o just
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4.0.0
+        with:
+          just-version: 1.57.0
 
+      # ARKMOS_LINT_CONTAINER força as ferramentas fixadas no Justfile em vez
+      # das do runner, que traz shellcheck 0.9.0 contra a 0.11.0 que usamos.
       - name: just lint
+        env:
+          ARKMOS_LINT_CONTAINER: "1"
         run: just lint
 
   build:
