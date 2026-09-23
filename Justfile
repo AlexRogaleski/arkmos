@@ -5,6 +5,7 @@
 #   just vm         gera um qcow2 para testar em QEMU
 #   just run-vm     sobe o qcow2 no QEMU com aceleração 3D
 #   just iso        gera a ISO instalável, para pendrive
+#   just run-iso    ensaia a instalação da ISO numa VM
 #
 # Duas variantes do mesmo sistema. A padrão não tem a pilha NVIDIA e é a que
 # se testa em VM; a outra troca só a imagem base:
@@ -167,6 +168,77 @@ run-vm:
         -drive if=pflash,format=raw,unit=0,readonly=on,file=/usr/share/edk2/ovmf/OVMF_CODE.fd \
         -drive if=pflash,format=raw,unit=1,file={{ outdir }}/OVMF_VARS.fd \
         -drive file={{ outdir }}/qcow2/disk.qcow2,if=virtio,format=qcow2 \
+        -device virtio-vga-gl,xres=1920,yres=1080 \
+        -display gtk,gl=on,grab-on-hover=on \
+        -device virtio-net,netdev=n0 -netdev user,id=n0,hostfwd=tcp:127.0.0.1:2222-:22 \
+        -usb -device usb-tablet
+
+# Sobe a ISO instalável numa VM, com um disco vazio para instalar em cima.
+#
+# É o ensaio da instalação em hardware: o Anaconda que roda aqui é o mesmo que
+# vai rodar lá, com as mesmas telas de disco, cifragem e conta. O que se
+# aprende aqui — se ele pede usuário, que layout de subvolumes ele cria — é o
+# que decide as duas pendências da seção 12.4 e da seção 6.
+#
+# Diferenças em relação ao 'run-vm', que sobe um disco já instalado:
+#
+#   - o disco nasce vazio, criado aqui e não pelo bootc-image-builder;
+#   - a ISO entra como cdrom, e o menu de boot do firmware tenta o disco vazio
+#     primeiro, então 'bootindex' põe o cdrom na frente;
+#   - 8 GB de RAM, e não 4: o instalador roda a partir de um squashfs em
+#     memória e o Anaconda gráfico é pesado.
+#
+# Depois de instalar, desligue a VM e use o 'run-iso-instalado', que sobe o
+# mesmo disco sem a ISO — com a ISO ainda no cdrom, o firmware volta para o
+# instalador.
+[doc("Sobe a ISO instalável numa VM, para ensaiar a instalação")]
+run-iso tamanho="60G":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    iso={{ outdir }}/bootiso/install.iso
+    test -f "$iso" || { echo "Rode 'just{{ if variant == "" { "" } else { " variant=" + variant } }} iso' antes."; exit 1; }
+
+    disco={{ outdir }}/iso-test/disk.qcow2
+    mkdir -p "$(dirname "$disco")"
+    if [ ! -f "$disco" ]; then
+        qemu-img create -f qcow2 "$disco" {{ tamanho }}
+        echo "disco novo: $disco ({{ tamanho }}, esparso)"
+    else
+        echo "disco existente: $disco — apague o arquivo para instalar do zero"
+    fi
+
+    vars={{ outdir }}/iso-test/OVMF_VARS.fd
+    if [ ! -f "$vars" ]; then
+        cp /usr/share/edk2/ovmf/OVMF_VARS.fd "$vars"
+        chmod u+w "$vars"
+    fi
+
+    qemu-system-x86_64 \
+        -machine q35,accel=kvm -cpu host \
+        -m 8192 -smp 4 \
+        -drive if=pflash,format=raw,unit=0,readonly=on,file=/usr/share/edk2/ovmf/OVMF_CODE.fd \
+        -drive if=pflash,format=raw,unit=1,file="$vars" \
+        -drive file="$disco",if=virtio,format=qcow2 \
+        -drive id=iso,file="$iso",if=none,media=cdrom,readonly=on \
+        -device virtio-blk-pci,drive=iso,bootindex=0 \
+        -device virtio-vga-gl,xres=1920,yres=1080 \
+        -display gtk,gl=on,grab-on-hover=on \
+        -device virtio-net,netdev=n0 -netdev user,id=n0,hostfwd=tcp:127.0.0.1:2222-:22 \
+        -usb -device usb-tablet
+
+# O mesmo disco do 'run-iso', já instalado, sem a ISO no cdrom.
+[doc("Sobe o disco instalado pela ISO, sem a mídia")]
+run-iso-instalado:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    disco={{ outdir }}/iso-test/disk.qcow2
+    test -f "$disco" || { echo "Não há disco instalado em $disco."; exit 1; }
+    qemu-system-x86_64 \
+        -machine q35,accel=kvm -cpu host \
+        -m 4096 -smp 4 \
+        -drive if=pflash,format=raw,unit=0,readonly=on,file=/usr/share/edk2/ovmf/OVMF_CODE.fd \
+        -drive if=pflash,format=raw,unit=1,file={{ outdir }}/iso-test/OVMF_VARS.fd \
+        -drive file="$disco",if=virtio,format=qcow2 \
         -device virtio-vga-gl,xres=1920,yres=1080 \
         -display gtk,gl=on,grab-on-hover=on \
         -device virtio-net,netdev=n0 -netdev user,id=n0,hostfwd=tcp:127.0.0.1:2222-:22 \

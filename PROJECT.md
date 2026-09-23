@@ -1544,6 +1544,21 @@ As mesmas 289 camadas viram as mesmas 128 no runner do GitHub, nas duas variante
 
 O ganho maior, porém, é no `bootc upgrade` de quem usa. Camadas decididas por conteúdo são estáveis entre publicações: sem rechunk, um `dnf install` no começo do Containerfile invalida tudo o que vem depois e cada publicação obriga a baixar gigabytes.
 
+### O delta, medido
+
+Não precisa de máquina instalada para medir: o que um `bootc upgrade` baixa são exatamente as camadas que a versão nova tem e a antiga não, e isso sai dos manifests no registry.
+
+| Atualização | Camadas | Download |
+| --- | --- | --- |
+| `.48 → .57`, as duas sem rechunk | 287 → 288 | 2.635 MB — 58% da imagem |
+| `.57 → .69`, a primeira reorganizada | 288 → 128 | 3.459 MB — 100%, o plano inteiro muda |
+| **`.69 → .75`, as duas reorganizadas** | 128 → 128, 5 novas | **559 MB — 16%** |
+| `.69 → .75` na variante NVIDIA | 128 → 128, 5 novas | 668 MB — 15% |
+
+De **2,6 GB para 559 MB** por atualização, e a publicação medida não era pequena: trocou o id de `.desktop` do VS Code, recortou o menu do ujust, acrescentou receitas e mexeu no `mimeapps.list`.
+
+A linha do meio é o preço de entrada, e cobra uma vez: a primeira publicação reorganizada não compartilha camada nenhuma com a anterior. A partir dela, cada publicação herda o plano da última — é o `--previous-build`, e o log diz `plano de camadas herdado de ... (128 camadas)` quando ele entra.
+
 Três detalhes que o caminho ensinou:
 
 - **Os labels não sobrevivem sozinhos.** O `build-chunked-oci` monta uma imagem nova a partir do sistema de arquivos e não herda a configuração: dos 16 labels sobravam 3, e com eles iam a variante (que o `just check` lê) e a versão (que o `bootc status` mostra). A receita os repassa um a um, lidos da imagem de origem, então um label novo no Containerfile viaja sem ninguém editar o `Justfile`. A receita do image-template não faz isso, e por isso não serviu como está.
@@ -1786,6 +1801,16 @@ O `grab-on-hover` captura o teclado quando o ponteiro está sobre a janela. Sem 
 UEFI via `pflash`, não `-bios`: o firmware precisa de uma cópia **gravável** das variáveis EFI para guardar a entrada de boot que o bootc instala. As variáveis são descartadas ao gerar um disco novo — reaproveitá-las faz o firmware tentar uma entrada que não existe mais, e o sintoma é a VM não dar boot, indistinguível de imagem quebrada.
 
 Cada variante tem seu próprio diretório de saída (`output/`, `output-nvidia/`).
+
+**Para ensaiar a instalação pela ISO**, e não o sistema já instalado:
+
+```bash
+just iso                  # gera output/bootiso/install.iso
+just run-iso              # disco vazio de 60G + a ISO no cdrom
+just run-iso-instalado    # o mesmo disco depois, sem a mídia
+```
+
+O Anaconda que roda aí é o mesmo que vai rodar no hardware, com as telas de disco, cifragem e conta — é o ensaio que responde se a conta nasce no instalador ou no assistente (seção 12.4) e que layout de subvolumes o Btrfs recebe (seção 6). Três diferenças em relação ao `run-vm`: o disco nasce vazio (criado pelo `qemu-img`, não pelo bootc-image-builder), a ISO entra com `bootindex=0` porque o firmware tentaria o disco vazio primeiro, e a VM sobe com 8 GB de RAM, porque o instalador roda a partir de um squashfs em memória. Depois de instalar, é preciso sair da mídia: com a ISO ainda no cdrom, o firmware volta para o instalador — daí a segunda receita.
 
 **A VM nasce seguindo a imagem local.** O disco é gerado a partir de `localhost/arkmos:dev`, e é isso que fica gravado na deployment: um `bootc upgrade` ali tenta buscar em `localhost/v2/` e falha. Para a VM passar a seguir a imagem publicada, uma vez:
 
@@ -2245,8 +2270,8 @@ travamento antes do assistente no primeiro boot em VM — visto uma vez em
 
 ## Médio prazo
 
-3. Medir o delta do `bootc upgrade` entre duas publicações com rechunk — a primeira só estabelece o plano de camadas (seção 28.5).
-4. Fechar o que falta da identidade visual: cursores, tipografia e as cores do Zsh (seção 26.2).
+3. Fechar o que falta da identidade visual: cursores, tipografia e as cores do Zsh (seção 26.2).
+4. Registrar em uso real quanto o `bootc upgrade` baixa de fato, para comparar com os 559 MB medidos no registry (seção 28.5).
 
 ## Longo prazo
 
