@@ -1893,6 +1893,45 @@ ujust update-firmware  # fwupdmgr
 
 **O que o Arkmos não tem é o `uupd`**, o daemon de atualização do Universal Blue. O Bluefin o instala, desabilita o `rpm-ostreed-automatic.timer` e deixa o `uupd` coordenar sistema, Flatpaks e Distrobox num só lugar — o `ujust update` inclusive detecta se ele está ligado e delega. Aqui o ganho seria coordenação e log num lugar só, ao custo de uma dependência a mais fora do Fedora; com o `flatpak preinstall` já reconciliando a lista e o timer do Flatpak já atualizando versões, a conta não fechou. Fica registrado como alternativa, não como pendência.
 
+## 31.2 O menu do ujust
+
+O menu vem do pacote `ublue-os-just`, e o justfile dele termina com
+
+```text
+import? "/usr/share/ublue-os/just/60-custom.just"
+```
+
+A interrogação quer dizer opcional: é o gancho que o Universal Blue deixa para a imagem derivada acrescentar receitas sem tocar no justfile do pacote. As três do Arkmos entram por ali (`files/usr/share/ublue-os/just/60-custom.just`):
+
+| Receita | O que faz |
+| --- | --- |
+| `ujust arkmos-variant base\|nvidia` | o `bootc switch` para a variante irmã, com a flag de assinatura. A imagem sai da própria deployment, então quem instalou de outro registry continua trocando dentro dele; imagem local é recusada com a instrução do switch. |
+| `ujust arkmos-apply-defaults` | copia o `/etc/skel` para a conta, com `cp -rn` — nunca sobrescreve o que a pessoa editou. É a resposta ao caso do rebase e ao "atualizei a imagem e meu home continuou com o padrão antigo" (seção 30). |
+| `ujust arkmos-diag` | o `arkmos-diag` que já existia, agora visível no menu. |
+
+E quatro receitas do Universal Blue **saem** do menu, pelo `build_files/trim-ujust.sh`:
+
+```text
+toggle-nvk             faz rebase para '<imagem>-nvidia-open', que aqui não
+                       existe: as variantes são 'arkmos' e 'arkmos-nvidia'
+install-resolve        DaVinci Resolve num Distrobox dedicado
+configure-broadcom-wl  Wi-Fi Broadcom
+setup-distrobox-app    containers de aplicativo do Bluefin
+```
+
+O recorte é dentro dos arquivos, e não apagando cada um: os `.just` do pacote misturam receitas úteis com essas, e o justfile principal importa todos sem interrogação — arquivo ausente quebraria o menu. Os `alias` que apontavam para uma receita removida saem junto, senão o justfile fica com sintaxe inválida. Se o pacote renomear alguma delas, o script falha de propósito; e no fim ele monta o menu com o `just --list` e confere as duas listas, o que sai e o que tem de ficar.
+
+O que fica é o que serve aqui, com destaque para três:
+
+- `ujust bios` reinicia direto na UEFI — é onde a dGPU é ligada e desligada nesta máquina (seção 24);
+- `ujust check-local-overrides` faz diff do `/etc` contra o `/usr/etc` da imagem: é o comando que mostra o que ficou congelado localmente contra as atualizações (seção 11);
+- `ujust setup-luks-tpm-unlock` destrava o disco cifrado pelo TPM, se a instalação pela ISO for com cifragem.
+
+Duas ressalvas sobre receitas que ficaram, porque o comportamento não é óbvio pelo nome:
+
+- `ujust clean-system` roda `podman image prune -af`: remove **toda** imagem sem container associado, o que inclui as do Laravel Sail se nenhum container estiver criado naquele momento. Não toca em containers nem volumes, então o custo é re-download;
+- `ujust enroll-secure-boot-key` só importa com Secure Boot ligado e a variante NVIDIA; a senha `universalblue` que ele pede é legítima, porque os akmods vêm assinados pelo Universal Blue (seção 5).
+
 ---
 
 # 32. Git
@@ -1941,6 +1980,7 @@ arkmos/
 │   ├── install-nerd-font.sh       JetBrains Mono patched (sha256)
 │   ├── papirus-folders.sh         pastas do Papirus em violeta
 │   ├── patch-niri-session.sh      lista de variáveis no import-environment
+│   ├── trim-ujust.sh              recorta o menu do ujust
 │   └── render-artwork.sh          splash de boot e wallpaper padrão
 │
 └── files/                         copiado para dentro da imagem
@@ -1971,6 +2011,7 @@ arkmos/
         ├── libexec/
         │   ├── arkmos-firstboot
         │   └── arkmos-greeter
+        ├── share/ublue-os/just/     60-custom.just, receitas do ujust
         ├── share/flatpak/preinstall.d/
         │   └── arkmos.preinstall  Flatpaks que acompanham o sistema
         ├── share/arkmos/
@@ -2053,6 +2094,7 @@ Aplicações declaradas e identidade visual:
 
 - lista de Flatpaks declarada na imagem e aplicada pelo `flatpak preinstall`, com um serviço que instala o que falta a cada boot e remove o que sair da lista (seção 25);
 - atualização automática no modo encenado, com o timer do bootc que reiniciaria sozinho desligado (seção 31.1);
+- menu do ujust sem as receitas que apontam para fora desta imagem e com as três do Arkmos (seção 31.2);
 - aplicativos padrão por tipo de arquivo, com PDF, imagem e vídeo nos visualizadores do GNOME e texto no VS Code, mais o `XDG_DATA_DIRS` da sessão, sem o qual o clique duplo não abria nada (seções 25 e 26.1);
 - o que o uso diário pedia e a base não trazia: celular e rede no Nautilus, miniaturas de PDF, terminal padrão para programas de terminal, Tailscale, agente SSH, firewall na zona do Fedora Workstation, servidor SSH desligado, btop no lugar do htop (seções 22 e 25);
 - esquema **Tokyo Night** como identidade, com nove papéis de parede próprios, ícones Papirus-Dark com pastas em violeta e o anel de foco do niri no roxo do esquema (seção 26.1);

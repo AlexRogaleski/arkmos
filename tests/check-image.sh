@@ -863,6 +863,27 @@ check "serviços habilitados" \
         done
     '
 
+# O menu do ujust é a primeira coisa que alguém digita numa imagem derivada do
+# Universal Blue, e ele vem do pacote deles: uma receita que aponta para fora
+# desta imagem não dá erro de build, dá erro na mão de quem usa.
+check "menu do ujust recortado e com as receitas do Arkmos" \
+    run sh -c '
+        menu=$(JUST_JUSTFILE=/usr/share/ublue-os/justfile just --list)
+        for r in arkmos-diag arkmos-apply-defaults arkmos-variant; do
+            echo "$menu" | grep -qE "^ *$r( |$)" \
+                || { echo "$r não está no menu"; exit 1; }
+        done
+        for r in toggle-nvk install-resolve configure-broadcom-wl setup-distrobox-app; do
+            if echo "$menu" | grep -qE "^ *$r( |$)"; then
+                echo "$r continua no menu"; exit 1
+            fi
+        done
+        for r in update bios check-local-overrides enroll-secure-boot-key; do
+            echo "$menu" | grep -qE "^ *$r( |$)" \
+                || { echo "o recorte levou $r junto"; exit 1; }
+        done
+    '
+
 # A atualização automática NÃO é nossa: vem da base do Universal Blue, e é por
 # isso que está aqui. O que a base liga hoje pode mudar numa reconstrução dela,
 # e o efeito seria silencioso nos dois sentidos — máquina que para de receber

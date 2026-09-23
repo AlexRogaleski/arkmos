@@ -428,6 +428,15 @@ RUN for f in foot-server footclient dev.noctalia.Noctalia; do \
     done \
     && desktop-file-validate /usr/share/applications/arkmos-noctalia-settings.desktop
 
+# Menu do ujust: o mesmo critério, uma camada acima.
+#
+# O ublue-os-just traz o menu do Universal Blue inteiro, e parte dele aponta
+# para fora desta imagem — o 'toggle-nvk' faria rebase para uma variante
+# '-nvidia-open' que aqui não existe. As receitas do Arkmos entram pelo gancho
+# que o próprio pacote deixa, o 60-custom.just, que vem na árvore files/.
+COPY build_files/trim-ujust.sh /tmp/trim-ujust.sh
+RUN bash /tmp/trim-ujust.sh && rm -f /tmp/trim-ujust.sh
+
 # O banco de sistema do dconf é um binário compilado a partir dos arquivos em
 # /etc/dconf/db/local.d. Sem este passo, os arquivos ficam na imagem e não têm
 # efeito nenhum — o tema continuaria claro e nada indicaria o motivo.
