@@ -1784,7 +1784,17 @@ O mesmo console serial é útil quando a tela congela: na janela do QEMU, **View
 
 # 31. Instalação e Atualização
 
-Há dois caminhos de instalação, e os dois terminam no mesmo sistema.
+Há três caminhos de instalação, e os três terminam no mesmo sistema.
+
+**ISO instalável** — é o caminho para máquina de verdade:
+
+```bash
+just iso    # gera output/bootiso/install.iso
+```
+
+A ISO leva o Anaconda: escolha do disco, particionamento, cifragem se quiser, e a criação da conta. Grave num pendrive de 16 GB — ela carrega a imagem inteira, uns 8 GB — e reserve espaço no host, porque o osbuild ainda precisa da árvore intermediária.
+
+A origem é a imagem **publicada**, e não a local: a referência usada na geração é a que fica gravada na deployment, e uma instalação feita a partir de `localhost/arkmos:dev` nasce seguindo um registry que não existe (seção 30). Por isso a receita não depende do `just build`.
 
 **Instalação direta**, num disco, a partir de qualquer Linux com podman (um pendrive live, por exemplo):
 
@@ -1805,6 +1815,10 @@ sudo bootc switch --enforce-container-sigpolicy ghcr.io/<owner>/arkmos:44
 ```
 
 A conta e o `/var/home` vêm do sistema de origem, e o assistente se dispensa sozinho (seção 12.1).
+
+**O que o rebase não traz é o `$HOME`.** Todo o resto chega igual, porque está declarado fora dele: pacotes, serviços habilitados, greetd, niri, Noctalia, firewall, docker, fontes, o tema do sistema (o dconf é banco de sistema), o `mimeapps.list` de `/etc/xdg` e os Flatpaks da lista, que são instalados por serviço de sistema. Fica de fora o que o `/etc/skel` semeia numa conta que já existia: a configuração do Noctalia (barra, dock, paleta do shell), o zsh e o starship, o `settings.json` do VS Code e o tema do btop. Um `cp -rn /etc/skel/. ~/` cobre isso. Nos caminhos de instalação do zero o problema não existe: a conta nasce depois da imagem, e o `useradd` — do Anaconda ou do assistente — copia o skel.
+
+**O assistente do primeiro boot continua necessário nos três caminhos.** Quando o instalador já cria a conta, ele se dispensa em silêncio e faz só o que falta, o grupo `docker` (seção 12.1). Quando não cria — o `install to-disk` não tem instalador nenhum, e uma tela de conta pode ser pulada — ele é o que faz a máquina nascer usável em vez de inacessível. Removê-lo amarraria o projeto a um instalador específico.
 
 A flag é o que faz as atualizações seguintes serem verificadas: ela grava na deployment que o pull obedece à política de assinatura (`signature: containerPolicy` no `bootc status`). Sem ela, nenhum `bootc upgrade` posterior checaria nada.
 
@@ -2108,6 +2122,8 @@ identidade visual em conta nova (useradd -m, que copia o /etc/skel): papel de
 ```text
 Laravel Sail em uso real
 instalação em hardware real
+geração da ISO instalável ('just iso') e o fluxo do Anaconda nela — inclusive
+  se ele pede a conta, o que decide se o assistente entra ou se dispensa
 cadastro de uma impressora de verdade
 remoção de um Flatpak retirado da lista depois de um bootc upgrade
 celular por USB no Nautilus, agente SSH num git push, tailscale up,
@@ -2122,20 +2138,21 @@ travamento antes do assistente no primeiro boot em VM — visto uma vez em
 
 ## Curto prazo
 
-1. Se o travamento antes do assistente voltar num primeiro boot em VM, abrir **View → serial0** antes de fechar a janela (seção 30).
+1. Gerar a ISO instalável (`just iso`) e instalá-la numa VM antes do hardware: é o fluxo do Anaconda que nunca rodou aqui, e é ele que dirá se a conta nasce no instalador ou no assistente (seção 31).
+2. Se o travamento antes do assistente voltar num primeiro boot em VM, abrir **View → serial0** antes de fechar a janela (seção 30).
 
 ## Médio prazo
 
-2. Medir o delta do `bootc upgrade` entre duas publicações com rechunk — a primeira só estabelece o plano de camadas (seção 28.5).
-3. Fechar o que falta da identidade visual: cursores, tipografia e as cores do Zsh (seção 26.2).
+3. Medir o delta do `bootc upgrade` entre duas publicações com rechunk — a primeira só estabelece o plano de camadas (seção 28.5).
+4. Fechar o que falta da identidade visual: cursores, tipografia e as cores do Zsh (seção 26.2).
 
 ## Longo prazo
 
-4. Snapper/Btrfs snapshots.
-5. Validar instalação em hardware real.
-6. Documentar recuperação.
-7. Definir política de atualização/rollback.
-8. Estabilizar a versão 1.0.0.
+5. Snapper/Btrfs snapshots.
+6. Validar instalação em hardware real.
+7. Documentar recuperação.
+8. Definir política de atualização/rollback.
+9. Estabilizar a versão 1.0.0.
 
 ---
 

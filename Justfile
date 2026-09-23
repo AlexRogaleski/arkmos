@@ -4,6 +4,7 @@
 #   just check      roda as verificações sobre a imagem construída
 #   just vm         gera um qcow2 para testar em QEMU
 #   just run-vm     sobe o qcow2 no QEMU com aceleração 3D
+#   just iso        gera a ISO instalável, para pendrive
 #
 # Duas variantes do mesmo sistema. A padrão não tem a pilha NVIDIA e é a que
 # se testa em VM; a outra troca só a imagem base:
@@ -24,6 +25,10 @@ image := "localhost/arkmos" + suffix
 outdir := "output" + suffix
 tag := "dev"
 builder := "quay.io/centos-bootc/bootc-image-builder:latest"
+
+# A imagem publicada, que é a origem da mídia de instalação — ver a receita
+# 'iso'. Não entra no build nem nas verificações, que trabalham na local.
+publicado := "ghcr.io/alexrogaleski/arkmos" + suffix + ":44"
 
 default:
     @just --list
@@ -80,6 +85,43 @@ vm: build
     # entrada que não existe mais, e o sintoma é a VM não dar boot — indistinguível
     # de imagem quebrada. Descartadas aqui, o 'run-vm' recria limpas.
     rm -f {{ outdir }}/OVMF_VARS.fd
+
+# Gera a ISO instalável, para gravar num pendrive e instalar em máquina de
+# verdade: o Anaconda escolhe o disco, particiona e pede a conta. O qcow2 do
+# 'just vm' é mídia de teste; esta é mídia de instalação.
+#
+# A origem é a imagem PUBLICADA, não a local. O que fica gravado na deployment
+# é a referência usada aqui: instalada a partir de 'localhost/arkmos:dev', a
+# máquina nasce seguindo um registry que não existe e o 'bootc upgrade' falha
+# procurando em localhost/v2/ (seção 30). Por isso esta receita não depende do
+# 'build' — ela não usa a imagem local em momento nenhum.
+#
+# Sem o config.toml: aquele arquivo descreve a mídia de TESTE (console serial do
+# QEMU, sshd ligado, disco declarado em 40 GiB). Numa instalação real quem
+# particiona é o Anaconda, e ligar o sshd sem ninguém pedir seria o oposto do
+# que a seção 22 decidiu.
+#
+# Reserve espaço: a ISO carrega a imagem inteira (~8 GB) e o osbuild ainda
+# precisa do dobro disso em árvore intermediária.
+[doc("Gera a ISO instalável a partir da imagem publicada")]
+iso origem=publicado:
+    mkdir -p {{ outdir }}
+    # O builder roda como root e só enxerga o storage do root; o pull explícito
+    # aqui deixa claro no terminal o que está sendo baixado, e de onde.
+    sudo podman pull {{ origem }}
+    sudo podman run --rm -it --privileged --pull=newer \
+        --security-opt label=type:unconfined_t \
+        -v ./{{ outdir }}:/output \
+        -v /var/lib/containers/storage:/var/lib/containers/storage \
+        {{ builder }} \
+        build --type anaconda-iso \
+        --chown "$(id -u):$(id -g)" \
+        {{ origem }}
+    @echo
+    @ls -lh {{ outdir }}/bootiso/*.iso
+    @echo
+    @echo "Para gravar: confira o device com 'lsblk' e use"
+    @echo "  sudo dd if={{ outdir }}/bootiso/install.iso of=/dev/sdX bs=4M status=progress oflag=direct"
 
 # Sobe o qcow2 no QEMU.
 #
