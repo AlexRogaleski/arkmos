@@ -17,9 +17,11 @@
 #           em aspas simples. Não expandir aqui é o ponto: quem expande é o
 #           shell de lá.
 #   SC2329  as funções de verificação (firstboot_e2e, image_file_matches…) são
-#           chamadas indiretamente, pelo 'check "descrição" função'.
+#   SC2317  chamadas indiretamente, pelo 'check "descrição" função'. São dois
+#           códigos para a mesma observação: o shellcheck 0.11 usa o SC2329, e
+#           o 0.9, que é o do runner do GitHub, o SC2317.
 #
-# shellcheck disable=SC2016,SC2329
+# shellcheck disable=SC2016,SC2329,SC2317
 
 set -uo pipefail
 
