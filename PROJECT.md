@@ -752,7 +752,7 @@ OpenSSH (cliente)
 eza / bat / fd / fzf / ripgrep / zoxide
 lazygit / lazydocker
 mise 2026.9.10
-VS Code 1.137
+VS Code 1.139
 ```
 
 ## 17.1 VS Code na imagem, não em Flatpak
@@ -1036,6 +1036,11 @@ A lista também leva a extensão de tema `org.gtk.Gtk3theme.adw-gtk3-dark`, como
 Arquivos de texto (`text/plain`, Markdown, JSON, YAML, TOML, scripts) abrem no VS Code. O padrão do Fedora para `text/plain` é o nvim, um programa de terminal: o clique duplo num `.txt` abria um terminal, ou nada.
 
 Os tipos de mídia são os que cada aplicativo declara no próprio `.desktop`. O `just check` confere que todo padrão aponta para um aplicativo da lista de preinstall ou da imagem. O "Abrir com" do Nautilus continua mudando o padrão da conta, porque `~/.config/mimeapps.list` vence o de `/etc/xdg`.
+
+**O id do `.desktop` muda debaixo dos pés.** O pacote da Microsoft renomeou a entrada do VS Code de `code.desktop` para `com.microsoft.VSCode.desktop` na 1.139.0 (setembro de 2026), sem deixar link de compatibilidade — e com ela mudou também o `StartupWMClass`. Um padrão que aponta para um id que não existe não dá erro: o clique duplo simplesmente volta a não abrir nada. Duas defesas:
+
+- no `mimeapps.list`, cada tipo de texto lista **os dois ids**, `com.microsoft.VSCode.desktop;code.desktop;`. O valor é uma lista, e vale o primeiro id instalado, então a imagem funciona antes e depois da renomeação — e funcionaria se a Microsoft voltasse atrás;
+- o `just check` confere que **pelo menos um** id de cada tipo existe, e confere também os ícones fixados no dock do Noctalia, que são ids de `.desktop` e onde não cabe listar dois (cada item é um ícone, e o antigo apareceria morto ao lado do novo). Foi essa verificação que pegou a renomeação, no CI, antes de a imagem ser publicada.
 
 ### Os Flatpaks precisam estar no XDG_DATA_DIRS da sessão
 
@@ -1497,6 +1502,7 @@ Detalhes do desenho:
 - **O CI confere a assinatura publicada**, com a mesma chave pública que vai dentro da imagem. É a verificação que a máquina instalada vai exigir no `bootc upgrade`.
 - **Um job de `lint` em paralelo**, com shellcheck, actionlint e a sintaxe do Justfile, pelas mesmas receitas que rodam na máquina. Job separado, e não um passo do build: responde em menos de um minuto e não segura a publicação, que leva meia hora.
 - **Rechunk antes de verificar e publicar** (seção 28.5).
+- **Ferramenta instalada depois da limpeza de disco.** O job de build apaga o `$AGENT_TOOLSDIRECTORY` para caber a imagem, e é justamente ali que a action do `just` guarda o binário. Instalado antes, o `PATH` apontava para um diretório que deixava de existir, e o passo do rechunk morria com `just: command not found` depois de nove minutos de build. Um `just --version` logo após a instalação transforma isso em falha de um segundo.
 
 ## 28.5 Rechunk: camadas por conteúdo
 
@@ -1510,6 +1516,8 @@ Medido nesta imagem, em 2026-09-23:
 | Tamanho | 9,88 GB | 8,02 GB |
 
 O 1,9 GB a menos vem dos objetos duplicados que o `rpm-ostree` unifica (11.363 nesta imagem). As 289 camadas também eram um problema por si: o próprio `rpm-ostree` avisa que runtimes mais antigos engasgam acima de 200.
+
+O custo é tempo, e no runner do GitHub ele é desigual: **5min30** na variante padrão e **19min** na NVIDIA, medidos em 2026-09-23, sobre nove a dez minutos de build. Na máquina, a padrão levou doze minutos. Vale por publicação, não por push — mas hoje o rechunk roda em todo push, porque o que a verificação examina tem de ser a imagem que vai ao registry.
 
 O ganho maior, porém, é no `bootc upgrade` de quem usa. Camadas decididas por conteúdo são estáveis entre publicações: sem rechunk, um `dnf install` no começo do Containerfile invalida tudo o que vem depois e cada publicação obriga a baixar gigabytes.
 

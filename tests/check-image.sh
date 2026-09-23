@@ -702,10 +702,33 @@ assert tema and tema.get("isruntime") == "true", "sem a extensão de tema GTK3 c
 assert os.path.exists("/etc/flatpak/remotes.d/flathub.flatpakrepo"), "Flathub não configurado pela base"
 m = configparser.ConfigParser(interpolation=None, delimiters=("=",))
 m.read("/etc/xdg/mimeapps.list")
-alvos = {v.split(";")[0].removesuffix(".desktop") for v in m["Default Applications"].values()}
-na_imagem = {a for a in alvos if os.path.exists("/usr/share/applications/%s.desktop" % a)}
-fora = alvos - set(apps) - na_imagem
-assert not fora, "padrão aponta para app que não está nem na lista nem na imagem: " + ", ".join(sorted(fora))
+def existe(a):
+    return a in apps or os.path.exists("/usr/share/applications/%s.desktop" % a)
+fora = set()
+for tipo, valor in m["Default Applications"].items():
+    ids = [i.removesuffix(".desktop") for i in valor.split(";") if i]
+    assert ids, "tipo sem padrão: " + tipo
+    if not any(existe(i) for i in ids):
+        fora.add(tipo + "=" + valor)
+assert not fora, "padrão que não está nem na lista nem na imagem: " + ", ".join(sorted(fora))
+'
+
+# Cada item fixado no dock é um id de .desktop, e o Noctalia não avisa quando
+# um deles não existe: o ícone aparece morto, ou não aparece. Foi o que a
+# renomeação da entrada do VS Code (code -> com.microsoft.VSCode, na 1.139.0)
+# teria causado em silêncio se só o mimeapps.list estivesse conferido.
+check "dock fixa só apps que existem" \
+    run python3 -c '
+import configparser, os, tomllib
+p = configparser.ConfigParser(interpolation=None)
+p.read("/usr/share/flatpak/preinstall.d/arkmos.preinstall")
+apps = {s.split(" ", 2)[2] for s in p.sections()}
+with open("/etc/skel/.config/noctalia/arkmos.toml", "rb") as f:
+    fixados = tomllib.load(f)["dock"]["pinned"]
+assert fixados, "dock sem nada fixado"
+fora = [a for a in fixados
+        if a not in apps and not os.path.exists("/usr/share/applications/%s.desktop" % a)]
+assert not fora, "dock fixa app que não existe: " + ", ".join(fora)
 '
 
 # A libfuse.so.2 não vem da base. Sem ela, um AppImage de runtime clássico

@@ -191,7 +191,8 @@ jobs:
       # 8,02 GB, porque o rpm-ostree unifica os objetos duplicados. O ganho
       # maior é no 'bootc upgrade' de quem usa: camadas decididas por conteúdo
       # são estáveis entre publicações, então o download passa a ser só do que
-      # mudou. O custo é o tempo deste passo, uns doze minutos.
+      # mudou. O custo é o tempo deste passo: medido neste runner, 5min30 na
+      # variante padrão e 19min na NVIDIA.
       #
       # A verificação vem DEPOIS, de propósito: o que o just check examina é
       # exatamente a imagem que vai ao registry.
@@ -203,9 +204,10 @@ jobs:
       - name: Reorganizar camadas (rechunk)
         run: |
           anterior=""
-          if skopeo inspect "docker://${IMAGE}:${FEDORA_MAJOR}" 2>/dev/null \
+          publicada="docker://${IMAGE_REGISTRY}/${IMAGE}:${FEDORA_MAJOR}"
+          if skopeo inspect "$publicada" 2>/dev/null \
               | jq -e '.Labels["ostree.final-diffid"]' >/dev/null; then
-              anterior="docker://${IMAGE}:${FEDORA_MAJOR}"
+              anterior="$publicada"
               echo "plano de camadas herdado de ${anterior}"
           else
               echo "publicação anterior não é chunked; plano novo"

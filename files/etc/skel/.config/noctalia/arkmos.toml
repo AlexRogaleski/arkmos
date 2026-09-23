@@ -112,13 +112,18 @@ type = "spacer"
 # são Flatpaks da lista de preinstall — um id que não esteja instalado viraria
 # ícone morto no dock, e é por isso que o Thunderbird aqui é o
 # 'org.mozilla.Thunderbird' da lista, e não a variante ESR.
+#
+# O VS Code entra como 'com.microsoft.VSCode': o pacote da Microsoft renomeou
+# a entrada na 1.139.0 (2026-09), e 'code' deixou de existir. Aqui não cabe
+# listar os dois ids como no mimeapps.list — cada item é um ícone, e o antigo
+# apareceria morto ao lado do novo.
 [dock]
 enabled = true
 auto_hide = true
 reserve_space = false
 launcher_position = "start"
 background_opacity = 0.6
-pinned = [ "code", "com.spotify.Client", "com.anydesk.Anydesk", "io.github.kolunmi.Bazaar", "org.mozilla.Thunderbird" ]
+pinned = [ "com.microsoft.VSCode", "com.spotify.Client", "com.anydesk.Anydesk", "io.github.kolunmi.Bazaar", "org.mozilla.Thunderbird" ]
 
 # Lançador ancorado no canto superior esquerdo, abrindo perto de onde foi
 # clicado.
