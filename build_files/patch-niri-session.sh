@@ -66,7 +66,11 @@ open(caminho, "w").write(conteudo.replace(original, novo))
 PY
 
 sh -n "$ALVO"
+# shellcheck disable=SC2016  # o nome da variável é literal, não expansão
 grep -q '${XDG_VTNR+XDG_VTNR}' "$ALVO"
-! grep -qx "$ORIGINAL" "$ALVO"
+if grep -qx "$ORIGINAL" "$ALVO"; then
+    echo "ERRO: a linha original continua no arquivo." >&2
+    exit 1
+fi
 
 echo "niri-session: import-environment com lista de variáveis"

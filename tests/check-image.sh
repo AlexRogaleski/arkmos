@@ -11,6 +11,16 @@
 # O critério para entrar aqui é ser um erro que a imagem consegue esconder:
 # algo que constrói, passa no lint e só aparece como falha no boot da máquina.
 
+# Dois avisos do shellcheck são inerentes a este script e ficam desligados:
+#
+#   SC2016  as verificações mandam código de shell para DENTRO do container,
+#           em aspas simples. Não expandir aqui é o ponto: quem expande é o
+#           shell de lá.
+#   SC2329  as funções de verificação (firstboot_e2e, image_file_matches…) são
+#           chamadas indiretamente, pelo 'check "descrição" função'.
+#
+# shellcheck disable=SC2016,SC2329
+
 set -uo pipefail
 
 IMAGE="${1:-localhost/arkmos:dev}"
@@ -32,22 +42,27 @@ image_file_matches() {
     cid="$(podman create "$IMAGE" true)" || return 1
     content="$(podman cp "$cid:$path" - 2>/dev/null | tar -xO 2>/dev/null)" || rc=1
     podman rm "$cid" >/dev/null 2>&1
-    [[ "$rc" -eq 0 ]] || { echo "$path nao existe na imagem"; return 1; }
-    if [[ "$(tr -d '[:space:]' <<< "$content")" != "$expected" ]]; then
+    [[ "$rc" -eq 0 ]] || {
+        echo "$path nao existe na imagem"
+        return 1
+    }
+    if [[ "$(tr -d '[:space:]' <<<"$content")" != "$expected" ]]; then
         echo "$path contem \"$content\", esperado \"$expected\""
         return 1
     fi
 }
 
 check() {
-    local desc="$1"; shift
+    local desc="$1"
+    shift
     printf '  %-52s' "$desc"
     local out
     if out="$("$@" 2>&1)"; then
         echo "ok"
     else
         echo "FALHOU"
-        [[ -n "$out" ]] && sed 's/^/      /' <<< "$out"
+        # shellcheck disable=SC2001  # indentar cada linha é trabalho de sed
+        [[ -n "$out" ]] && sed 's/^/      /' <<<"$out"
         FAILED=1
     fi
 }
@@ -57,8 +72,8 @@ check() {
 # conta para entrar. Aqui ele roda de verdade, num container descartável, com
 # as respostas vindas do stdin.
 firstboot_e2e() {
-    printf 'arkteste\nTeste Arkmos\nsenha-de-teste-longa\nsenha-de-teste-longa\n' \
-        | podman run --rm -i "$IMAGE" bash -c '
+    printf 'arkteste\nTeste Arkmos\nsenha-de-teste-longa\nsenha-de-teste-longa\n' |
+        podman run --rm -i "$IMAGE" bash -c '
             bash /usr/libexec/arkmos-firstboot >/dev/null 2>&1
 
             id arkteste >/dev/null 2>&1 \
@@ -124,10 +139,10 @@ check "bootc container lint" run bootc container lint
 # drop-in que adicionamos ao greetd.
 check "systemd-analyze verify (units do Arkmos)" \
     run systemd-analyze verify \
-        /usr/lib/systemd/system/arkmos-firstboot.service \
-        /usr/lib/systemd/system/arkmos-login-fallback.service \
-        /usr/lib/systemd/system/arkmos-flatpak-preinstall.service \
-        /usr/lib/systemd/system/greetd.service
+    /usr/lib/systemd/system/arkmos-firstboot.service \
+    /usr/lib/systemd/system/arkmos-login-fallback.service \
+    /usr/lib/systemd/system/arkmos-flatpak-preinstall.service \
+    /usr/lib/systemd/system/greetd.service
 
 # --- Localização -----------------------------------------------------------
 
@@ -806,7 +821,7 @@ check "pacotes essenciais instalados" \
 # quebrada na máquina, não como build vermelho.
 check "componentes herdados da base presentes" \
     run rpm -q podman distrobox NetworkManager pipewire wireplumber bluez \
-        flatpak plymouth wl-clipboard
+    flatpak plymouth wl-clipboard
 
 # podman-docker é um shim que faz 'docker' chamar o podman — a substituição
 # que o PROJECT.md proíbe, e conflito direto com docker-ce-cli.
@@ -870,34 +885,34 @@ check "greetd é o display-manager" \
 # nomes diferentes, e nada mais no conjunto de verificações notaria.
 
 case "$VARIANT" in
-    nvidia)
-        check "pilha NVIDIA presente" \
-            run rpm -q kmod-nvidia nvidia-driver nvidia-container-toolkit
+nvidia)
+    check "pilha NVIDIA presente" \
+        run rpm -q kmod-nvidia nvidia-driver nvidia-container-toolkit
 
-        check "drop-in do CDI aplicado" \
-            run test -e /usr/lib/systemd/system/nvidia-cdi-refresh.service.d/50-arkmos-gpu-presente.conf
+    check "drop-in do CDI aplicado" \
+        run test -e /usr/lib/systemd/system/nvidia-cdi-refresh.service.d/50-arkmos-gpu-presente.conf
 
-        check "perfil NVIDIA para compositores Wayland" \
-            run test -e /etc/nvidia/nvidia-application-profiles-rc.d/50-limit-free-buffer-pool-in-wayland-compositors.json
-        ;;
-    base)
-        check "sem pilha NVIDIA" \
-            sh -c '! podman run --rm "'"$IMAGE"'" rpm -q kmod-nvidia >/dev/null 2>&1'
+    check "perfil NVIDIA para compositores Wayland" \
+        run test -e /etc/nvidia/nvidia-application-profiles-rc.d/50-limit-free-buffer-pool-in-wayland-compositors.json
+    ;;
+base)
+    check "sem pilha NVIDIA" \
+        sh -c '! podman run --rm "'"$IMAGE"'" rpm -q kmod-nvidia >/dev/null 2>&1'
 
-        # O Containerfile remove estes na variante sem driver; se sobrarem, é
-        # sinal de que a limpeza condicional deixou de rodar.
-        check "configuração do driver removida" \
-            run sh -c '
+    # O Containerfile remove estes na variante sem driver; se sobrarem, é
+    # sinal de que a limpeza condicional deixou de rodar.
+    check "configuração do driver removida" \
+        run sh -c '
                 for p in /usr/lib/systemd/system/nvidia-cdi-refresh.service.d /etc/nvidia; do
                     [ ! -e "$p" ] || { echo "$p ficou na imagem"; exit 1; }
                 done
             '
-        ;;
-    *)
-        echo "  AVISO: imagem sem label org.arkmos.variant; verificações"
-        echo "         específicas de variante não foram executadas."
-        FAILED=1
-        ;;
+    ;;
+*)
+    echo "  AVISO: imagem sem label org.arkmos.variant; verificações"
+    echo "         específicas de variante não foram executadas."
+    FAILED=1
+    ;;
 esac
 
 # --- Terminal --------------------------------------------------------------

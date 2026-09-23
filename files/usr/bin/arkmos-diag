@@ -9,10 +9,23 @@
 # Rode DENTRO da sessão gráfica; fora dela, o que depende do compositor e do
 # barramento da sessão aparece como ausente — o que é correto, não erro.
 
+# 'condição && ok ... || nok ...' é o formato de cada linha deste diagnóstico, e
+# o shellcheck avisa (SC2015) que num A && B || C o C roda se o B falhar. Aqui
+# não roda: as duas funções terminam em 'return 0', então B nunca falha. O
+# 'return 0' existe para sustentar essa afirmação, e não por estilo.
+#
+# shellcheck disable=SC2015
+
 set -uo pipefail
 
-ok()  { printf '  \033[32m✓\033[0m %-32s %s\n' "$1" "${2:-}"; }
-nok() { printf '  \033[31m✗\033[0m %-32s %s\n' "$1" "${2:-}"; }
+ok() {
+    printf '  \033[32m✓\033[0m %-32s %s\n' "$1" "${2:-}"
+    return 0
+}
+nok() {
+    printf '  \033[31m✗\033[0m %-32s %s\n' "$1" "${2:-}"
+    return 0
+}
 
 echo
 echo "Arkmos — diagnóstico da sessão"
@@ -20,9 +33,9 @@ echo "=============================="
 echo
 echo "Ambiente"
 
-[[ "${XDG_CURRENT_DESKTOP:-}" == *niri* ]] \
-    && ok "XDG_CURRENT_DESKTOP" "$XDG_CURRENT_DESKTOP" \
-    || nok "XDG_CURRENT_DESKTOP" "${XDG_CURRENT_DESKTOP:-VAZIO} — o portal ignora o niri-portals.conf"
+[[ "${XDG_CURRENT_DESKTOP:-}" == *niri* ]] &&
+    ok "XDG_CURRENT_DESKTOP" "$XDG_CURRENT_DESKTOP" ||
+    nok "XDG_CURRENT_DESKTOP" "${XDG_CURRENT_DESKTOP:-VAZIO} — o portal ignora o niri-portals.conf"
 
 [[ "${LANG:-}" == pt_BR* ]] && ok "LANG" "$LANG" || nok "LANG" "${LANG:-VAZIO}"
 
@@ -57,31 +70,31 @@ fi
 
 gs="$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null || true)"
 gs="${gs:-sem resposta}"
-[[ "$gs" == *prefer-dark* ]] && ok "gsettings: color-scheme" "$gs" \
-                             || nok "gsettings: color-scheme" "$gs"
+[[ "$gs" == *prefer-dark* ]] && ok "gsettings: color-scheme" "$gs" ||
+    nok "gsettings: color-scheme" "$gs"
 
 gt="$(gsettings get org.gnome.desktop.interface gtk-theme 2>/dev/null || true)"
 gt="${gt:-sem resposta}"
-[[ "$gt" == *adw-gtk3-dark* ]] && ok "gsettings: gtk-theme" "$gt" \
-                              || nok "gsettings: gtk-theme" "$gt"
+[[ "$gt" == *adw-gtk3-dark* ]] && ok "gsettings: gtk-theme" "$gt" ||
+    nok "gsettings: gtk-theme" "$gt"
 
 echo
 echo "Autenticação"
 
 # Sem agente, toda ação que exige autorização falha sem mostrar nada.
-pgrep -f polkit-mate-authentication-agent >/dev/null \
-    && ok "agente polkit rodando" \
-    || nok "agente polkit rodando" "autorizações falham em silêncio"
+pgrep -f polkit-mate-authentication-agent >/dev/null &&
+    ok "agente polkit rodando" ||
+    nok "agente polkit rodando" "autorizações falham em silêncio"
 
 # O prompt pedindo a senha de novo depois do login é este, e a causa é o
 # pam_gnome_keyring ausente.
-[[ -e /usr/lib64/security/pam_gnome_keyring.so ]] \
-    && ok "pam_gnome_keyring instalado" \
-    || nok "pam_gnome_keyring instalado" "o chaveiro pedirá senha na sessão"
+[[ -e /usr/lib64/security/pam_gnome_keyring.so ]] &&
+    ok "pam_gnome_keyring instalado" ||
+    nok "pam_gnome_keyring instalado" "o chaveiro pedirá senha na sessão"
 
-pgrep -x gcr-prompter >/dev/null \
-    && nok "gcr-prompter ativo" "há prompt de chaveiro aberto agora" \
-    || ok "nenhum prompt de chaveiro"
+pgrep -x gcr-prompter >/dev/null &&
+    nok "gcr-prompter ativo" "há prompt de chaveiro aberto agora" ||
+    ok "nenhum prompt de chaveiro"
 
 echo
 echo "Aplicativos"

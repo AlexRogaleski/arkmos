@@ -1500,6 +1500,31 @@ Detalhes do desenho:
 
 - **O cosign faz login próprio.** Ele não lê o arquivo de autenticação do podman, e sim a configuração do Docker: sem `cosign login`, a assinatura falha com `UNAUTHORIZED` depois de o push ter dado certo. Foi assim que a primeira publicação terminou com a imagem no registry e sem assinatura.
 - **O CI confere a assinatura publicada**, com a mesma chave pública que vai dentro da imagem. É a verificação que a máquina instalada vai exigir no `bootc upgrade`.
+- **Um job de `lint` em paralelo**, com shellcheck, actionlint e a sintaxe do Justfile, pelas mesmas receitas que rodam na máquina. Job separado, e não um passo do build: responde em menos de um minuto e não segura a publicação, que leva meia hora.
+- **Rechunk antes de verificar e publicar** (seção 28.5).
+
+## 28.5 Rechunk: camadas por conteúdo
+
+O CI reorganiza as camadas da imagem antes de publicar, com `just ostree-rechunk`. É o passo que Bluefin, Aurora e Bazzite dão, e que o `image-template` do Universal Blue traz com esse nome; por baixo é o `rpm-ostree compose build-chunked-oci`, que recebe o sistema de arquivos pronto e o reescreve em até 127 camadas decididas por **conteúdo**, e não pela ordem dos comandos do Containerfile.
+
+Medido nesta imagem, em 2026-09-23:
+
+| | Antes | Depois |
+| --- | --- | --- |
+| Camadas | 289 | 128 |
+| Tamanho | 9,88 GB | 8,02 GB |
+
+O 1,9 GB a menos vem dos objetos duplicados que o `rpm-ostree` unifica (11.363 nesta imagem). As 289 camadas também eram um problema por si: o próprio `rpm-ostree` avisa que runtimes mais antigos engasgam acima de 200.
+
+O ganho maior, porém, é no `bootc upgrade` de quem usa. Camadas decididas por conteúdo são estáveis entre publicações: sem rechunk, um `dnf install` no começo do Containerfile invalida tudo o que vem depois e cada publicação obriga a baixar gigabytes.
+
+Três detalhes que o caminho ensinou:
+
+- **Os labels não sobrevivem sozinhos.** O `build-chunked-oci` monta uma imagem nova a partir do sistema de arquivos e não herda a configuração: dos 16 labels sobravam 3, e com eles iam a variante (que o `just check` lê) e a versão (que o `bootc status` mostra). A receita os repassa um a um, lidos da imagem de origem, então um label novo no Containerfile viaja sem ninguém editar o `Justfile`. A receita do image-template não faz isso, e por isso não serviu como está.
+- **O `--from` não substitui o `--rootfs` aqui.** Ele espera a imagem no storage do próprio container, e o nosso está montado do host; a sintaxe de storage explícita, que o `--output` aceita, ele recusa. Ficaram perdidos `ENV` e `CMD`, que nesta imagem são o `PATH` padrão e `/usr/bin/bash` — os dois só afetam `podman run`, e o podman injeta o mesmo `PATH` quando não há nenhum.
+- **`--previous-build` entra condicionado.** Ele mantém o plano de camadas da publicação anterior, e só faz sentido quando a imagem publicada já é reorganizada; o CI descobre isso pelo label `ostree.final-diffid` e passa a opção quando ele existe.
+
+A verificação roda **depois** do rechunk, de propósito: o que o `just check` examina é exatamente a imagem que vai ao registry. E o rechunk grava só na tag que recebeu, então as outras duas são reapontadas em seguida — sem isso, `44` e a versão do dia continuariam na imagem antiga.
 - **O formato da assinatura importa.** No cosign 3, `--new-bundle-format` vem ligada: a assinatura vira um bundle Sigstore anexado pela API de referrers, que o GHCR não suporta — e o cosign cai numa tag de índice `sha256-<digest>`. O podman e o bootc leem a *sigstore attachment* clássica, na tag `sha256-<digest>.sig`, que nesse formato não existe. O CI assina **e** verifica com `--new-bundle-format=false` — e, ao assinar, também com `--use-signing-config=false`, que no cosign 3 vem ligada e exige o formato novo: sozinha, a primeira opção é recusada antes de assinar. Sem isso, a imagem é validada pelo cosign e recusada pela máquina.
 
 Esses três só apareceram ao publicar de verdade, porque é o único trecho que um push comum não executa.
@@ -1684,6 +1709,12 @@ just check-all              # constrói e verifica as duas
 just logo                   # logo do README, a partir da arte do boot
 ```
 
+```bash
+just lint                   # shellcheck, actionlint e a sintaxe do Justfile
+just format                 # shfmt nos scripts, e o formatador do just
+just ostree-rechunk         # reorganiza as camadas (seção 28.5)
+```
+
 Por baixo:
 
 ```bash
@@ -1694,6 +1725,12 @@ podman build \
     --build-arg ARKMOS_COMMIT=... \
     -t localhost/arkmos:dev .
 ```
+
+**Os ARGs voláteis ficam no fim do Containerfile.** Um build-arg diferente invalida o cache de tudo o que vem depois dele, e `ARKMOS_VERSION` e `ARKMOS_COMMIT` mudam a cada commit: declarados no topo, cada build local refazia o `dnf install` e as camadas seguintes. Declarados junto dos labels, que é o único lugar onde são usados, um commit novo invalida só a camada de label. A ideia vem do `finpilot`, o template novo do projectbluefin, que documenta exatamente esse motivo.
+
+**O `.containerignore` mantém o contexto limpo.** O `podman build .` passa o diretório inteiro como contexto, e aqui dentro há discos de VM de vários GB em `output/`. Nada os copia para a imagem hoje, mas fora do contexto eles não podem ser arrastados por um `COPY` futuro.
+
+**Lint e formatação seguem as convenções do Universal Blue**: `lint` com shellcheck, `format` com shfmt, mais o actionlint do `finpilot` e a checagem de sintaxe do Justfile pelo próprio `just`. Duas adaptações: no template deles `check` é a sintaxe do Justfile, e aqui `check` já são as verificações da imagem, então a sintaxe entrou no `lint`; e o escopo do shellcheck sai do `git`, filtrado por shebang, porque metade dos nossos scripts não tem extensão `.sh`. O `.editorconfig` existe para o shfmt: sem ele, o padrão dele é tabulação, e ele reescreveria os nove scripts do projeto.
 
 O `bootc container lint` roda como última camada do próprio `Containerfile`, então erros de `/var`, `/opt` e layout de kernel falham o build.
 
@@ -1807,7 +1844,9 @@ Decisões arquiteturais devem vir acompanhadas de justificativa — no commit qu
 ```text
 arkmos/
 ├── Containerfile                  a imagem: base, pacotes, configuração
-├── Justfile                       build, verificação, VM
+├── Justfile                       build, verificação, VM, lint, rechunk
+├── .containerignore               o que não vai no contexto do build
+├── .editorconfig                  estilo dos arquivos (o shfmt o lê)
 ├── config.toml                    bootc-image-builder (a MÍDIA, não a imagem)
 ├── README.md                      uso
 ├── PROJECT.md                     arquitetura e decisões
@@ -1824,6 +1863,7 @@ arkmos/
 │   ├── install-upstream-bins.sh   starship, lazygit, lazydocker (sha256)
 │   ├── install-nerd-font.sh       JetBrains Mono patched (sha256)
 │   ├── papirus-folders.sh         pastas do Papirus em violeta
+│   ├── patch-niri-session.sh      lista de variáveis no import-environment
 │   └── render-artwork.sh          splash de boot e wallpaper padrão
 │
 └── files/                         copiado para dentro da imagem

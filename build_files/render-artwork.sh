@@ -34,8 +34,11 @@ DESTAQUE='#bb9af7'
 # arquivo é o que impede um wordmark em Noto Sans de passar despercebido.
 FONTE="$(fc-match -f '%{file}' 'JetBrains Mono:light')"
 case "$FONTE" in
-    */JetBrainsMono-Light.*) ;;
-    *) echo "fonte do wordmark não encontrada (fc-match devolveu $FONTE)" >&2; exit 1 ;;
+*/JetBrainsMono-Light.*) ;;
+*)
+    echo "fonte do wordmark não encontrada (fc-match devolveu $FONTE)" >&2
+    exit 1
+    ;;
 esac
 
 # --- Logo do repositório -------------------------------------------------------
@@ -50,10 +53,10 @@ if [ -n "${ARTWORK_LOGO:-}" ]; then
     # GitHub. PNG32 garante a saída em RGBA de 8 bits.
     magick -size 1600x400 gradient:"$FUNDO_ALTO-$FUNDO" -alpha set \
         \( -background none -fill "$TEXTO" -font "$FONTE" \
-           -pointsize 170 -kerning 36 label:arkmos -trim +repage \) \
+        -pointsize 170 -kerning 36 label:arkmos -trim +repage \) \
         -gravity center -composite \
         \( -size 1600x400 xc:none -fill white \
-           -draw "roundrectangle 0,0,1599,399,40,40" \) \
+        -draw "roundrectangle 0,0,1599,399,40,40" \) \
         -compose DstIn -composite \
         -depth 8 -strip "PNG32:$ARTWORK_LOGO"
     exit 0
@@ -92,9 +95,9 @@ done
 magick -size 3840x2160 gradient:"$FUNDO_ALTO-$FUNDO" \
     -define gradient:extent=Ellipse \
     \( -size 3600x2600 radial-gradient:'rgba(187,154,247,0.26)-rgba(187,154,247,0)' \) \
-        -geometry -1100+900 -composite \
+    -geometry -1100+900 -composite \
     \( -size 3000x2200 radial-gradient:'rgba(122,162,247,0.14)-rgba(122,162,247,0)' \) \
-        -geometry +1900-900 -composite \
+    -geometry +1900-900 -composite \
     -seed 240 -attenuate 0.12 +noise Gaussian \
     -strip -quality 92 -define webp:method=6 "$BACKGROUNDS/arkmos.webp"
 

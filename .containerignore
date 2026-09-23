@@ -1,0 +1,21 @@
+# Arkmos — o que não entra no contexto do build.
+#
+# O 'podman build .' passa o diretório inteiro como contexto, e aqui dentro há
+# discos de VM de vários GB em output/. Nada os copia para a imagem, mas
+# mantê-los fora do contexto deixa o build mais leve e, principalmente, torna
+# impossível um COPY futuro arrastá-los por descuido.
+output/
+output-nvidia/
+*.qcow2
+*.raw
+*.iso
+*.log
+
+.git/
+.github/
+tests/
+
+# Chave privada de assinatura nunca está aqui (o .gitignore barra *.key), mas
+# se alguém a colocar no diretório para assinar à mão, ela não vai no contexto.
+*.key
+cosign.password

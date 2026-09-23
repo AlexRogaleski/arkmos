@@ -52,19 +52,19 @@ fetch() {
 
 echo "==> starship ${STARSHIP_VERSION}"
 fetch "https://github.com/starship/starship/releases/download/v${STARSHIP_VERSION}/starship-x86_64-unknown-linux-musl.tar.gz" \
-      "$WORK/starship.tar.gz" "$STARSHIP_SHA256"
+    "$WORK/starship.tar.gz" "$STARSHIP_SHA256"
 tar -xzf "$WORK/starship.tar.gz" -C /usr/bin starship
 
 # Atenção à capitalização: o lazygit publica 'linux' e o lazydocker 'Linux' na
 # mesma posição do nome do arquivo. Trocar um pelo outro dá 404 no build.
 echo "==> lazygit ${LAZYGIT_VERSION}"
 fetch "https://github.com/jesseduffield/lazygit/releases/download/v${LAZYGIT_VERSION}/lazygit_${LAZYGIT_VERSION}_linux_x86_64.tar.gz" \
-      "$WORK/lazygit.tar.gz" "$LAZYGIT_SHA256"
+    "$WORK/lazygit.tar.gz" "$LAZYGIT_SHA256"
 tar -xzf "$WORK/lazygit.tar.gz" -C /usr/bin lazygit
 
 echo "==> lazydocker ${LAZYDOCKER_VERSION}"
 fetch "https://github.com/jesseduffield/lazydocker/releases/download/v${LAZYDOCKER_VERSION}/lazydocker_${LAZYDOCKER_VERSION}_Linux_x86_64.tar.gz" \
-      "$WORK/lazydocker.tar.gz" "$LAZYDOCKER_SHA256"
+    "$WORK/lazydocker.tar.gz" "$LAZYDOCKER_SHA256"
 tar -xzf "$WORK/lazydocker.tar.gz" -C /usr/bin lazydocker
 
 # mise — gerenciador de versões de linguagens (Go, Node, Python, Ruby...).
@@ -90,7 +90,7 @@ tar -xzf "$WORK/lazydocker.tar.gz" -C /usr/bin lazydocker
 # para toolchain nenhuma.
 echo "==> mise ${MISE_VERSION}"
 fetch "https://github.com/jdx/mise/releases/download/v${MISE_VERSION}/mise-v${MISE_VERSION}-linux-x64.tar.gz" \
-      "$WORK/mise.tar.gz" "$MISE_SHA256"
+    "$WORK/mise.tar.gz" "$MISE_SHA256"
 tar -xzf "$WORK/mise.tar.gz" -C /usr/bin --strip-components=2 mise/bin/mise
 
 chmod 0755 /usr/bin/starship /usr/bin/lazygit /usr/bin/lazydocker /usr/bin/mise
@@ -98,7 +98,7 @@ chmod 0755 /usr/bin/starship /usr/bin/lazygit /usr/bin/lazydocker /usr/bin/mise
 # Executar cada um fecha o que o checksum não cobre: um tarball da arquitetura
 # errada extrai sem erro nenhum e só falha na máquina de quem instalou.
 echo "==> verificando"
-/usr/bin/starship --version   | head -1
-/usr/bin/lazygit --version    | head -1
+/usr/bin/starship --version | head -1
+/usr/bin/lazygit --version | head -1
 /usr/bin/lazydocker --version | head -1
-/usr/bin/mise --version       | head -1
+/usr/bin/mise --version | head -1

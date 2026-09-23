@@ -35,6 +35,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # shellcheck nos scripts, actionlint neste arquivo e a sintaxe do Justfile,
+  # pelas mesmas receitas que rodam na máquina ('just lint'). Job separado, e
+  # não um passo do build: dá retorno em menos de um minuto e não segura a
+  # publicação, que leva vinte.
+  lint:
+    name: lint
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # A mesma action que o image-template do Universal Blue usa, fixada por
+      # commit e não por tag.
+      - name: Instalar o just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4.0.0
+
+      - name: just lint
+        run: just lint
+
   build:
     name: build (${{ matrix.variant }})
     runs-on: ubuntu-24.04
@@ -129,6 +151,42 @@ jobs:
             --tag "${IMAGE}:${FEDORA_MAJOR}" \
             --tag "${IMAGE}:latest" \
             .
+
+      # Rechunk: reorganiza as camadas por conteúdo antes de verificar e
+      # publicar. É o passo que Bluefin, Aurora e Bazzite dão, e que o
+      # image-template do Universal Blue traz como 'ostree-rechunk'.
+      #
+      # Medido nesta imagem: 289 camadas e 9,88 GB viraram 128 camadas e
+      # 8,02 GB, porque o rpm-ostree unifica os objetos duplicados. O ganho
+      # maior é no 'bootc upgrade' de quem usa: camadas decididas por conteúdo
+      # são estáveis entre publicações, então o download passa a ser só do que
+      # mudou. O custo é o tempo deste passo, uns doze minutos.
+      #
+      # A verificação vem DEPOIS, de propósito: o que o just check examina é
+      # exatamente a imagem que vai ao registry.
+      #
+      # O --previous-build mantém o plano de camadas da publicação anterior, e
+      # só entra quando a imagem publicada já é chunked — o label
+      # 'ostree.final-diffid' é o que diz isso. Na primeira publicação com
+      # rechunk ele não existe ainda.
+      - name: Reorganizar camadas (rechunk)
+        run: |
+          anterior=""
+          if skopeo inspect "docker://${IMAGE}:${FEDORA_MAJOR}" 2>/dev/null \
+              | jq -e '.Labels["ostree.final-diffid"]' >/dev/null; then
+              anterior="docker://${IMAGE}:${FEDORA_MAJOR}"
+              echo "plano de camadas herdado de ${anterior}"
+          else
+              echo "publicação anterior não é chunked; plano novo"
+          fi
+
+          just ostree-rechunk "${IMAGE}:latest" "${anterior}"
+
+          # O rechunk grava só na tag que recebeu; as outras duas voltam a
+          # apontar para a imagem reorganizada.
+          podman tag "${IMAGE}:latest" \
+            "${IMAGE}:${{ steps.tags.outputs.version }}" \
+            "${IMAGE}:${FEDORA_MAJOR}"
 
       # Mesmo script que o 'just check' local roda. O lint já roda como
       # última camada do Containerfile; o script o repete para que a falha

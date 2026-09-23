@@ -55,17 +55,17 @@ uid_max="${uid_max:-60000}"
 
 existentes=()
 while IFS=: read -r nome _ uid _; do
-    (( uid >= uid_min && uid <= uid_max )) || continue
+    ((uid >= uid_min && uid <= uid_max)) || continue
     [[ "$(passwd -S "$nome" 2>/dev/null | awk '{ print $2 }')" == "P" ]] || continue
     existentes+=("$nome")
 done < <(getent passwd)
 
-if (( ${#existentes[@]} > 0 )); then
+if ((${#existentes[@]} > 0)); then
     for nome in "${existentes[@]}"; do
-        if id -nG "$nome" | tr ' ' '\n' | grep -qx wheel \
-                && getent group docker >/dev/null 2>&1; then
-            usermod -aG docker "$nome" \
-                || logger -t arkmos-firstboot "não foi possível pôr '$nome' no grupo docker"
+        if id -nG "$nome" | tr ' ' '\n' | grep -qx wheel &&
+            getent group docker >/dev/null 2>&1; then
+            usermod -aG docker "$nome" ||
+                logger -t arkmos-firstboot "não foi possível pôr '$nome' no grupo docker"
         fi
     done
 
@@ -148,12 +148,12 @@ else
     # UID/GID fixos: evitam divergência de propriedade se o /var/home
     # sobreviver a uma reinstalação do sistema.
     if ! useradd \
-            --uid "$ARKMOS_UID" \
-            --user-group \
-            --create-home \
-            --shell /usr/bin/zsh \
-            --comment "$FULLNAME" \
-            "$USERNAME"; then
+        --uid "$ARKMOS_UID" \
+        --user-group \
+        --create-home \
+        --shell /usr/bin/zsh \
+        --comment "$FULLNAME" \
+        "$USERNAME"; then
         echo
         echo "ERRO: não foi possível criar o usuário '$USERNAME'."
         echo "O sistema seguirá para o login. Acesse como root e execute:"
@@ -211,7 +211,7 @@ while true; do
     read -r -s -p "Senha: " SENHA
     echo
 
-    if (( ${#SENHA} < MIN_SENHA )); then
+    if ((${#SENHA} < MIN_SENHA)); then
         echo
         echo "Curta demais: ${#SENHA} caractere(s), o mínimo é ${MIN_SENHA}."
         echo

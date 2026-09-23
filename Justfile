@@ -16,11 +16,7 @@
 
 variant := ""
 
-base := if variant == "nvidia" {
-    "ghcr.io/ublue-os/base-nvidia:44"
-} else {
-    "ghcr.io/ublue-os/base-main:44"
-}
+base := if variant == "nvidia" { "ghcr.io/ublue-os/base-nvidia:44" } else { "ghcr.io/ublue-os/base-main:44" }
 
 suffix := if variant == "nvidia" { "-nvidia" } else { "" }
 
@@ -35,17 +31,17 @@ default:
 [doc("Constrói a imagem local")]
 build:
     podman build \
-        --build-arg BASE_IMAGE="{{base}}" \
+        --build-arg BASE_IMAGE="{{ base }}" \
         --build-arg ARKMOS_VARIANT="{{ if variant == "" { "base" } else { variant } }}" \
         --build-arg ARKMOS_VERSION="dev" \
         --build-arg ARKMOS_COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)" \
-        -t {{image}}:{{tag}} .
+        -t {{ image }}:{{ tag }} .
 
 # Exatamente as mesmas verificações que o CI roda — os dois chamam este
 # script, em vez de manter duas listas que divergem com o tempo.
 [doc("Roda as verificações sobre a imagem construída")]
 check:
-    ./tests/check-image.sh {{image}}:{{tag}}
+    ./tests/check-image.sh {{ image }}:{{ tag }}
 
 # Constrói e verifica as duas variantes. É o que vale rodar antes de um commit
 # que mexa no Containerfile ou em files/: um erro que só aparece numa das duas
@@ -68,22 +64,22 @@ check-all:
 # config.toml também não tem flag — é lido de /config.toml dentro do container.
 [doc("Gera um qcow2 para testar em QEMU")]
 vm: build
-    mkdir -p {{outdir}}
-    podman image scp {{image}}:{{tag}} root@localhost::
+    mkdir -p {{ outdir }}
+    podman image scp {{ image }}:{{ tag }} root@localhost::
     sudo podman run --rm -it --privileged --pull=newer \
         --security-opt label=type:unconfined_t \
         -v ./config.toml:/config.toml:ro \
-        -v ./{{outdir}}:/output \
+        -v ./{{ outdir }}:/output \
         -v /var/lib/containers/storage:/var/lib/containers/storage \
-        {{builder}} \
+        {{ builder }} \
         build --type qcow2 \
         --chown "$(id -u):$(id -g)" \
-        {{image}}:{{tag}}
+        {{ image }}:{{ tag }}
     # As variáveis EFI guardam a entrada de boot que o bootc gravou no disco
     # ANTERIOR. Reaproveitá-las com um disco novo faz o firmware tentar uma
     # entrada que não existe mais, e o sintoma é a VM não dar boot — indistinguível
     # de imagem quebrada. Descartadas aqui, o 'run-vm' recria limpas.
-    rm -f {{outdir}}/OVMF_VARS.fd
+    rm -f {{ outdir }}/OVMF_VARS.fd
 
 # Sobe o qcow2 no QEMU.
 #
@@ -115,17 +111,17 @@ vm: build
 run-vm:
     #!/usr/bin/env bash
     set -euo pipefail
-    test -f {{outdir}}/qcow2/disk.qcow2 || { echo "Rode 'just{{ if variant == "" { "" } else { " variant=" + variant } }} vm' antes."; exit 1; }
-    if [ ! -f {{outdir}}/OVMF_VARS.fd ]; then
-        cp /usr/share/edk2/ovmf/OVMF_VARS.fd {{outdir}}/OVMF_VARS.fd
-        chmod u+w {{outdir}}/OVMF_VARS.fd
+    test -f {{ outdir }}/qcow2/disk.qcow2 || { echo "Rode 'just{{ if variant == "" { "" } else { " variant=" + variant } }} vm' antes."; exit 1; }
+    if [ ! -f {{ outdir }}/OVMF_VARS.fd ]; then
+        cp /usr/share/edk2/ovmf/OVMF_VARS.fd {{ outdir }}/OVMF_VARS.fd
+        chmod u+w {{ outdir }}/OVMF_VARS.fd
     fi
     qemu-system-x86_64 \
         -machine q35,accel=kvm -cpu host \
         -m 4096 -smp 4 \
         -drive if=pflash,format=raw,unit=0,readonly=on,file=/usr/share/edk2/ovmf/OVMF_CODE.fd \
-        -drive if=pflash,format=raw,unit=1,file={{outdir}}/OVMF_VARS.fd \
-        -drive file={{outdir}}/qcow2/disk.qcow2,if=virtio,format=qcow2 \
+        -drive if=pflash,format=raw,unit=1,file={{ outdir }}/OVMF_VARS.fd \
+        -drive file={{ outdir }}/qcow2/disk.qcow2,if=virtio,format=qcow2 \
         -device virtio-vga-gl,xres=1920,yres=1080 \
         -display gtk,gl=on,grab-on-hover=on \
         -device virtio-net,netdev=n0 -netdev user,id=n0,hostfwd=tcp:127.0.0.1:2222-:22 \
@@ -141,8 +137,135 @@ logo:
         -v ./build_files/render-artwork.sh:/render.sh:ro \
         -v ./.github/assets:/out \
         -e ARTWORK_LOGO=/out/logo.png \
-        {{image}}:{{tag}} bash /render.sh
+        {{ image }}:{{ tag }} bash /render.sh
 
 [doc("Remove os diretórios de saída das duas variantes")]
 clean:
     rm -rf output output-nvidia
+
+# Lint e formatação seguem as convenções do image-template do Universal Blue:
+# 'lint' com shellcheck, 'format' com shfmt, e a sintaxe do Justfile conferida
+# pelo próprio just. O actionlint no workflow vem do finpilot.
+#
+# Uma diferença de nome, de propósito: no template deles 'check' é a sintaxe do
+# Justfile, e aqui 'check' já significa as verificações da imagem, que é o nome
+# que o CI e o PROJECT.md usam desde o começo. A sintaxe do Justfile entrou no
+# 'lint'.
+#
+# As ferramentas não estão no host de desenvolvimento (Aurora é imutável), então
+# cada receita usa o binário local quando existe e cai num container com versão
+# fixada quando não existe. Na imagem do Arkmos os binários existem, e é o
+# caminho local que roda.
+shellcheck_image := "docker.io/koalaman/shellcheck:v0.11.0"
+shfmt_image := "docker.io/mvdan/shfmt:v3.12.0"
+actionlint_image := "docker.io/rhysd/actionlint:1.7.7"
+
+# O git é a fonte da verdade do escopo, como no finpilot. O critério é o
+# shebang, e não a extensão: os scripts de /usr/libexec e /usr/bin não têm '.sh'.
+# Os arquivos .zsh ficam fora porque o shellcheck não analisa zsh.
+[doc("Lista os scripts de shell versionados")]
+shell-sources:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    git ls-files -z | while IFS= read -r -d '' f; do
+        [[ -f "$f" && "$f" != *.zsh ]] || continue
+        head -1 "$f" | grep -qE '^#!.*(bash|/sh|env sh)' && printf '%s\n' "$f"
+    done
+
+[doc("shellcheck nos scripts, actionlint no workflow, sintaxe do Justfile")]
+lint:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    mapfile -t fontes < <(just shell-sources)
+    if (( ${#fontes[@]} == 0 )); then
+        echo "nenhum script de shell versionado encontrado" >&2
+        exit 1
+    fi
+    printf 'shellcheck em %d scripts:\n' "${#fontes[@]}"
+    printf '  %s\n' "${fontes[@]}"
+    if command -v shellcheck >/dev/null; then
+        shellcheck "${fontes[@]}"
+    else
+        podman run --rm -v "$PWD:/mnt:ro,Z" -w /mnt {{ shellcheck_image }} "${fontes[@]}"
+    fi
+
+    echo 'actionlint nos workflows:'
+    if command -v actionlint >/dev/null; then
+        actionlint
+    else
+        podman run --rm -v "$PWD:/repo:ro,Z" -w /repo {{ actionlint_image }}
+    fi
+
+    echo 'sintaxe do Justfile:'
+    just --unstable --fmt --check -f Justfile
+
+[doc("Formata os scripts com shfmt e o Justfile com o just")]
+format:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    mapfile -t fontes < <(just shell-sources)
+    if command -v shfmt >/dev/null; then
+        shfmt --write "${fontes[@]}"
+    else
+        podman run --rm -v "$PWD:/mnt:Z" -w /mnt {{ shfmt_image }} --write "${fontes[@]}"
+    fi
+    just --unstable --fmt -f Justfile
+
+# Rechunk: reorganiza as camadas da imagem antes de publicar.
+#
+# É o passo que Bluefin, Aurora e Bazzite dão, e que o image-template do
+# Universal Blue traz como 'ostree-rechunk'. O 'rpm-ostree compose
+# build-chunked-oci' recebe o sistema de arquivos pronto e o reescreve em até
+# 127 camadas decididas por conteúdo, e não pela ordem dos comandos do
+# Containerfile.
+#
+# O que isso muda na prática: hoje, um 'dnf install' no começo do Containerfile
+# invalida todas as camadas seguintes, e cada publicação obriga quem atualiza a
+# baixar gigabytes. Com as camadas por conteúdo, duas publicações seguidas
+# compartilham quase tudo, e o 'bootc upgrade' baixa só o que mudou de fato.
+#
+# Roda com o rpm-ostree de DENTRO da própria imagem (ela é derivada do ublue, que
+# o traz), então não há ferramenta extra para instalar. Precisa de --privileged e
+# do storage do podman montado, porque a saída é gravada direto lá.
+[doc("Reorganiza as camadas da imagem para o upgrade baixar menos")]
+ostree-rechunk alvo=(image + ":" + tag) anterior="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    graphroot="$(podman info --format '{{ '{{.Store.GraphRoot}}' }}')"
+
+    # Os labels são repassados um a um, lidos da imagem de origem. O
+    # build-chunked-oci monta uma imagem NOVA a partir do sistema de arquivos e
+    # não herda a configuração: sem isto, a variante, a versão e o commit
+    # desapareceriam — o 'bootc status' mostra a versão a partir desse label, e
+    # o 'just check' usa o da variante. Não há como repassar ENV e CMD, que só
+    # afetam 'podman run' nesta imagem, e ficam perdidos.
+    mapfile -t rotulos < <(podman inspect \
+        --format '{{ '{{ range $k, $v := .Config.Labels }}{{ $k }}={{ $v }}{{ "\n" }}{{ end }}' }}' {{ alvo }})
+    anterior="{{ anterior }}"
+
+    argumentos=()
+    for rotulo in "${rotulos[@]}"; do
+        [[ -n "$rotulo" ]] && argumentos+=(--label "$rotulo")
+    done
+
+    echo "antes:  $(podman inspect --format '{{ '{{len .RootFS.Layers}}' }}' {{ alvo }}) camadas, $((${#argumentos[@]} / 2)) labels"
+
+    podman run --rm --pull=never --privileged \
+        --mount=type=image,src={{ alvo }},target=/rpm-ostree \
+        --mount=type=bind,src="$graphroot",target=/run/host-container-storage,rw \
+        --mount=type=tmpfs,target=/run/rpm-ostree-storage \
+        --entrypoint /usr/bin/rpm-ostree \
+        {{ alvo }} \
+        compose build-chunked-oci \
+        --max-layers 127 \
+        --format-version=2 \
+        --bootc \
+        --rootfs /rpm-ostree \
+        "${argumentos[@]}" \
+        ${anterior:+--previous-build "$anterior"} \
+        --output "containers-storage:[overlay@/run/host-container-storage+/run/rpm-ostree-storage]{{ alvo }}"
+
+    echo "depois: $(podman inspect --format '{{ '{{len .RootFS.Layers}}' }}' {{ alvo }}) camadas"

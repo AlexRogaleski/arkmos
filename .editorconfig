@@ -1,0 +1,29 @@
+# Arkmos — estilo dos arquivos do repositório.
+#
+# Existe por causa do shfmt, que o 'just format' roda: sem isto ele usa o
+# padrão dele, tabulação, e reescreveria os nove scripts do projeto, que usam
+# quatro espaços. O shfmt lê este arquivo por conta própria, então a receita
+# continua sendo a mesma do image-template do Universal Blue, sem flags extras.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{sh,bash,zsh}]
+indent_style = space
+indent_size = 4
+
+# Sem extensão, mas são bash: os scripts que a imagem instala.
+[{arkmos-diag,arkmos-firstboot,arkmos-greeter,check-image.sh}]
+indent_style = space
+indent_size = 4
+
+[*.{yml,yaml,toml,kdl,json}]
+indent_style = space
+indent_size = 2
+
+[Makefile]
+indent_style = tab

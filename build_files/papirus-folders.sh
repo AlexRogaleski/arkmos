@@ -36,7 +36,7 @@ done < <(find "$tema" -type l -path '*/places/*' -print0)
 # O Papirus 20250501 tem 385 desses links. Um número muito menor quer dizer que
 # a estrutura do tema mudou e a troca não pegou: melhor o build falhar do que a
 # imagem sair com as pastas azuis sem ninguém notar.
-if (( trocados < 300 )); then
+if ((trocados < 300)); then
     echo "papirus-folders: só $trocados links trocados; o Papirus mudou?" >&2
     exit 1
 fi

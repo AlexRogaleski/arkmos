@@ -74,12 +74,6 @@ RUN git init --quiet /tmp/greeter \
 
 FROM ${BASE_IMAGE}
 
-# Versão da imagem. O CI injeta o esquema por data (44.AAAAMMDD.N);
-# builds locais ficam como "dev".
-ARG ARKMOS_VERSION="dev"
-ARG ARKMOS_COMMIT="unknown"
-ARG ARKMOS_VARIANT="base"
-
 # Onde as imagens são publicadas. Usado pela política de verificação de
 # assinatura, mais abaixo. Em minúsculas: o GHCR exige.
 ARG ARKMOS_REGISTRY="ghcr.io/alexrogaleski"
@@ -573,6 +567,21 @@ RUN rm -rf /var/cache/libdnf5 /var/cache/dnf /var/lib/dnf \
            /run/dnf /run/tuned /run/selinux-policy /tmp/* \
     && find /var/log -type f -delete \
     && rm -f /var/cache/ldconfig/aux-cache
+
+# Metadados da imagem.
+#
+# Os três ARGs voláteis são declarados AQUI, e não no topo, porque um
+# build-arg diferente invalida o cache de tudo o que vem depois dele: com a
+# versão e o commit lá em cima, cada commit novo refazia o 'dnf install' e as
+# camadas seguintes num build local. Declarados junto dos labels, um commit
+# novo invalida só a camada de label. O CI injeta o esquema por data
+# (44.AAAAMMDD.N); build local fica como "dev".
+#
+# A ideia vem do finpilot, o template novo do projectbluefin, que documenta
+# exatamente esse motivo.
+ARG ARKMOS_VERSION="dev"
+ARG ARKMOS_COMMIT="unknown"
+ARG ARKMOS_VARIANT="base"
 
 LABEL org.opencontainers.image.title="Arkmos"
 LABEL org.opencontainers.image.description="Estação de trabalho pessoal baseada em Fedora bootc"
