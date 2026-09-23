@@ -1792,7 +1792,20 @@ Há três caminhos de instalação, e os três terminam no mesmo sistema.
 just iso    # gera output/bootiso/install.iso
 ```
 
-A ISO leva o Anaconda: escolha do disco, particionamento, cifragem se quiser, e a criação da conta. Grave num pendrive de 16 GB — ela carrega a imagem inteira, uns 8 GB — e reserve espaço no host, porque o osbuild ainda precisa da árvore intermediária.
+A ISO leva o Anaconda: escolha do disco, particionamento, cifragem se quiser, e a criação da conta. Ela embute a imagem **comprimida** mais o ambiente do instalador, então fica na faixa das ISOs do Universal Blue, 6 a 7 GB — um pendrive de 8 GB serve. No host, reserve uns 20 GB: o osbuild descomprime a imagem em árvore intermediária antes de montar a mídia.
+
+Para dimensionar, os tamanhos comprimidos no registry em 2026-09-23:
+
+| Imagem | Comprimida |
+| --- | --- |
+| `base-main:44` (nossa base) | 3,12 GB |
+| **`arkmos:44`** | **3,46 GB** |
+| `arkmos-nvidia:44` | 4,37 GB |
+| `bluefin:latest` | 3,32 GB |
+| `bluefin-dx:latest` | 5,27 GB |
+| `aurora-dx:latest` | 5,51 GB |
+
+O Arkmos já traz VS Code e Docker, que no Universal Blue são o que separa a imagem básica da `-dx` — e mesmo assim fica 1,8 GB abaixo da `bluefin-dx`. O que mais ocupa, descomprimido: `code` 997 MB, `firefox` 289 MB (da base), `glibc-all-langpacks` 227 MB, `mesa-vulkan-drivers` 174 MB, `ibus` 149 MB, `cosign` 135 MB.
 
 A origem é a imagem **publicada**, e não a local: a referência usada na geração é a que fica gravada na deployment, e uma instalação feita a partir de `localhost/arkmos:dev` nasce seguindo um registry que não existe (seção 30). Por isso a receita não depende do `just build`.
 

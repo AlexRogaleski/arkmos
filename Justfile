@@ -101,8 +101,11 @@ vm: build
 # particiona é o Anaconda, e ligar o sshd sem ninguém pedir seria o oposto do
 # que a seção 22 decidiu.
 #
-# Reserve espaço: a ISO carrega a imagem inteira (~8 GB) e o osbuild ainda
-# precisa do dobro disso em árvore intermediária.
+# Reserve espaço no host: o osbuild descomprime a imagem inteira em árvore
+# intermediária antes de montar a mídia, então conte uns 20 GB livres. A ISO em
+# si embute a imagem comprimida (3,46 GB na publicação de 2026-09-23) mais o
+# ambiente do Anaconda — as ISOs equivalentes do Universal Blue ficam entre 6 e
+# 7 GB.
 [doc("Gera a ISO instalável a partir da imagem publicada")]
 iso origem=publicado:
     mkdir -p {{ outdir }}
