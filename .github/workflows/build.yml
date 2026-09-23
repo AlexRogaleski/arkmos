@@ -121,14 +121,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # O rechunk é chamado pela receita do Justfile, a mesma que roda na
-      # máquina — e para isso o just precisa existir também neste job, não só
-      # no de lint. Fixado na versão que roda aqui.
-      - name: Instalar o just
-        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4.0.0
-        with:
-          just-version: 1.57.0
-
       # O runner do GitHub vem com pouco espaço livre: a variante padrão passa
       # de 8 GB por causa dos codecs que vêm da base, e a NVIDIA de 11 GB.
       - name: Liberar espaço em disco
@@ -136,6 +128,27 @@ jobs:
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
                       /usr/local/share/boost "$AGENT_TOOLSDIRECTORY"
           df -h /
+
+      # O rechunk é chamado pela receita do Justfile, a mesma que roda na
+      # máquina — e para isso o just precisa existir também neste job, não só
+      # no de lint. Fixado na versão que roda aqui.
+      #
+      # DEPOIS da limpeza de disco, não antes: a action guarda o binário no
+      # cache de ferramentas do runner (tc.cacheDir), que é o
+      # $AGENT_TOOLSDIRECTORY apagado ali acima. Instalado antes, o PATH
+      # apontava para um diretório que deixava de existir, e o passo do rechunk
+      # morria com "just: command not found" depois de nove minutos de build.
+      - name: Instalar o just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4.0.0
+        with:
+          just-version: 1.57.0
+
+      # A action diz "Successfully setup just" mesmo quando o binário sai do
+      # disco depois, então quem confirma é o próprio just. Um segundo aqui
+      # vale os nove minutos de build que se perdem quando a falha só aparece
+      # no passo do rechunk.
+      - name: Conferir o just
+        run: just --version
 
       - name: Gerar tags
         id: tags
