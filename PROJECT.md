@@ -607,7 +607,12 @@ systemd-homed-firstboot    criaria via homectl, mas exige systemd-homed (ausente
 
 Para mídia gerada com `bootc-image-builder` e para `bootc install to-disk` não existe caminho pronto. O assistente em TTY é a resposta.
 
-O caminho alternativo, se um dia fizer sentido, é gerar ISO com Anaconda (`--type anaconda-iso`) e deixar o instalador criar a conta.
+**Desde a ISO instalável (`just iso`, seção 31), o caminho normal passou a ser o do Universal Blue: a conta vem do Anaconda.** O assistente continua na imagem, e continua fazendo diferença:
+
+- concede o grupo `docker`, que nenhum instalador concede — o Anaconda oferece `wheel` e para aí, e sem `docker` o Laravel Sail não fala com o daemon;
+- cobre a instalação em que ninguém criou conta: `bootc install to-disk` não tem instalador, e uma tela de conta pode ser pulada. Sem ele, o resultado seria uma máquina sem conta e sem senha de root, ou seja, uma reinstalação.
+
+Encolher o assistente para só conceder o grupo e marcar o estado é possível, mas depende de ver o Anaconda desta ISO pedindo a conta — o que ainda não foi testado (seção 36). O custo de manter é zero quando a conta já existe: ele se dispensa em silêncio.
 
 ## 12.5 Segurança
 
@@ -1037,6 +1042,15 @@ O arquivo não diz de qual remoto instalar. O `preinstall` resolve pelos remotos
 O serviço é `Type=exec`, e não `oneshot`. Um oneshot seguraria o `multi-user.target` até o fim da instalação, que no primeiro boot são alguns GB. Assim o boot segue, e a instalação corre em segundo plano com prioridade baixa. Sem rede, ele tenta de novo a cada minuto, por até dez vezes; o que não der fica para o boot seguinte.
 
 A lista também leva a extensão de tema `org.gtk.Gtk3theme.adw-gtk3-dark`, como runtime. O sandbox não vê o `/usr/share/themes` do host, e sem ela um Flatpak GTK3 cai no Adwaita do runtime (seção 26.1).
+
+### Como o Universal Blue faz
+
+Verificado nos repositórios deles, porque a pergunta "estamos fazendo igual?" merece resposta com fonte:
+
+- **Bluefin** declara em `/usr/share/flatpak/preinstall.d/*.preinstall` e habilita um serviço que roda o `flatpak preinstall` — o mesmo mecanismo daqui. Eles ainda mantêm um teste no build para o arquivo não desaparecer da imagem, com a justificativa explícita de que, sem ele, o aplicativo **sai** das máquinas na atualização seguinte. É a confirmação de que a sincronização nos dois sentidos é comportamento esperado, e não efeito colateral.
+- **Bazzite** instala por post-script do Anaconda (`install-flatpaks.ks`), no kickstart da ISO. Funciona, mas amarra os aplicativos à mídia: quem chega por rebase não recebe nada, e a lista não se reconcilia depois.
+
+A única diferença em relação ao Bluefin é a unidade: eles habilitam um `flatpak-preinstall.service` que o Fedora 44 não entrega — o `flatpak` 1.18.2 traz o comando, e nenhum pacote do repositório instala essa unidade. Daí o `arkmos-flatpak-preinstall.service`, com a mesma função.
 
 ### Aplicativos padrão
 
@@ -1846,15 +1860,38 @@ A flag é o que faz as atualizações seguintes serem verificadas: ela grava na 
 
 Esse primeiro switch, porém, não verifica a assinatura do Arkmos. Quem decide é a política do sistema de origem, que não conhece a chave, e nela uma imagem sem regra própria cai no `insecureAcceptAnything`. A política do Arkmos chega com a nova deployment e vale a partir do upgrade seguinte, desde que o `/etc/containers/policy.json` do sistema de origem não tenha sido editado: arquivo alterado localmente em `/etc` prevalece sobre o da imagem. Para conferir antes da troca, o `cosign verify` com a chave pública do repositório (seção 28).
 
-Atualização:
+## 31.1 Atualização
+
+Na mão:
 
 ```bash
-sudo bootc upgrade
-bootc status
-sudo bootc rollback
+sudo bootc upgrade     # busca e encena a imagem nova
+bootc status           # o que está rodando, o que está encenado
+sudo bootc rollback    # volta para a deployment anterior
 ```
 
 O número da versão não é a rede de segurança — `bootc rollback` é.
+
+**E já existe atualização automática, herdada da base do Universal Blue.** Ela não foi escolhida aqui, veio com a base, e é melhor saber disso do que descobrir num boot:
+
+| Unidade | Estado | O que faz |
+| --- | --- | --- |
+| `rpm-ostreed-automatic.timer` | ligada | 1h depois do boot e a cada 24h: baixa a imagem nova e a **encena**, com `AutomaticUpdatePolicy=stage` em `/etc/rpm-ostreed.conf`. Um drop-in exige rede não tarifada. |
+| `flatpak-system-update.timer` | ligada | atualiza os Flatpaks da instalação de sistema, às 4h com jitter de 10min |
+| `bootc-fetch-apply-updates.timer` | **desligada** | este aplicaria e reiniciaria sozinho |
+
+O desenho é o certo para uma máquina de trabalho: o download acontece sozinho, a imagem nova fica pronta no disco, e **reiniciar continua sendo decisão de quem usa** — nada troca debaixo de uma sessão aberta. O `just check` passou a afirmar esse estado, porque uma reconstrução da base pode mudá-lo em silêncio nos dois sentidos: máquina que deixa de receber imagem nova, ou máquina que passa a reiniciar em imagem que ninguém olhou.
+
+A base também traz o `ujust`, do pacote `ublue-os-just`, com as receitas do Universal Blue:
+
+```bash
+ujust update           # rpm-ostree update + flatpak update + distrobox upgrade
+ujust toggle-updates   # liga/desliga a atualização automática
+ujust changelogs       # rpm-ostree db diff --changelogs
+ujust update-firmware  # fwupdmgr
+```
+
+**O que o Arkmos não tem é o `uupd`**, o daemon de atualização do Universal Blue. O Bluefin o instala, desabilita o `rpm-ostreed-automatic.timer` e deixa o `uupd` coordenar sistema, Flatpaks e Distrobox num só lugar — o `ujust update` inclusive detecta se ele está ligado e delega. Aqui o ganho seria coordenação e log num lugar só, ao custo de uma dependência a mais fora do Fedora; com o `flatpak preinstall` já reconciliando a lista e o timer do Flatpak já atualizando versões, a conta não fechou. Fica registrado como alternativa, não como pendência.
 
 ---
 
@@ -2015,6 +2052,7 @@ Base, distribuição e robustez:
 Aplicações declaradas e identidade visual:
 
 - lista de Flatpaks declarada na imagem e aplicada pelo `flatpak preinstall`, com um serviço que instala o que falta a cada boot e remove o que sair da lista (seção 25);
+- atualização automática no modo encenado, com o timer do bootc que reiniciaria sozinho desligado (seção 31.1);
 - aplicativos padrão por tipo de arquivo, com PDF, imagem e vídeo nos visualizadores do GNOME e texto no VS Code, mais o `XDG_DATA_DIRS` da sessão, sem o qual o clique duplo não abria nada (seções 25 e 26.1);
 - o que o uso diário pedia e a base não trazia: celular e rede no Nautilus, miniaturas de PDF, terminal padrão para programas de terminal, Tailscale, agente SSH, firewall na zona do Fedora Workstation, servidor SSH desligado, btop no lugar do htop (seções 22 e 25);
 - esquema **Tokyo Night** como identidade, com nove papéis de parede próprios, ícones Papirus-Dark com pastas em violeta e o anel de foco do niri no roxo do esquema (seção 26.1);
@@ -2173,7 +2211,7 @@ travamento antes do assistente no primeiro boot em VM — visto uma vez em
 5. Snapshots do `/var/home` e backup para fora da máquina — o rollback do sistema já vem do bootc (seção 6).
 6. Validar instalação em hardware real.
 7. Documentar recuperação.
-8. Definir política de atualização/rollback.
+8. Revisar a política de atualização depois de um mês de uso real — hoje é o encenado automático herdado da base, documentado e verificado (seção 31.1).
 9. Estabilizar a versão 1.0.0.
 
 ---

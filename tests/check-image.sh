@@ -863,6 +863,30 @@ check "serviços habilitados" \
         done
     '
 
+# A atualização automática NÃO é nossa: vem da base do Universal Blue, e é por
+# isso que está aqui. O que a base liga hoje pode mudar numa reconstrução dela,
+# e o efeito seria silencioso nos dois sentidos — máquina que para de receber
+# imagem nova, ou máquina que passa a reiniciar em imagem que ninguém olhou.
+#
+#   rpm-ostreed-automatic   baixa e ENCENA a imagem nova (AutomaticUpdatePolicy
+#                           = stage): ela passa a valer no próximo reboot, e o
+#                           reboot continua sendo decisão de quem usa
+#   flatpak-system-update   atualiza os Flatpaks da instalação de sistema
+#   bootc-fetch-apply       este aplicaria e reiniciaria sozinho: fica desligado
+check "atualização automática no modo encenado" \
+    run sh -c '
+        grep -qx "AutomaticUpdatePolicy=stage" /etc/rpm-ostreed.conf \
+            || { echo "política de atualização não é \"stage\":"; \
+                 grep -v "^#" /etc/rpm-ostreed.conf; exit 1; }
+        for u in rpm-ostreed-automatic.timer flatpak-system-update.timer; do
+            state=$(systemctl is-enabled "$u" 2>&1)
+            [ "$state" = enabled ] || { echo "$u esta \"$state\""; exit 1; }
+        done
+        state=$(systemctl is-enabled bootc-fetch-apply-updates.timer 2>&1)
+        [ "$state" = disabled ] \
+            || { echo "bootc-fetch-apply-updates.timer esta \"$state\": reiniciaria sozinho"; exit 1; }
+    '
+
 # A política de assinatura é opcional (depende da chave pública existir), mas
 # as duas peças só funcionam juntas: chave sem entrada na política não verifica
 # nada, e entrada apontando para chave ausente faz TODO pull falhar.
