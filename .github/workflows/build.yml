@@ -191,8 +191,9 @@ jobs:
       # 8,02 GB, porque o rpm-ostree unifica os objetos duplicados. O ganho
       # maior é no 'bootc upgrade' de quem usa: camadas decididas por conteúdo
       # são estáveis entre publicações, então o download passa a ser só do que
-      # mudou. O custo é o tempo deste passo: medido neste runner, 5min30 na
-      # variante padrão e 19min na NVIDIA.
+      # mudou. O custo é o tempo deste passo: medido neste runner, seis minutos
+      # e meio por variante — com execuções chegando a 19min quando o I/O do
+      # runner está disputado.
       #
       # A verificação vem DEPOIS, de propósito: o que o just check examina é
       # exatamente a imagem que vai ao registry.

@@ -1517,7 +1517,7 @@ Medido nesta imagem, em 2026-09-23:
 
 O 1,9 GB a menos vem dos objetos duplicados que o `rpm-ostree` unifica (11.363 nesta imagem). As 289 camadas também eram um problema por si: o próprio `rpm-ostree` avisa que runtimes mais antigos engasgam acima de 200.
 
-O custo é tempo, e no runner do GitHub ele é desigual: **5min30** na variante padrão e **19min** na NVIDIA, medidos em 2026-09-23, sobre nove a dez minutos de build. Na máquina, a padrão levou doze minutos. Vale por publicação, não por push — mas hoje o rechunk roda em todo push, porque o que a verificação examina tem de ser a imagem que vai ao registry.
+As mesmas 289 camadas viram as mesmas 128 no runner do GitHub, nas duas variantes, com 11.469 e 11.580 objetos duplicados unificados. O custo é tempo: **6min06** na padrão e **6min37** na NVIDIA, sobre oito a nove minutos de build — mas execuções anteriores do mesmo passo levaram de 5min30 a 19min, porque o disco do runner é compartilhado e o gargalo é I/O. Na máquina, a padrão levou doze minutos. Hoje o rechunk roda em todo push, e não só ao publicar, porque o que a verificação examina tem de ser a imagem que iria ao registry.
 
 O ganho maior, porém, é no `bootc upgrade` de quem usa. Camadas decididas por conteúdo são estáveis entre publicações: sem rechunk, um `dnf install` no começo do Containerfile invalida tudo o que vem depois e cada publicação obriga a baixar gigabytes.
 
