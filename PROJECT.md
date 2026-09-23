@@ -1813,6 +1813,47 @@ O `bootc container lint` roda como última camada do próprio `Containerfile`, e
 
 ---
 
+## 29.1 Trabalhar em outra máquina
+
+Tudo o que o projeto é está versionado: 84 arquivos, 4,6 MB de repositório, incluindo os papéis de parede. Um `git clone` basta, e nada precisa ser copiado à mão de uma máquina para outra.
+
+```bash
+git clone https://github.com/AlexRogaleski/arkmos
+cd arkmos
+```
+
+O que **não** atravessa, e não precisa: o par de chaves cosign (`~/.local/share/arkmos-signing/`). Quem assina é o CI, com os secrets do GitHub; localmente as chaves só serviriam para assinar à mão, o que o fluxo não faz. A chave **pública** está no repositório, porque é ela que vai dentro da imagem.
+
+### O que instalar
+
+| Para | Pacotes |
+| --- | --- |
+| construir, verificar, rechunk, lint | `podman` |
+| gerar mídia (`just iso`, `just vm`) | `podman`, `sudo`, `p7zip` |
+| subir VM pelo terminal (`just run-vm`, `just run-iso`) | `qemu-kvm`, `edk2-ovmf` |
+| consultar o registry e o CI | `skopeo`, `jq`, `gh` |
+| as receitas em si | `just` |
+
+Em Fedora Workstation:
+
+```bash
+sudo dnf install just podman qemu-kvm edk2-ovmf p7zip skopeo jq git gh
+```
+
+Numa base atômica do Universal Blue, `podman`, `skopeo`, `jq`, `git` e `just` já vêm; o que falta (`qemu-kvm`, `edk2-ovmf`, `p7zip`) entra por `rpm-ostree install` ou, se preferir não empilhar pacote, pelo virt-manager em vez das receitas de QEMU.
+
+O `just lint` não exige shellcheck, shfmt nem actionlint instalados: com `ARKMOS_LINT_CONTAINER=1` ele usa as versões fixadas em container, que é como o CI roda.
+
+### Três fluxos, e o que cada um exige
+
+- **gerar mídia de instalação** — `just iso`. Não constrói nada: baixa a imagem publicada do GHCR e monta a ISO. Precisa de ~20 GB livres e de uns 15 minutos. É o caminho para instalar numa máquina nova sem passar por build;
+- **desenvolver** — `just build` e `just check`, ou `just check-all` para as duas variantes. O primeiro build baixa a base do Universal Blue (~3 GB) e leva uns dez minutos; os seguintes aproveitam o cache (seção 29);
+- **ensaiar a instalação** — `just run-iso` para o disco vazio com a ISO, ou o virt-manager com UEFI, Video Virtio com 3D e Display Spice com OpenGL (seção 30).
+
+### Este documento é o ponto de retomada
+
+O histórico de uma conversa não atravessa de máquina para máquina, e nem deve: o que precisa sobreviver está aqui. As decisões e o porquê de cada uma, o que já foi validado (seção 35), o que falta (seção 36) e as armadilhas que custaram tempo para achar — o `/etc` que congela, o nome curto de imagem que grava no lugar errado, o kickstart que apaga o primeiro disco. É por isso que este arquivo é longo: ele é o projeto, e o repositório é a sua execução.
+
 # 30. Teste com QEMU
 
 ```bash
