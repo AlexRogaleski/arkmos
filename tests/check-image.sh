@@ -863,6 +863,23 @@ check "serviços habilitados" \
         done
     '
 
+# O foot valida a própria configuração, e é ele que sabe o que está depreciado
+# nesta versão. Sem isto, um aviso novo do pacote passa a ser impresso em cima
+# do prompt a cada terminal aberto — foi o que aconteceu quando a 1.27
+# depreciou a seção [colors] em favor de [colors-dark].
+#
+# O --check-config sai com zero mesmo quando avisa, então o que reprova aqui é
+# a presença do aviso, não o código de saída. O 'warn' de locale é do container,
+# que não tem locale configurado, e não da imagem.
+check "configuração do foot sem avisos" \
+    run sh -c '
+        saida=$(foot --check-config -c /etc/xdg/foot/foot.ini 2>&1 | grep -v "is not a UTF-8 locale")
+        if [ -n "$saida" ]; then
+            echo "$saida"
+            exit 1
+        fi
+    '
+
 # O menu do ujust é a primeira coisa que alguém digita numa imagem derivada do
 # Universal Blue, e ele vem do pacote deles: uma receita que aponta para fora
 # desta imagem não dá erro de build, dá erro na mão de quem usa.

@@ -278,6 +278,10 @@ clean:
 # CI usa: o runner do GitHub traz shellcheck 0.9.0, e a nossa imagem fixada é a
 # 0.11.0 — versões diferentes acusam coisas diferentes, e o lint passava aqui e
 # falhava lá. Com o container, o CI e a máquina rodam a mesma versão.
+# O 'label=disable' em lugar do ':Z' nos mounts: o ':Z' relabela o diretório
+# inteiro para o container, e falha no que pertence a outro usuário — a ISO que
+# o bootc-image-builder gera fica como 'qemu', e o lint parava com
+# "lsetxattr ... operation not permitted". As ferramentas só leem o repositório.
 shellcheck_image := "docker.io/koalaman/shellcheck:v0.11.0"
 shfmt_image := "docker.io/mvdan/shfmt:v3.12.0"
 actionlint_image := "docker.io/rhysd/actionlint:1.7.7"
@@ -309,14 +313,16 @@ lint:
     if [[ -z "${ARKMOS_LINT_CONTAINER:-}" ]] && command -v shellcheck >/dev/null; then
         shellcheck "${fontes[@]}"
     else
-        podman run --rm -v "$PWD:/mnt:ro,Z" -w /mnt {{ shellcheck_image }} "${fontes[@]}"
+        podman run --rm --security-opt label=disable \
+            -v "$PWD:/mnt:ro" -w /mnt {{ shellcheck_image }} "${fontes[@]}"
     fi
 
     echo 'actionlint nos workflows:'
     if [[ -z "${ARKMOS_LINT_CONTAINER:-}" ]] && command -v actionlint >/dev/null; then
         actionlint
     else
-        podman run --rm -v "$PWD:/repo:ro,Z" -w /repo {{ actionlint_image }}
+        podman run --rm --security-opt label=disable \
+            -v "$PWD:/repo:ro" -w /repo {{ actionlint_image }}
     fi
 
     echo 'sintaxe do Justfile:'
@@ -331,7 +337,8 @@ format:
     if [[ -z "${ARKMOS_LINT_CONTAINER:-}" ]] && command -v shfmt >/dev/null; then
         shfmt --write "${fontes[@]}"
     else
-        podman run --rm -v "$PWD:/mnt:Z" -w /mnt {{ shfmt_image }} --write "${fontes[@]}"
+        podman run --rm --security-opt label=disable \
+            -v "$PWD:/mnt" -w /mnt {{ shfmt_image }} --write "${fontes[@]}"
     fi
     just --unstable --fmt -f Justfile
 

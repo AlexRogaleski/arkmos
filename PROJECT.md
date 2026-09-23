@@ -593,6 +593,25 @@ kill -s RTMIN+21 1
 
 `SIGRTMIN+21` desliga a impressão de status no console e `SIGRTMIN+20` religa (ver `systemd(1)`). Sem isso, as linhas "Started…", "Listening on…" e "Reached target…" dos serviços que ainda estão subindo caem no meio das perguntas. O estado não é restaurado ao final de propósito: o plymouth manda o mesmo sinal quando sai, então console silencioso já é o normal depois do boot.
 
+### O teclado da sessão gráfica vem do vconsole.conf
+
+Parece faltar declaração, e não falta. O bloco `xkb` do `/etc/niri/config.kdl` está vazio de propósito: nesse caso o niri busca as configurações no `org.freedesktop.locale1`, e o `systemd-localed` responde com o `XKBLAYOUT` e o `XKBMODEL` do `/etc/vconsole.conf` — mesmo sem existir `/etc/X11/xorg.conf.d/00-keyboard.conf`, que é onde a documentação mais antiga manda procurar.
+
+Verificado na VM instalada pela ISO, em 2026-09-23:
+
+```text
+$ localectl status
+System Locale: LANG=pt_BR.UTF-8
+    VC Keymap: br
+   X11 Layout: br
+    X11 Model: pc105
+
+$ ls /etc/X11/xorg.conf.d
+(não existe)
+```
+
+E o `ç` e o `ã` funcionam na sessão. A man page do `vconsole.conf` do systemd 259 **não** documenta as variáveis `XKB*`, o que faz parecer que elas são resquício inerte de outro formato — não são. Um arquivo em `xorg.conf.d` seria duplicação, e declarar `layout "br"` no niri seria uma terceira fonte da mesma verdade.
+
 ## 12.4 Por que um assistente próprio
 
 O Universal Blue **não** cria usuário no primeiro boot. Verificado no Aurora instalado: não há `gnome-initial-setup` nem `initial-setup`; a conta vem do **Anaconda, durante a instalação da ISO**.
@@ -612,7 +631,9 @@ Para mídia gerada com `bootc-image-builder` e para `bootc install to-disk` não
 - concede o grupo `docker`, que nenhum instalador concede — o Anaconda oferece `wheel` e para aí, e sem `docker` o Laravel Sail não fala com o daemon;
 - cobre a instalação em que ninguém criou conta: `bootc install to-disk` não tem instalador, e uma tela de conta pode ser pulada. Sem ele, o resultado seria uma máquina sem conta e sem senha de root, ou seja, uma reinstalação.
 
-Encolher o assistente para só conceder o grupo e marcar o estado é possível, mas depende de ver o Anaconda desta ISO pedindo a conta — o que ainda não foi testado (seção 36). O custo de manter é zero quando a conta já existe: ele se dispensa em silêncio.
+**Verificado em VM, em 2026-09-23: o Anaconda da ISO gerada pelo bootc-image-builder NÃO cria conta.** Ele instala a imagem no disco e entrega a máquina; quem cria a conta é o assistente, no primeiro boot, também neste caminho. A prova é o próprio assistente ter aparecido — ele só roda quando não existe conta com senha, porque uma conta existente o dispensaria em silêncio.
+
+Então a ideia de encolher o assistente para só conceder o grupo `docker` está descartada: no caminho principal de instalação ele é a única coisa que cria conta. O custo de mantê-lo continua sendo zero quando a conta já existe, que é o caso do rebase.
 
 ## 12.5 Segurança
 
@@ -2249,8 +2270,6 @@ identidade visual em conta nova (useradd -m, que copia o /etc/skel): papel de
 ```text
 Laravel Sail em uso real
 instalação em hardware real
-geração da ISO instalável ('just iso') e o fluxo do Anaconda nela — inclusive
-  se ele pede a conta, o que decide se o assistente entra ou se dispensa
 cadastro de uma impressora de verdade
 remoção de um Flatpak retirado da lista depois de um bootc upgrade
 celular por USB no Nautilus, agente SSH num git push, tailscale up,
@@ -2265,8 +2284,7 @@ travamento antes do assistente no primeiro boot em VM — visto uma vez em
 
 ## Curto prazo
 
-1. Gerar a ISO instalável (`just iso`) e instalá-la numa VM antes do hardware: é o fluxo do Anaconda que nunca rodou aqui, e é ele que dirá se a conta nasce no instalador ou no assistente (seção 31).
-2. Se o travamento antes do assistente voltar num primeiro boot em VM, abrir **View → serial0** antes de fechar a janela (seção 30).
+1. Se o travamento antes do assistente voltar num primeiro boot em VM, abrir **View → serial0** antes de fechar a janela (seção 30).
 
 ## Médio prazo
 
