@@ -239,7 +239,26 @@ ostree-rechunk alvo=(image + ":" + tag) anterior="":
     #!/usr/bin/env bash
     set -euo pipefail
 
+    # O nome da imagem é qualificado antes de qualquer outra coisa.
+    #
+    # 'podman build --tag arkmos:latest' cria 'localhost/arkmos:latest', e o
+    # transporte containers-storage normaliza o MESMO nome curto para
+    # 'docker.io/library/arkmos:latest'. Com o nome curto, o rechunk gravava
+    # numa imagem nova sob o Docker Hub, a tag do build continuava apontando
+    # para a imagem antiga, e o CI verificava e publicaria a imagem NÃO
+    # reorganizada — dizendo no log que tinha reorganizado.
+    alvo="{{ alvo }}"
+    case "${alvo%%:*}" in
+        */*) ;;
+        *) alvo="localhost/${alvo}" ;;
+    esac
+
     graphroot="$(podman info --format '{{ '{{.Store.GraphRoot}}' }}')"
+
+    # O driver vem do podman em vez de fixo em 'overlay': a referência de
+    # storage carrega o nome do driver, e escrever com um driver diferente do
+    # que o storage usa põe a imagem onde o podman não vai procurar.
+    driver="$(podman info --format '{{ '{{.Store.GraphDriverName}}' }}')"
 
     # Os labels são repassados um a um, lidos da imagem de origem. O
     # build-chunked-oci monta uma imagem NOVA a partir do sistema de arquivos e
@@ -248,7 +267,7 @@ ostree-rechunk alvo=(image + ":" + tag) anterior="":
     # o 'just check' usa o da variante. Não há como repassar ENV e CMD, que só
     # afetam 'podman run' nesta imagem, e ficam perdidos.
     mapfile -t rotulos < <(podman inspect \
-        --format '{{ '{{ range $k, $v := .Config.Labels }}{{ $k }}={{ $v }}{{ "\n" }}{{ end }}' }}' {{ alvo }})
+        --format '{{ '{{ range $k, $v := .Config.Labels }}{{ $k }}={{ $v }}{{ "\n" }}{{ end }}' }}' "$alvo")
     anterior="{{ anterior }}"
 
     argumentos=()
@@ -256,14 +275,17 @@ ostree-rechunk alvo=(image + ":" + tag) anterior="":
         [[ -n "$rotulo" ]] && argumentos+=(--label "$rotulo")
     done
 
-    echo "antes:  $(podman inspect --format '{{ '{{len .RootFS.Layers}}' }}' {{ alvo }}) camadas, $((${#argumentos[@]} / 2)) labels"
+    camadas() { podman inspect --format '{{ '{{len .RootFS.Layers}}' }}' "$alvo"; }
+
+    antes="$(camadas)"
+    echo "antes:  ${antes} camadas, $((${#argumentos[@]} / 2)) labels"
 
     podman run --rm --pull=never --privileged \
-        --mount=type=image,src={{ alvo }},target=/rpm-ostree \
+        --mount=type=image,src="$alvo",target=/rpm-ostree \
         --mount=type=bind,src="$graphroot",target=/run/host-container-storage,rw \
         --mount=type=tmpfs,target=/run/rpm-ostree-storage \
         --entrypoint /usr/bin/rpm-ostree \
-        {{ alvo }} \
+        "$alvo" \
         compose build-chunked-oci \
         --max-layers 127 \
         --format-version=2 \
@@ -271,6 +293,21 @@ ostree-rechunk alvo=(image + ":" + tag) anterior="":
         --rootfs /rpm-ostree \
         "${argumentos[@]}" \
         ${anterior:+--previous-build "$anterior"} \
-        --output "containers-storage:[overlay@/run/host-container-storage+/run/rpm-ostree-storage]{{ alvo }}"
+        --output "containers-storage:[${driver}@/run/host-container-storage+/run/rpm-ostree-storage]${alvo}"
 
-    echo "depois: $(podman inspect --format '{{ '{{len .RootFS.Layers}}' }}' {{ alvo }}) camadas"
+    depois="$(camadas)"
+    echo "depois: ${depois} camadas"
+
+    # O rpm-ostree imprime "Pushed digest" e sai com zero mesmo quando a
+    # imagem foi para um nome que o podman não resolve de volta. Sem esta
+    # conferência o passo fica verde e o que segue para a verificação e para o
+    # registry é a imagem antiga, intacta.
+    #
+    # O limite é 128 porque é onde a imagem reorganizada cabe: 127 camadas de
+    # conteúdo mais a final. Rodar de novo sobre uma imagem já reorganizada
+    # continua passando, que é o que se espera de uma receita idempotente.
+    if ((depois > 128)); then
+        echo "ERRO: a tag ${alvo} não recebeu a imagem reorganizada." >&2
+        echo "      ${antes} camadas antes, ${depois} depois." >&2
+        exit 1
+    fi

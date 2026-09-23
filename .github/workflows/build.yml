@@ -198,19 +198,23 @@ jobs:
       # exatamente a imagem que vai ao registry.
       #
       # O --previous-build mantém o plano de camadas da publicação anterior, e
-      # só entra quando a imagem publicada já é chunked — o label
-      # 'ostree.final-diffid' é o que diz isso. Na primeira publicação com
-      # rechunk ele não existe ainda.
+      # só entra quando a imagem publicada já é reorganizada. Quem diz isso é a
+      # CONTAGEM de camadas, não o label 'ostree.final-diffid': esse label vem
+      # da base do Universal Blue e é herdado por toda imagem derivada, então
+      # ele está presente mesmo numa publicação de 288 camadas — foi assim que o
+      # CI anunciou "plano herdado" para uma imagem que não tinha plano nenhum.
+      # O rechunk cabe em 127 camadas por definição.
       - name: Reorganizar camadas (rechunk)
         run: |
           anterior=""
           publicada="docker://${IMAGE_REGISTRY}/${IMAGE}:${FEDORA_MAJOR}"
-          if skopeo inspect "$publicada" 2>/dev/null \
-              | jq -e '.Labels["ostree.final-diffid"]' >/dev/null; then
+          camadas="$(skopeo inspect --raw "$publicada" 2>/dev/null \
+              | jq '.layers | length' || true)"
+          if [ "${camadas:-0}" -gt 0 ] && [ "${camadas}" -le 128 ]; then
               anterior="$publicada"
-              echo "plano de camadas herdado de ${anterior}"
+              echo "plano de camadas herdado de ${anterior} (${camadas} camadas)"
           else
-              echo "publicação anterior não é chunked; plano novo"
+              echo "publicação anterior não é reorganizada (${camadas:-0} camadas); plano novo"
           fi
 
           just ostree-rechunk "${IMAGE}:latest" "${anterior}"
