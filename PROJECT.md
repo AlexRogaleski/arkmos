@@ -1347,20 +1347,15 @@ O greeter **não tem relógio nem sistema de widgets** — ele é seleção de u
 
 Já definidos: o esquema (Tokyo Night), os ícones (Papirus-Dark com pastas em violeta) e os papéis de parede — os três na seção 26.1.
 
-Falta levar o esquema ao resto:
+Também definidos na 0.10.0: barra, dock, painéis, notificações, arredondamento e a tela de login (seção 26.1), e a paleta chegando a GTK 3 e 4, btop, Qt e KDE pelos templates do Noctalia.
 
-- Niri;
-- Noctalia (barra, dock, notificações, tela de bloqueio);
-- GTK (hoje `adw-gtk3-theme`, que não segue a paleta);
-- Qt;
-- terminal (fixo em Tokyo Night; o template de foot não é utilizável aqui, seção 26.1);
-- Zsh;
-- cursores;
-- tipografia;
-- login;
-- notificações;
-- menus;
-- status bar.
+Falta:
+
+- **cursores**, hoje o Adwaita padrão;
+- **tipografia**, no sentido de escolha própria: a JetBrains Mono cobre terminal, editor e arte, e a interface usa a fonte padrão do Noctalia;
+- **Zsh**, cujas cores vêm do tema do terminal e não do esquema;
+- **cor de destaque em Flatpak libadwaita**, que depende do portal expor a chave (seção 26.1);
+- **layout da tela de bloqueio**, que é estado de máquina, por decisão (seção 34).
 
 Objetivo:
 
@@ -1983,6 +1978,23 @@ Aplicações declaradas e identidade visual:
 - assistente de primeiro boot que se dispensa quando a conta já existe, para o caminho de rebase (seção 12.1);
 - atalhos do Noctalia para lançador e bloqueio, menu sem as entradas que não abrem nada, e captura com anotação (seções 8.1 e 25).
 
+## 0.10.0
+
+Noctalia configurado e o ferramental alinhado ao Universal Blue:
+
+- barra, dock e painéis declarados a partir de uma sessão de testes exportada com `noctalia config export`, com o que é específico de máquina deixado de fora (seção 26.1);
+- notificações: limite de toasts na tela, retenção de histórico de sete dias e filtro para o Spotify; o mako saiu da imagem, porque quem implementa o barramento de notificações é o Noctalia (seção 26.1);
+- arredondamento da interface em 1.25, que o sync leva ao login;
+- tela de login com apagamento por inatividade, máscara de senha aleatória e sem a logo do Noctalia (seção 8.3);
+- terminal com fundo translúcido e ligaduras da JetBrains Mono no VS Code (seções 9 e 14);
+- `just lint` e `just format` nas convenções do `image-template`, com `.editorconfig` e `.containerignore`, e um job de lint no CI (seções 28.2 e 29);
+- rechunk antes de publicar: 289 camadas e 9,88 GB viraram 128 e 8,02 GB, e o `bootc upgrade` passa a baixar só o que mudou (seção 28.5);
+- ARGs voláteis no fim do Containerfile, devolvendo o cache aos builds locais (seção 29);
+- remendo no `niri-session` para o aviso de obsolescência que aparecia entre a senha e o desktop (seção 27.4);
+- Limine fora do plano: o bootc se integra ao GRUB da base, e trocar de bootloader seria risco sem ganho (seção 7).
+
+**O layout da tela de bloqueio ficou fora da imagem, por decisão.** O identificador de cada widget carrega o nome do monitor (`lockscreen-login-box@eDP-1`), e a posição é em pixels: declarar isso na imagem produziria configuração morta em qualquer máquina com outro monitor. É estado de máquina, posicionado uma vez em cada instalação.
+
 ---
 
 # 35. Estado Atual
@@ -1990,7 +2002,7 @@ Aplicações declaradas e identidade visual:
 Versão:
 
 ```text
-0.9.0
+0.10.0
 ```
 
 ## 35.1 Validado em container (`just check-all`, as duas variantes)
@@ -2105,15 +2117,16 @@ travamento antes do assistente no primeiro boot em VM — visto uma vez em
 
 ## Médio prazo
 
-2. Continuar a configuração do Noctalia: notificações e tela de bloqueio. Barra, dock e painéis já estão declarados (seção 26.1).
+2. Medir o delta do `bootc upgrade` entre duas publicações com rechunk — a primeira só estabelece o plano de camadas (seção 28.5).
+3. Fechar o que falta da identidade visual: cursores, tipografia e as cores do Zsh (seção 26.2).
 
 ## Longo prazo
 
-3. Snapper/Btrfs snapshots.
-4. Validar instalação em hardware real.
-5. Documentar recuperação.
-6. Definir política de atualização/rollback.
-7. Estabilizar a versão 1.0.0.
+4. Snapper/Btrfs snapshots.
+5. Validar instalação em hardware real.
+6. Documentar recuperação.
+7. Definir política de atualização/rollback.
+8. Estabilizar a versão 1.0.0.
 
 ---
 
@@ -2210,13 +2223,13 @@ O objetivo final é poder reinstalar o ambiente pessoal com o mínimo possível 
 
 # Status
 
-**Arkmos 0.9.0 — em desenvolvimento**
+**Arkmos 0.10.0 — em desenvolvimento**
 
 Marcos:
 
 ```text
-0.8.0 → fechado: imagem publicada, assinada, instalável e atualizável
-0.9.0 → fechado: aplicações declaradas e identidade visual
-0.10.0 → Noctalia configurado: barra, dock, notificações, tela de bloqueio
-1.0.0 → ver seção 37, onde o que falta é uso real e hardware real
+0.8.0  → fechado: imagem publicada, assinada, instalável e atualizável
+0.9.0  → fechado: aplicações declaradas e identidade visual
+0.10.0 → fechado: Noctalia configurado e ferramental alinhado ao ublue
+1.0.0  → falta uso real e hardware real (seção 37)
 ```
