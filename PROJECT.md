@@ -294,6 +294,8 @@ Personalizações em relação à configuração de exemplo:
 - anel de foco de 3 px, com gradiente do azul ao roxo de destaque do Tokyo Night, e cantos arredondados de 8 px em todas as janelas, com `clip-to-geometry` para o conteúdo ser recortado no mesmo raio — sem ele o arredondamento fica só na moldura e o conteúdo aparece quadrado nos cantos;
 - `prefer-no-csd` ligado.
 
+O terminal tem fundo levemente translúcido (`alpha=0.9` em `[colors]`, declarado depois do include do tema para vencê-lo). O niri não desfoca o que está atrás, então o que aparece é o papel de parede; o `alpha-mode` fica no padrão, que aplica a translucidez só às células com a cor de fundo padrão, deixando texto selecionado e blocos coloridos sólidos.
+
 O `prefer-no-csd` faz o niri anunciar decoração do lado do servidor e desenhar ele mesmo a borda e o anel de foco. Sem ele, cada aplicativo desenha a própria barra de título com o tema que conseguir adivinhar — ver seção 9.
 
 Validação (roda no `just check` e no CI):
@@ -1420,6 +1422,8 @@ Policy to allow eavesdropping in /usr/share/dbus-1/session.conf +31:
 Vêm do `session.conf` do pacote `dbus` do Fedora, que ainda declara a política antiga de *eavesdropping*; o `dbus-broker` a ignora e avisa. É arquivo da distribuição, não do Arkmos, e mexer nele seria divergir da base para calar um aviso sem efeito.
 
 O outro aviso obsoleto, esse **corrigido**, era o `Calling import-environment without a list of variable names is deprecated.`, que aparecia no console entre a senha e o desktop: vinha do `niri-session` do pacote chamando `systemctl --user import-environment` sem lista. O build passa a lista (ver Containerfile), porque a forma sem ela não é só feia — está deprecada, e quando deixar de funcionar a sessão nasceria sem o ambiente do login sem nada avisar.
+
+A lista pede só as variáveis que existem, com `${VAR+VAR}`: a primeira versão listava todas, e o `systemctl` passou a imprimir `Environment variable $DISPLAY not set, ignoring.` uma vez por ausente — no login, `DISPLAY` e `WAYLAND_DISPLAY` ainda não existem, e um aviso virou vários.
 
 É **remendo temporário**, e o problema é conhecido no upstream: a issue [niri-wm/niri#3572](https://github.com/niri-wm/niri/issues/3572) acompanha o aviso, a [#4624](https://github.com/niri-wm/niri/issues/4624) descreve exatamente este sintoma num setup greetd + noctalia-greeter (fechada como duplicata) e a [#3776](https://github.com/niri-wm/niri/pull/3776) é a correção em andamento — ela registra que o import sem lista sobrescreve o que o gerenciador já tem do `environment.d`, e é por isso que `LANG` e `XDG_DATA_DIRS` ficam fora da nossa lista. O `sed` confere a linha original antes de alterá-la: quando o pacote vier corrigido, o build falha de propósito e o remendo sai.
 

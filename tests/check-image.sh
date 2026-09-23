@@ -930,6 +930,8 @@ check "Nerd Font patched presente" \
             || { echo "JetBrainsMono Nerd Font ausente"; exit 1; }
         grep -qx "font=JetBrainsMono Nerd Font:size=11" /etc/xdg/foot/foot.ini \
             || { echo "o terminal não está na JetBrainsMono Nerd Font"; exit 1; }
+        grep -qx "alpha=0.9" /etc/xdg/foot/foot.ini \
+            || { echo "o terminal perdeu a translucidez"; exit 1; }
         grep -q "JetBrainsMono Nerd Font" /etc/dconf/db/local \
             || { echo "monospace-font-name não chegou ao banco do dconf"; exit 1; }
         python3 -c "

@@ -333,25 +333,12 @@ RUN dnf -y --setopt=install_weak_deps=False install \
 # O aviso de obsolescência que aparecia entre a senha e o desktop.
 #
 # O 'niri-session' do pacote chama 'systemctl --user import-environment' sem
-# lista de variáveis, e o systemd responde no console: "Calling
-# import-environment without a list of variable names is deprecated." Não é
-# só estética: a forma sem lista está deprecada e um dia deixa de funcionar,
-# e aí a sessão passaria a nascer sem o ambiente do login, sem nada avisar.
-#
-# A lista abaixo é o que uma sessão Wayland precisa do login. LANG e
-# XDG_DATA_DIRS ficam DE FORA de propósito: quem manda neles é o
-# /usr/lib/environment.d do Arkmos, e importá-los do shell sobrescreveria
-# aquele valor pelo que o shell tivesse na hora — foi justamente um
-# XDG_DATA_DIRS sem as pastas do Flatpak que deixou o clique duplo sem abrir
-# nada (seção 26.1).
-#
-# O sed é conferido: se o pacote mudar a linha, o build falha em vez de seguir
-# com o aviso de volta.
-RUN sed -i 's/^    systemctl --user import-environment$/    systemctl --user import-environment \\\n        PATH DBUS_SESSION_BUS_ADDRESS DISPLAY WAYLAND_DISPLAY \\\n        XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE \\\n        XDG_SESSION_ID XDG_SESSION_CLASS XDG_SEAT XDG_VTNR SSH_AUTH_SOCK/' \
-        /usr/bin/niri-session \
-    && grep -q "import-environment \\\\$" /usr/bin/niri-session \
-    && ! grep -qx "    systemctl --user import-environment" /usr/bin/niri-session \
-    && sh -n /usr/bin/niri-session
+# lista de variáveis, e o systemd avisa no console. O script explica o resto:
+# por que não é só estética, por que LANG e XDG_DATA_DIRS ficam fora da lista,
+# e as issues do upstream. Ele falha de propósito quando o pacote vier
+# corrigido, e aí o remendo sai.
+COPY build_files/patch-niri-session.sh /tmp/patch-niri-session.sh
+RUN bash /tmp/patch-niri-session.sh && rm -f /tmp/patch-niri-session.sh
 
 # Login: greetd + tuigreet, só repositórios Fedora.
 #
