@@ -68,11 +68,18 @@ check-all:
 #
 # Sem flag --local: esta versão do builder já lê o storage montado. O
 # config.toml também não tem flag — é lido de /config.toml dentro do container.
+#
+# --network=host, aqui e no 'iso': o builder resolve pacotes do Fedora durante
+# a geração, e na bridge do podman rootful o DNS não sai quando o Docker está
+# rodando — ele põe a chain FORWARD em DROP. O sintoma é "Could not resolve
+# host: mirrors.fedoraproject.org" com o pull da imagem funcionando, porque o
+# pull é do host. O Arkmos traz o Docker ligado, então é o caso de toda
+# máquina Arkmos. O container já é --privileged: a rede do host não abre nada.
 [doc("Gera um qcow2 para testar em QEMU")]
 vm: build
     mkdir -p {{ outdir }}
     podman image scp {{ image }}:{{ tag }} root@localhost::
-    sudo podman run --rm -it --privileged --pull=newer \
+    sudo podman run --rm -it --privileged --pull=newer --network=host \
         --security-opt label=type:unconfined_t \
         -v ./config.toml:/config.toml:ro \
         -v ./{{ outdir }}:/output \
@@ -123,7 +130,7 @@ iso origem=publicado:
     # O builder roda como root e só enxerga o storage do root; o pull explícito
     # aqui deixa claro no terminal o que está sendo baixado, e de onde.
     sudo podman pull {{ origem }}
-    sudo podman run --rm -it --privileged --pull=newer \
+    sudo podman run --rm -it --privileged --pull=newer --network=host \
         --security-opt label=type:unconfined_t \
         -v "./$config":/config.toml:ro \
         -v ./{{ outdir }}:/output \
@@ -140,11 +147,21 @@ iso origem=publicado:
     ks="$(mktemp -d)"
     trap 'rm -rf "$ks"' EXIT
     7z e -o"$ks" "$iso" 'osbuild*.ks' >/dev/null
-    conteudo="$(cat "$ks"/*.ks)"
+
+    # O builder não acrescenta só o ostreecontainer: o osbuild-base.ks dele traz
+    # um %post próprio com 'bootc switch' SEM a flag de assinatura, e o nosso
+    # osbuild.ks o inclui na primeira linha. O Anaconda roda os %post na ordem
+    # em que aparecem, então vale o último switch — que tem de ser o nosso.
+    # O conteúdo é montado nessa ordem de execução, e não pela ordem do glob.
+    [[ "$(head -n1 "$ks/osbuild.ks")" == "%include /run/install/repo/osbuild-base.ks" ]] ||
+        { echo "ERRO: o osbuild.ks não começa pelo %include do builder; reveja a ordem dos %post." >&2; exit 1; }
+    conteudo="$(cat "$ks/osbuild-base.ks"; tail -n +2 "$ks/osbuild.ks")"
 
     falta() { echo "ERRO: a ISO não carrega $1" >&2; exit 1; }
-    grep -q -- "--enforce-container-sigpolicy" <<<"$conteudo" || falta "a exigência de assinatura"
+    grep "bootc switch" <<<"$conteudo" | tail -n1 | grep -q -- "--enforce-container-sigpolicy" ||
+        falta "a exigência de assinatura no último 'bootc switch'"
     grep -q -- "--type=btrfs" <<<"$conteudo" || falta "o autopart em Btrfs"
+    grep -q "^cp -a /usr/etc/vconsole.conf /etc/vconsole.conf" <<<"$conteudo" || falta "a restauração do /etc que o Anaconda reescreve"
     grep -q "ostreecontainer" <<<"$conteudo" || falta "a linha ostreecontainer do builder"
     grep -q "{{ origem }}" <<<"$conteudo" || falta "a referência {{ origem }}"
     if [[ "$(grep -c "^autopart" <<<"$conteudo")" != 1 ]]; then
@@ -216,14 +233,16 @@ run-vm:
 # Diferenças em relação ao 'run-vm', que sobe um disco já instalado:
 #
 #   - o disco nasce vazio, criado aqui e não pelo bootc-image-builder;
-#   - a ISO entra como cdrom, e o menu de boot do firmware tenta o disco vazio
-#     primeiro, então 'bootindex' põe o cdrom na frente;
+#   - o disco vem primeiro na ordem de boot e a ISO depois. Vazio, o disco não
+#     tem partição EFI, e o firmware passa direto para a ISO; instalado, é ele
+#     que dá boot. Com a ISO na frente, o reboot do fim da instalação voltava
+#     para o instalador: o 'reboot --eject' do kickstart não tem o que ejetar,
+#     porque a ISO entra como disco virtio, e não como cdrom;
 #   - 8 GB de RAM, e não 4: o instalador roda a partir de um squashfs em
 #     memória e o Anaconda gráfico é pesado.
 #
-# Depois de instalar, desligue a VM e use o 'run-iso-instalado', que sobe o
-# mesmo disco sem a ISO — com a ISO ainda no cdrom, o firmware volta para o
-# instalador.
+# Depois de instalar, a VM reinicia sozinha no sistema instalado. O
+# 'run-iso-instalado' sobe o mesmo disco sem a ISO, para os boots seguintes.
 [doc("Sobe a ISO instalável numa VM, para ensaiar a instalação")]
 run-iso tamanho="60G":
     #!/usr/bin/env bash
@@ -251,9 +270,10 @@ run-iso tamanho="60G":
         -m 8192 -smp 4 \
         -drive if=pflash,format=raw,unit=0,readonly=on,file=/usr/share/edk2/ovmf/OVMF_CODE.fd \
         -drive if=pflash,format=raw,unit=1,file="$vars" \
-        -drive file="$disco",if=virtio,format=qcow2 \
+        -drive id=disco,file="$disco",if=none,format=qcow2 \
+        -device virtio-blk-pci,drive=disco,bootindex=0 \
         -drive id=iso,file="$iso",if=none,media=cdrom,readonly=on \
-        -device virtio-blk-pci,drive=iso,bootindex=0 \
+        -device virtio-blk-pci,drive=iso,bootindex=1 \
         -device virtio-vga-gl,xres=1920,yres=1080 \
         -display gtk,gl=on,grab-on-hover=on \
         -device virtio-net,netdev=n0 -netdev user,id=n0,hostfwd=tcp:127.0.0.1:2222-:22 \

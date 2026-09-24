@@ -4,10 +4,13 @@
 # console serial nem sshd ligado — isto vira a instalação de uma máquina real.
 #
 # O kickstart é declarado por inteiro de propósito. Ao receber um kickstart
-# próprio, o builder acrescenta apenas o 'ostreecontainer' (a linha que instala
-# a imagem) e mais nada: particionamento, rede e %post passam a ser deste
-# arquivo. O que se ganha em troca é o que falta no padrão dele — a exigência de
-# assinatura na deployment.
+# próprio, o builder deixa de gerar particionamento e rede, mas não se ausenta:
+# ele grava um osbuild-base.ks com o 'ostreecontainer' (a linha que instala a
+# imagem) e um %post próprio, com 'bootc switch' SEM a flag de assinatura, e o
+# inclui na primeira linha do nosso. O Anaconda roda os %post na ordem em que
+# aparecem, então o dele roda primeiro e o deste arquivo vence — conferido na
+# ISO de 2026-09-24, e verificado pela receita 'iso' a cada geração. O que se
+# ganha é o que falta no padrão dele: a exigência de assinatura na deployment.
 #
 # O padrão do builder, para comparação, era:
 #
@@ -24,13 +27,11 @@
 #                                   posterior verifica nada. Com --mutate-in-place
 #                                   a flag não custa download: ela só grava a
 #                                   origin (seção 28.3).
-#   lang/keyboard/timezone do       o Anaconda em modo ostreecontainer não
-#   Arkmos                          aplicou esses valores ao sistema instalado
-#                                   na instalação de 2026-09-23 — o /etc ficou
-#                                   com o da imagem. Ficam corretos aqui de
-#                                   todo modo: se um dia passarem a ser
-#                                   aplicados, serão os valores que a imagem já
-#                                   declara, e não en_US/us/UTC.
+#   lang/keyboard/timezone do       na instalação de 2026-09-23 esses valores
+#   Arkmos                          não foram aplicados, e o motivo era o
+#                                   módulo de localização desligado (abaixo).
+#                                   Com ele ligado, valem para o instalador e
+#                                   são os mesmos que a imagem já declara.
 #   sem clearpart e sem zerombr     O README do builder descreve o anaconda-iso
 #                                   como "unattended installer that installs to
 #                                   the first disk found", e com 'clearpart
@@ -51,6 +52,24 @@
 # /var/home, e um volume separado para /home ficaria órfão. A raiz em Btrfs vem
 # daqui e do /usr/lib/bootc/install/00-arkmos.toml — declarada nos dois lugares
 # porque cada caminho de instalação lê um deles (seção 31).
+# O módulo de localização do Anaconda vem DESLIGADO no anaconda-iso do builder
+# (ligados por padrão: Network, Payloads, Security, Services, Storage, Users).
+# Sem ele, 'lang' e 'keyboard' abaixo não valem nem para o próprio instalador:
+# ele abre em inglês, com teclado us, e o seletor de layout no topo da tela não
+# troca nada. Ligado, o instalador já abre em português e em ABNT2.
+#
+# O preço: o módulo grava a localização no sistema instalado pelo
+# systemd-localed, que reescreve o locale.conf e o vconsole.conf com aspas e
+# move o XKBLAYOUT e o XKBMODEL do vconsole.conf para um
+# /etc/X11/xorg.conf.d/00-keyboard.conf novo. Mesmos valores, formato dele —
+# e os três ficam marcados como alterados localmente, congelados contra as
+# atualizações da imagem (seção 11), com o teclado passando a ter uma terceira
+# fonte (seção 12.3). Visto na instalação de 2026-09-24 com
+# 'ostree admin config-diff'. O %post devolve os arquivos da imagem, que estão
+# intactos em /usr/etc, e apaga o do X11.
+[customizations.installer.modules]
+enable = ["org.fedoraproject.Anaconda.Modules.Localization"]
+
 [customizations.installer.kickstart]
 contents = """
 rootpw --lock
@@ -61,6 +80,10 @@ autopart --nohome --type=btrfs
 network --device=link --bootproto=dhcp --onboot=on --activate
 %post --erroronfail
 set -e
+cp -a /usr/etc/locale.conf /etc/locale.conf
+cp -a /usr/etc/vconsole.conf /etc/vconsole.conf
+rm -f /etc/X11/xorg.conf.d/00-keyboard.conf
+[ -d /usr/etc/X11/xorg.conf.d ] || rmdir --ignore-fail-on-non-empty /etc/X11/xorg.conf.d 2>/dev/null || true
 bootc switch --mutate-in-place --transport registry \
     --enforce-container-sigpolicy @IMAGEM@
 %end
