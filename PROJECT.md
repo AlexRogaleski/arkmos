@@ -2419,8 +2419,20 @@ conta criada no Anaconda; groups: arm wheel docker
 
 O que o ensaio mostrou, e já foi corrigido para a próxima ISO:
 
-- **o módulo de localização reescreve o `/etc`.** O `ostree admin config-diff` mostrou `locale.conf` e `vconsole.conf` modificados, com os mesmos valores entre aspas, e um `/etc/X11/xorg.conf.d/00-keyboard.conf` novo, para onde o `systemd-localed` moveu o `XKBLAYOUT` e o `XKBMODEL`. O `%post` do kickstart passou a devolver os dois arquivos de `/usr/etc` e a apagar o do X11 — **ainda não ensaiado**;
+- **o módulo de localização reescreve o `/etc`.** O `ostree admin config-diff` mostrou `locale.conf` e `vconsole.conf` modificados, com os mesmos valores entre aspas, e um `/etc/X11/xorg.conf.d/00-keyboard.conf` novo, para onde o `systemd-localed` moveu o `XKBLAYOUT` e o `XKBMODEL`. O `%post` do kickstart passou a devolver os dois arquivos de `/usr/etc` e a apagar o do X11 — ensaiado na segunda instalação, abaixo;
 - **o aviso `deprecated: foot: [colors]`** vem da imagem publicada, anterior à correção do `[colors-dark]` (seção 8.1): a ISO sai da imagem publicada, e não da local.
+
+Segunda instalação no mesmo dia, com a ISO de 4,4 GB gerada da **`44.20260924.83`** (commit `a3844b4`), num disco novo:
+
+```text
+/etc sem locale.conf, vconsole.conf nem xorg.conf.d no config-diff: a
+  restauração do %post funcionou, e o instalador continua em português
+tela de login no Tokyo Night desde o primeiro boot, sem clique (semente do
+  sync.toml, seção 26.1)
+cursor Bibata Modern Ice no desktop e no login
+Adwaita Sans na barra, nas janelas e no login
+terminal sem o aviso de [colors] do foot
+```
 
 ## 35.3 Não validado ainda
 
