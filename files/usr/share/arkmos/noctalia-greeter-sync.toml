@@ -1,0 +1,51 @@
+# Arkmos — aparência inicial da tela de login.
+#
+# Entregue em /var/lib/noctalia-greeter/sync.toml pelo tmpfiles.d, com 'C':
+# copiado só se o destino não existir. É uma semente, não configuração: o
+# primeiro sync feito a partir do desktop substitui o [appearance] daqui, e o
+# greeter grava neste mesmo arquivo a última sessão e o esquema escolhidos.
+#
+# Por que ela existe: o sync automático do Noctalia 5.0.1 só dispara quando a
+# aparência MUDA na sessão (tema, papel de parede, fonte). Na partida o tema é
+# aplicado antes de o sync passar a observar, então numa instalação nova nada
+# chega ao login, e ele abria no tema embutido do greeter até alguém clicar em
+# sincronizar nas configurações do Noctalia. Com esta semente, o login já nasce
+# no Tokyo Night do desktop.
+#
+# O greeter só aceita o esquema 'Synced' com a paleta COMPLETA, os 16 papéis
+# abaixo; faltando um, ele ignora a semente inteira e volta ao tema embutido.
+# As cores são as do 'Tokyo-Night' embutido no próprio greeter e no Noctalia
+# (builtin_palettes.cpp, iguais nos dois), o mesmo esquema do arkmos.toml do
+# skel. O 'just check' confere os 16 papéis e o papel de parede.
+#
+# O greeter.toml declara scheme = "Synced", e é ele que vence: é por isso que
+# o esquema escolhido aqui aparece sem ninguém selecionar nada no login.
+
+[appearance]
+scheme = "Synced"
+theme_mode = "dark"
+corner_radius_scale = 1.25
+
+[appearance.palette]
+primary = "#7aa2f7"
+on_primary = "#16161e"
+secondary = "#bb9af7"
+on_secondary = "#16161e"
+tertiary = "#9ece6a"
+on_tertiary = "#16161e"
+error = "#f7768e"
+on_error = "#16161e"
+surface = "#1a1b26"
+on_surface = "#c0caf5"
+surface_variant = "#24283b"
+on_surface_variant = "#9aa5ce"
+outline = "#353D57"
+shadow = "#15161e"
+hover = "#9ece6a"
+on_hover = "#16161e"
+
+# O papel de parede padrão do desktop, lido direto da imagem. O sync, quando
+# acontecer, copia o escolhido para /var/lib/noctalia-greeter e troca o caminho.
+[appearance.wallpaper]
+path = "/usr/share/backgrounds/arkmos/arkmos-default.webp"
+fill_mode = "crop"

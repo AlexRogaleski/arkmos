@@ -291,6 +291,22 @@ check "ícones Papirus-Dark, com as pastas em violeta" \
                test "$(readlink /usr/share/icons/Papirus/64x64/places/folder.svg)" = folder-violet.svg &&
                test "$(readlink /usr/share/icons/Papirus/48x48/places/user-home.svg)" = user-violet-home.svg'
 
+# O cursor é declarado em cinco lugares, e cada um alcança uma classe de
+# programa: dconf (GTK4 e libadwaita), settings.ini (GTK 3 e 4 sem D-Bus), niri
+# (o desktop e XCURSOR_THEME para o resto) e a tela de login. Um nome que não
+# existe não dá erro: o programa cai no cursor padrão, e o sistema fica com dois
+# cursores diferentes conforme a janela.
+check "cursor Bibata-Modern-Ice instalado e declarado nos cinco lugares" \
+    run sh -c 'c=Bibata-Modern-Ice
+               test -f /usr/share/icons/$c/index.theme && test -e /usr/share/icons/$c/cursors/left_ptr ||
+                   { echo "tema $c não instalado"; exit 1; }
+               grep -qx "gtk-cursor-theme-name=$c" /etc/xdg/gtk-3.0/settings.ini || { echo "gtk-3.0"; exit 1; }
+               grep -qx "gtk-cursor-theme-name=$c" /etc/xdg/gtk-4.0/settings.ini || { echo "gtk-4.0"; exit 1; }
+               DCONF_PROFILE=user dconf read /org/gnome/desktop/interface/cursor-theme | grep -qx "'"'"'$c'"'"'" ||
+                   { echo "dconf"; exit 1; }
+               grep -qx "    xcursor-theme \"$c\"" /etc/niri/config.kdl || { echo "niri"; exit 1; }
+               grep -qx "theme = \"$c\"" /usr/share/arkmos/noctalia-greeter.toml || { echo "greeter"; exit 1; }'
+
 # O parser TOML do greetd é mais restrito que o TOML 1.0, e rejeita
 # construções que outros parsers aceitam — uma string multi-linha com barra
 # invertida no fim da linha, por exemplo. Validar o arquivo com o tomllib do
@@ -369,6 +385,25 @@ check "tmpfiles.d do upstream substituído pelo nosso" \
 check "greeter.toml entregue pelo tmpfiles" \
     run sh -c 'grep -q "^C /var/lib/noctalia-greeter/greeter.toml" /usr/lib/tmpfiles.d/arkmos.conf &&
                test -s /usr/share/arkmos/noctalia-greeter.toml'
+
+# A semente do sync.toml só vale com a paleta completa: faltando um papel, o
+# greeter a descarta inteira, em silêncio, e o login volta ao tema embutido. O
+# esquema do login tem de ser o que o greeter.toml escolhe, e o papel de parede
+# um arquivo que existe.
+check "aparência inicial do login semeada e completa" \
+    run python3 -c '
+import os, re, tomllib
+assert re.search(r"^C /var/lib/noctalia-greeter/sync.toml .* /usr/share/arkmos/noctalia-greeter-sync.toml$",
+                 open("/usr/lib/tmpfiles.d/arkmos.conf").read(), re.M), "sync.toml não é entregue pelo tmpfiles"
+a = tomllib.load(open("/usr/share/arkmos/noctalia-greeter-sync.toml", "rb"))["appearance"]
+g = tomllib.load(open("/usr/share/arkmos/noctalia-greeter.toml", "rb"))["appearance"]
+assert a["scheme"] == g["scheme"] == "Synced", "o login não seleciona a paleta semeada"
+papeis = ["on_" + p for p in ("primary", "secondary", "tertiary", "error", "surface", "surface_variant", "hover")] + \
+         ["primary", "secondary", "tertiary", "error", "surface", "surface_variant", "hover", "outline", "shadow"]
+faltam = [p for p in papeis if not re.fullmatch(r"#[0-9A-Fa-f]{6}", a["palette"].get(p, ""))]
+assert not faltam, "paleta incompleta: " + ", ".join(faltam)
+assert os.path.isfile(a["wallpaper"]["path"]), "papel de parede do login não existe: " + a["wallpaper"]["path"]
+'
 
 # Valor inválido aqui não dá erro de sintaxe: o greeter sobe e ignora, ou falha
 # ao desenhar. O teclado é o que mais importa — é a única tela do sistema onde

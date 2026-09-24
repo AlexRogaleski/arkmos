@@ -436,7 +436,7 @@ size=0
 
 Sem isso, o foot desenha a própria barra de título usando a cor de foreground padrão — **branca**, independentemente do esquema de cores. Era o que aparecia no primeiro teste em VM, e numa janela em tiling essa barra também não serve para nada. A correção principal é o `prefer-no-csd` do niri (seção 8.1); esta é a rede de segurança para o caso de o compositor pedir CSD assim mesmo.
 
-A paleta é provisória — vem de um tema entregue pelo próprio pacote foot, e sai na definição da identidade visual (seção 26). Um `~/.config/foot/foot.ini` do usuário substitui este arquivo por inteiro; o foot não mescla os dois.
+A paleta é a `tokyonight-night`, um tema que o próprio pacote foot entrega, incluída pelo `foot.ini` — o Tokyo Night escolhido como identidade (seção 26.1). As cores do Zsh e do prompt são as cores nomeadas do terminal, então seguem o mesmo esquema sem configuração própria. Um `~/.config/foot/foot.ini` do usuário substitui este arquivo por inteiro; o foot não mescla os dois.
 
 ---
 
@@ -1388,6 +1388,24 @@ As pastas trocam o azul padrão pelo violeta, o tom de destaque do Arkmos. A Pap
 
 A escolha saiu de uma comparação lado a lado com Adwaita, Yaru, Breeze, Numix, Pop e Colloid. O Colloid, que tem uma variante Dracula própria, ficou de fora por não estar nos repositórios do Fedora.
 
+### Cursor: Bibata Modern Ice
+
+Escolhido em 2026-09-24, no lugar do Adwaita. A variante Ice é a branca, de pontas arredondadas: é a que mais aparece contra o fundo escuro do Tokyo Night.
+
+O Fedora não empacota o Bibata — os temas de cursor do repositório são Adwaita, Breeze, Oxygen e Bluecurve —, então ele vem do release upstream, como a Nerd Font: `build_files/install-cursor.sh`, versão 2.0.7 fixada, 1,7 MB. O release não publica checksum, e o SHA256 fixado foi calculado no download de 2026-09-24; dali em diante, qualquer mudança no arquivo servido falha o build. A licença é GPL-3.0, redistribuível.
+
+O nome do tema é declarado em cinco lugares, e cada um alcança uma classe de programa:
+
+```text
+/etc/dconf/db/local.d/10-arkmos-appearance   GTK4 e libadwaita, pelo GSettings
+/etc/xdg/gtk-{3.0,4.0}/settings.ini          GTK sem D-Bus nem portal
+/etc/niri/config.kdl (cursor)                o desktop, e XCURSOR_THEME e
+                                             XCURSOR_SIZE para Electron, Qt e XWayland
+/usr/share/arkmos/noctalia-greeter.toml      a tela de login
+```
+
+Nome errado em qualquer um deles não dá erro: aquele programa cai no cursor padrão, e o sistema fica com dois cursores conforme a janela. O `just check` confere que os cinco concordam e que o tema está instalado.
+
 ### Arte gerada no build
 
 O splash de boot e o wallpaper padrão não são imagens versionadas: saem de `build_files/render-artwork.sh`, a partir de fonte, cores e formas. O repositório e a imagem publicada são públicos, e arte tirada de site de wallpaper não tem autor nem licença identificáveis (seção 28.4).
@@ -1398,10 +1416,12 @@ As cores são as que o Tokyo Night e o Dracula têm em comum — fundo índigo q
 
 O Noctalia só lê configuração do home, então o wallpaper padrão chega pelo `/etc/skel` (`.config/noctalia/arkmos.toml`), como os defaults do VS Code. A tela de bloqueio usa o wallpaper do desktop enquanto a dela estiver vazia, que é o padrão.
 
-A tela de login recebe wallpaper e paleta pelo **sync** do Noctalia, ligado no mesmo arquivo (`auto_sync = true`) e liberado sem senha pela regra `50-arkmos-greeter-sync.rules`. O código do greeter impõe duas consequências:
+A tela de login recebe wallpaper e paleta pelo **sync** do Noctalia, ligado no mesmo arquivo (`auto_sync = true`) e com a regra `50-arkmos-greeter-sync.rules` para dispensar a senha. O código do greeter impõe duas consequências:
 
 - **Nada de wallpaper, paleta ou `corner_radius_scale` no `greeter.toml`.** Ele vence o `sync.toml`, e um valor declarado lá impediria para sempre que a escolha feita no desktop chegasse ao login. Os três são sincronizados; o `just check` barra os três.
-- **Não há semente para o login.** O greeter só usa o `[appearance]` do `sync.toml` com a paleta completa (16 cores): semear só o wallpaper seria ignorado, e semear a paleta seria escolher um esquema. Até a primeira mudança de aparência na sessão, o login usa o tema embutido do greeter.
+- **O login precisa de semente.** O sync automático do Noctalia 5.0.1 só dispara quando a aparência **muda** na sessão — tema, papel de parede ou fonte. Na partida, o tema é aplicado antes de o sync passar a observar (`application_services.cpp`, na tag v5.0.1), então numa instalação nova nada chegava ao login, que ficava no tema embutido do greeter até alguém clicar em sincronizar. Por isso a imagem entrega um `sync.toml` inicial (`/usr/share/arkmos/noctalia-greeter-sync.toml`, copiado pelo `tmpfiles.d` só se o destino não existir) com a paleta Tokyo Night e o papel de parede padrão. O greeter só usa o `[appearance]` com a paleta **completa**, os 16 papéis, e o `just check` confere isso. As cores são as do `Tokyo-Night` embutido, iguais no greeter e no shell. O primeiro sync feito depois substitui a semente.
+
+A regra de polkit libera a ação `org.noctalia.greeter.sync-appearance`. Pelo código, porém, no Noctalia 5.0.1 o sync ainda passa por `run0`/`pkexec`, e essa ação só é usada a partir da versão seguinte: um sync manual pode pedir senha de administrador. Falta confirmar na máquina.
 
 Um wallpaper pessoal é escolhido na conta, pela interface do Noctalia, e o sync o leva para login e bloqueio. Ele não entra no repositório.
 
@@ -1411,15 +1431,13 @@ O greeter **não tem relógio nem sistema de widgets** — ele é seleção de u
 
 ## 26.2 O que falta
 
-Já definidos: o esquema (Tokyo Night), os ícones (Papirus-Dark com pastas em violeta) e os papéis de parede — os três na seção 26.1.
+Já definidos: o esquema (Tokyo Night), os ícones (Papirus-Dark com pastas em violeta), os papéis de parede e o cursor (Bibata Modern Ice) — todos na seção 26.1. O Zsh segue o esquema pelas cores do terminal (seção 9).
 
 Também definidos na 0.10.0: barra, dock, painéis, notificações, arredondamento e a tela de login (seção 26.1), e a paleta chegando a GTK 3 e 4, btop, Qt e KDE pelos templates do Noctalia.
 
 Falta:
 
-- **cursores**, hoje o Adwaita padrão;
 - **tipografia**, no sentido de escolha própria: a JetBrains Mono cobre terminal, editor e arte, e a interface usa a fonte padrão do Noctalia;
-- **Zsh**, cujas cores vêm do tema do terminal e não do esquema;
 - **cor de destaque em Flatpak libadwaita**, que depende do portal expor a chave (seção 26.1);
 - **layout da tela de bloqueio**, que é estado de máquina, por decisão (seção 34).
 
@@ -2117,6 +2135,7 @@ arkmos/
 ├── build_files/                   rodam no build e NÃO ficam na imagem
 │   ├── install-upstream-bins.sh   starship, lazygit, lazydocker (sha256)
 │   ├── install-nerd-font.sh       JetBrains Mono patched (sha256)
+│   ├── install-cursor.sh          cursor Bibata Modern Ice (sha256)
 │   ├── papirus-folders.sh         pastas do Papirus em violeta
 │   ├── patch-niri-session.sh      lista de variáveis no import-environment
 │   ├── trim-ujust.sh              recorta o menu do ujust
@@ -2154,6 +2173,7 @@ arkmos/
         ├── share/flatpak/preinstall.d/
         │   └── arkmos.preinstall  Flatpaks que acompanham o sistema
         ├── share/arkmos/
+        │   ├── noctalia-greeter*.toml  tela de login e sua aparência inicial
         │   ├── starship.toml      prompt
         │   └── zsh/               configuração do shell, em módulos
         └── share/plymouth/themes/arkmos/
@@ -2379,7 +2399,7 @@ menu do ujust com as três receitas do Arkmos
 
 Duas coisas que o ensaio mostrou e que não são defeito:
 
-- **a tela de login nasce com o tema padrão do Noctalia.** A aparência do greeter chega pelo sync a partir da conta (`[shell.greeter_sync] auto_sync = true`), e antes do primeiro login não existe conta de onde sincronizar;
+- **a tela de login nasce com o tema padrão do Noctalia.** A aparência do greeter chega pelo sync a partir da conta (`[shell.greeter_sync] auto_sync = true`), e antes do primeiro login não existe conta de onde sincronizar. Corrigido com a semente do `sync.toml` (seção 26.1);
 - **a área de transferência do SPICE não funciona na sessão.** O socket, o daemon e o `spice-vdagent.service` do usuário estavam todos ativos — o agente é que roda em modo X11 (`spice-vdagent -x`), e no niri, Wayland puro, não há ponte de área de transferência com o X11 como o mutter faz no GNOME. Para trazer saídas de dentro da VM, o caminho é o ssh: `sudo systemctl start sshd` na VM (a imagem o mantém desligado) e `ssh -t usuario@IP 'comando' | tee arquivo` no host.
 
 ## 35.2.2 Instalação pela ISO com o kickstart próprio, em VM (2026-09-24)
@@ -2424,7 +2444,7 @@ travamento antes do assistente no primeiro boot em VM — visto uma vez em
 
 ## Médio prazo
 
-2. Fechar o que falta da identidade visual: cursores, tipografia e as cores do Zsh (seção 26.2).
+2. Fechar o que falta da identidade visual: a tipografia da interface (seção 26.2).
 3. Registrar em uso real quanto o `bootc upgrade` baixa de fato, para comparar com os 559 MB medidos no registry (seção 28.5).
 
 ## Longo prazo

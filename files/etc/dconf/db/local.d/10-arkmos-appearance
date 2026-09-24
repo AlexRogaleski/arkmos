@@ -23,7 +23,7 @@ icon-theme='Papirus-Dark'
 # Flatpak libadwaita pergunta ao portal, e o backend gtk, que é o nosso, ainda
 # não responde essa chave (PROJECT.md 26.1).
 accent-color='purple'
-cursor-theme='Adwaita'
+cursor-theme='Bibata-Modern-Ice'
 cursor-size=24
 font-name='Cantarell 11'
 monospace-font-name='JetBrainsMono Nerd Font 11'

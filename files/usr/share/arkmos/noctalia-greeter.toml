@@ -55,7 +55,8 @@ layout = "br"
 numlock = true
 
 [cursor]
-theme = "Adwaita"
+# O mesmo cursor do desktop (build_files/install-cursor.sh).
+theme = "Bibata-Modern-Ice"
 size = 24
 
 [auth]

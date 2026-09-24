@@ -176,13 +176,15 @@ RUN dnf -y --setopt=install_weak_deps=False install \
 # depende de rede na primeira abertura.
 #
 # Aqui só entra o que o Fedora 44 não empacota — starship, lazygit,
-# lazydocker e a Nerd Font patched — com versão e checksum fixados.
+# lazydocker, a Nerd Font patched e o cursor Bibata — com versão e checksum
+# fixados.
 #
 # Os scripts de build não ficam na imagem: são copiados, executados e
 # removidos na mesma camada.
 COPY build_files/ /tmp/build_files/
 RUN /tmp/build_files/install-upstream-bins.sh \
     && /tmp/build_files/install-nerd-font.sh \
+    && /tmp/build_files/install-cursor.sh \
     && rm -rf /tmp/build_files
 
 # Ícones: Papirus-Dark, com as pastas em violeta.

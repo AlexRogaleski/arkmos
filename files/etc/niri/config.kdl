@@ -69,6 +69,15 @@ input {
     // focus-follows-mouse max-scroll-amount="0%"
 }
 
+// Cursor Bibata Modern Ice (build_files/install-cursor.sh). O niri desenha o
+// cursor no desktop e exporta XCURSOR_THEME e XCURSOR_SIZE para o que ele
+// abre, o que alcança aplicativos que não leem dconf nem settings.ini —
+// Electron, Qt, XWayland. O tamanho é o mesmo 24 do dconf e do GTK.
+cursor {
+    xcursor-theme "Bibata-Modern-Ice"
+    xcursor-size 24
+}
+
 // You can configure outputs by their name, which you can find
 // by running `niri msg outputs` while inside a niri instance.
 // The built-in laptop monitor is usually called "eDP-1".
