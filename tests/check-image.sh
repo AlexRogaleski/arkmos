@@ -1061,6 +1061,20 @@ check "mise sem self-update nem aviso de versão nova" \
             || { echo "o self-update continua disponível"; exit 1; }
     '
 
+# A fonte da interface é declarada em cinco lugares — Noctalia, dconf, GTK 3 e
+# 4 e a tela de login. Um nome que não existe não dá erro: o fontconfig troca
+# por outra em silêncio, e é assim que barra, janelas e login acabavam cada um
+# com uma fonte.
+check "fonte da interface Adwaita Sans, instalada e declarada nos cinco lugares" \
+    run sh -c 'f="Adwaita Sans"
+               fc-match "$f" | grep -q "\"$f\"" || { echo "$f não está instalada"; exit 1; }
+               grep -qx "gtk-font-name=$f 11" /etc/xdg/gtk-3.0/settings.ini || { echo "gtk-3.0"; exit 1; }
+               grep -qx "gtk-font-name=$f 11" /etc/xdg/gtk-4.0/settings.ini || { echo "gtk-4.0"; exit 1; }
+               DCONF_PROFILE=user dconf read /org/gnome/desktop/interface/font-name | grep -qx "'"'"'$f 11'"'"'" ||
+                   { echo "dconf"; exit 1; }
+               grep -qx "font_family = \"$f\"" /etc/skel/.config/noctalia/arkmos.toml || { echo "noctalia"; exit 1; }
+               grep -qx "font_family = \"$f\"" /usr/share/arkmos/noctalia-greeter.toml || { echo "greeter"; exit 1; }'
+
 check "Nerd Font patched presente" \
     run sh -c '
         fc-list | grep -q "JetBrainsMono Nerd Font" \

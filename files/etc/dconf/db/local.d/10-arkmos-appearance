@@ -25,9 +25,9 @@ icon-theme='Papirus-Dark'
 accent-color='purple'
 cursor-theme='Bibata-Modern-Ice'
 cursor-size=24
-font-name='Cantarell 11'
+font-name='Adwaita Sans 11'
 monospace-font-name='JetBrainsMono Nerd Font 11'
-document-font-name='Cantarell 11'
+document-font-name='Adwaita Sans 11'
 
 [org/gnome/desktop/wm/preferences]
 button-layout='appmenu:close'

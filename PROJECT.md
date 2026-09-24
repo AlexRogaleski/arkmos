@@ -727,13 +727,18 @@ Isso vale em especial para configuração de shell, que é tentador importar pro
 
 # 14. Fontes
 
-Fonte padrão:
+Duas fontes, com papéis separados:
 
 ```text
-JetBrains Mono Nerd Font 3.5.1
+Adwaita Sans                  interface: Noctalia, janelas GTK, tela de login
+JetBrains Mono Nerd Font 3.5.1  monoespaçada: terminal, editor, prompt, arte
 ```
 
-Uma só, e ela cobre os três papéis: terminal e editor, os glifos do prompt e a arte do sistema (a logo do README, o splash do Plymouth e a tela de login, desenhados pelo `render-artwork.sh`).
+A **JetBrains Mono** cobre o que é monoespaçado: terminal e editor, os glifos do prompt e a arte do sistema (a logo do README, o splash do Plymouth e a arte de login, desenhados pelo `render-artwork.sh`).
+
+A **Adwaita Sans** é a fonte da interface, escolhida em 2026-09-24. Antes eram três: o Noctalia usava `sans-serif`, que no Fedora cai na Noto Sans; as janelas GTK, a Cantarell do dconf; e a tela de login, a JetBrains Mono. A Adwaita Sans é a padrão do GNOME desde a versão 48, derivada da Inter, e é com ela que os aplicativos libadwaita da imagem são desenhados. Vem da base (`adwaita-sans-fonts`), sem custo no build. Ela é declarada em cinco lugares — o `font_family` do `arkmos.toml` do skel, o `font-name` e o `document-font-name` do dconf, os dois `settings.ini` e o `greeter.toml` —, e o `just check` confere que os cinco concordam e que o fontconfig resolve o nome para ela mesma, e não para uma substituta.
+
+No login ela é declarada no `greeter.toml`, que vence o sync: trocar a fonte nas configurações do Noctalia não chega à tela de login.
 
 O `jetbrains-mono-fonts` do Fedora **não** é a versão patched; o `starship.toml` e o `eza --icons` dependem dos glifos Nerd Font, então a versão patched é baixada no build, com versão e checksum SHA256 fixados em `build_files/install-nerd-font.sh`.
 
@@ -1431,13 +1436,12 @@ O greeter **não tem relógio nem sistema de widgets** — ele é seleção de u
 
 ## 26.2 O que falta
 
-Já definidos: o esquema (Tokyo Night), os ícones (Papirus-Dark com pastas em violeta), os papéis de parede e o cursor (Bibata Modern Ice) — todos na seção 26.1. O Zsh segue o esquema pelas cores do terminal (seção 9).
+Já definidos: o esquema (Tokyo Night), os ícones (Papirus-Dark com pastas em violeta), os papéis de parede e o cursor (Bibata Modern Ice) — todos na seção 26.1 —, e a fonte da interface, Adwaita Sans (seção 14). O Zsh segue o esquema pelas cores do terminal (seção 9).
 
 Também definidos na 0.10.0: barra, dock, painéis, notificações, arredondamento e a tela de login (seção 26.1), e a paleta chegando a GTK 3 e 4, btop, Qt e KDE pelos templates do Noctalia.
 
 Falta:
 
-- **tipografia**, no sentido de escolha própria: a JetBrains Mono cobre terminal, editor e arte, e a interface usa a fonte padrão do Noctalia;
 - **cor de destaque em Flatpak libadwaita**, que depende do portal expor a chave (seção 26.1);
 - **layout da tela de bloqueio**, que é estado de máquina, por decisão (seção 34).
 
@@ -2444,16 +2448,15 @@ travamento antes do assistente no primeiro boot em VM — visto uma vez em
 
 ## Médio prazo
 
-2. Fechar o que falta da identidade visual: a tipografia da interface (seção 26.2).
-3. Registrar em uso real quanto o `bootc upgrade` baixa de fato, para comparar com os 559 MB medidos no registry (seção 28.5).
+2. Registrar em uso real quanto o `bootc upgrade` baixa de fato, para comparar com os 559 MB medidos no registry (seção 28.5).
 
 ## Longo prazo
 
-4. Snapshots do `/var/home` e backup para fora da máquina — o rollback do sistema já vem do bootc (seção 6).
-5. Validar instalação em hardware real.
-6. Documentar recuperação.
-7. Revisar a política de atualização depois de um mês de uso real — hoje é o encenado automático herdado da base, documentado e verificado (seção 31.1).
-8. Estabilizar a versão 1.0.0.
+3. Snapshots do `/var/home` e backup para fora da máquina — o rollback do sistema já vem do bootc (seção 6).
+4. Validar instalação em hardware real.
+5. Documentar recuperação.
+6. Revisar a política de atualização depois de um mês de uso real — hoje é o encenado automático herdado da base, documentado e verificado (seção 31.1).
+7. Estabilizar a versão 1.0.0.
 
 ---
 

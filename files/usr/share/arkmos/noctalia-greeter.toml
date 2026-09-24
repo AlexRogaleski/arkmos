@@ -24,7 +24,9 @@ default = "Niri"
 # identidade própria. Sem sync configurado, cai no tema embutido.
 scheme = "Synced"
 theme_mode = "dark"
-font_family = "JetBrainsMono Nerd Font"
+# A fonte da interface, a mesma do desktop (Adwaita Sans). Declarada aqui ela
+# vence a que o sync traria: trocar a fonte do Noctalia não chega ao login.
+font_family = "Adwaita Sans"
 power_buttons_position = "bottom-right"
 scheme_selector_position = "top-right"
 

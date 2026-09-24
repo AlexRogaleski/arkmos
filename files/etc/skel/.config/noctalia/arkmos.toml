@@ -21,9 +21,14 @@
 # acompanhar os cantos das janelas. Ele é uma das coisas que o sync leva ao
 # greeter, e é por isso que NÃO é declarado no greeter.toml: valor lá venceria
 # o sync e congelaria o login neste número.
+#
+# font_family é a fonte da interface inteira: Adwaita Sans, a mesma do dconf e
+# dos settings.ini, para barra e janelas não usarem fontes diferentes. O padrão
+# do Noctalia é 'sans-serif', que no Fedora cai na Noto Sans.
 [shell]
 lang = "pt-BR"
 corner_radius_scale = 1.25
+font_family = "Adwaita Sans"
 
 # Esquema de cores do sistema: Tokyo Night, embutido no Noctalia. É dele que
 # saem as cores do shell, e o sync as leva para a tela de login. O identificador
@@ -74,7 +79,7 @@ directory = "/usr/share/backgrounds/arkmos"
 path = "/usr/share/backgrounds/arkmos/arkmos-default.webp"
 
 # Barra: o que fica em cada terço dela. A fonte não é declarada de propósito —
-# fica a do Noctalia. Os dois espaçadores são declarados logo abaixo: sem a
+# herda o font_family do [shell]. Os dois espaçadores são declarados logo abaixo: sem a
 # declaração, o nome na lista não corresponde a widget nenhum e o espaço não
 # aparece.
 [bar.default]
