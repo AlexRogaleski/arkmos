@@ -6,7 +6,7 @@ Estação de trabalho Linux pessoal definida como imagem [Fedora bootc](https://
 
 O objetivo não é publicar uma distribuição. É que a configuração da máquina seja o patrimônio, e não a instalação — o hardware pode mudar, a instalação pode ser destruída, e a imagem é reconstruída a partir do Git.
 
-> **Em desenvolvimento.** As imagens são publicadas e assinadas no GHCR, com instalação, atualização e rollback validados em máquina virtual. Ainda não validado em hardware real.
+> **Em desenvolvimento.** As imagens são publicadas e assinadas no GHCR, com instalação, atualização e rollback validados em máquina virtual, e a variante padrão instalada pela ISO no hardware de destino em 2026-09-24.
 > Arquitetura e o motivo de cada decisão: [PROJECT.md](PROJECT.md).
 
 ---

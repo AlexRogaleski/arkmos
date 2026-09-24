@@ -162,6 +162,8 @@ iso origem=publicado:
         falta "a exigência de assinatura no último 'bootc switch'"
     grep -q -- "--type=btrfs" <<<"$conteudo" || falta "o autopart em Btrfs"
     grep -q "^cp -a /usr/etc/vconsole.conf /etc/vconsole.conf" <<<"$conteudo" || falta "a restauração do /etc que o Anaconda reescreve"
+    grep -q "btrfs\[\[:space:\]\]|d' /etc/fstab" <<<"$conteudo" || falta "a remoção da linha de / do fstab"
+    grep -q "rootflags=.*compress=zstd:1" <<<"$conteudo" || falta "a compressão no rootflags da entrada de boot"
     grep -q "ostreecontainer" <<<"$conteudo" || falta "a linha ostreecontainer do builder"
     grep -q "{{ origem }}" <<<"$conteudo" || falta "a referência {{ origem }}"
     if [[ "$(grep -c "^autopart" <<<"$conteudo")" != 1 ]]; then
@@ -169,7 +171,7 @@ iso origem=publicado:
         echo "      O builder mudou a composição do kickstart; reveja iso-config.toml." >&2
         exit 1
     fi
-    echo "kickstart conferido: Btrfs, assinatura exigida, {{ origem }}"
+    echo "kickstart conferido: Btrfs comprimido, assinatura exigida, {{ origem }}"
 
     echo
     ls -lh "$iso"

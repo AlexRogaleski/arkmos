@@ -67,6 +67,17 @@
 # fonte (seção 12.3). Visto na instalação de 2026-09-24 com
 # 'ostree admin config-diff'. O %post devolve os arquivos da imagem, que estão
 # intactos em /usr/etc, e apaga o do X11.
+#
+# O fstab que o Anaconda grava tem uma linha para '/' com as opções do Btrfs
+# (subvol, compress=zstd:1, ro). Num sistema bootc o '/' é o overlay do
+# composefs, que recusa ser remontado: o systemd-remount-fs falha em todo boot
+# ("overlay: No changes allowed in reconfigure"), e a compressão, que só
+# existia nessa linha, nunca é aplicada. Visto na primeira instalação em
+# hardware, em 2026-09-24. O %post apaga a linha — o 'bootc install to-disk'
+# também não grava '/' no fstab — e leva o compress=zstd:1 para o rootflags da
+# entrada de boot, que é com o que o initramfs monta o /sysroot. No Btrfs a
+# opção vale para o sistema de arquivos inteiro, /var incluído, e o ostree
+# carrega os argumentos de kernel de uma deployment para a seguinte.
 [customizations.installer.modules]
 enable = ["org.fedoraproject.Anaconda.Modules.Localization"]
 
@@ -84,6 +95,13 @@ cp -a /usr/etc/locale.conf /etc/locale.conf
 cp -a /usr/etc/vconsole.conf /etc/vconsole.conf
 rm -f /etc/X11/xorg.conf.d/00-keyboard.conf
 [ -d /usr/etc/X11/xorg.conf.d ] || rmdir --ignore-fail-on-non-empty /etc/X11/xorg.conf.d 2>/dev/null || true
+sed -i '\\|^[^#[:space:]]*[[:space:]]\\+/[[:space:]]\\+btrfs[[:space:]]|d' /etc/fstab
+ls /boot/loader/entries/*.conf >/dev/null
+for entrada in /boot/loader/entries/*.conf; do
+    grep -q '^options .*rootflags=' "$entrada"
+    grep -q '^options .*compress=' "$entrada" ||
+        sed -i '/^options / s/\\(rootflags=[^ ]*\\)/\\1,compress=zstd:1/' "$entrada"
+done
 bootc switch --mutate-in-place --transport registry \
     --enforce-container-sigpolicy @IMAGEM@
 %end

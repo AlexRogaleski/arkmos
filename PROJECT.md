@@ -280,6 +280,30 @@ O `autopart --nohome --type=btrfs` do kickstart cria só o `root`, e o `/var/hom
 
 Note o alvo: `/sysroot`. A raiz de um sistema bootc é um overlay do composefs, e `btrfs subvolume list /` responde `not a btrfs filesystem` mesmo num disco Btrfs.
 
+**No hardware, o subvolume se chamou `root00`**, e não `root`. O notebook tem um segundo NVMe com uma instalação Btrfs anterior, e o instalador deu um nome que não colidisse. Nada depende do nome, mas é ele que aparece no `rootflags=` — então não dá para assumir `subvol=root` em comando nenhum.
+
+## Compressão: no `rootflags`, e não no fstab
+
+O Anaconda grava no `/etc/fstab` uma linha para `/` com `subvol=...,compress=zstd:1,ro`. Num sistema bootc isso não funciona: o `/` é o overlay do composefs, o `systemd-remount-fs` tenta remontá-lo com opções de Btrfs, e o overlay recusa:
+
+```text
+mount: /: fsconfig() failed: overlay: No changes allowed in reconfigure.
+```
+
+A unit falha em todo boot, e o pior não é ela: a compressão só existia nessa linha, e por isso **nunca era aplicada**. O `/sysroot` e o `/var` montavam sem `compress`. Visto na primeira instalação em hardware, em 2026-09-24.
+
+A correção tira a linha de `/` do fstab — o `bootc install to-disk` também não a grava — e leva a opção para o `rootflags=` do kernel, que é com o que o initramfs monta o `/sysroot`. No Btrfs, `compress` vale para o sistema de arquivos inteiro, então cobre o `/var` e o `/var/home` junto. O ostree carrega os argumentos de kernel de uma deployment para a seguinte, e a correção sobrevive ao `bootc upgrade`.
+
+Nas mídias novas, quem faz isso é o `%post` do kickstart (seção 31). Numa máquina já instalada por ISO anterior:
+
+```bash
+sudo sed -i '\|^UUID=[^ ]* / btrfs |d' /etc/fstab
+sudo rpm-ostree kargs --delete=rootflags=subvol=<subvol> \
+    --append=rootflags=subvol=<subvol>,compress=zstd:1
+```
+
+com o `<subvol>` que aparece em `cat /proc/cmdline`. O `--replace` não serve aqui: ele aceita a forma `CHAVE=ANTIGO=NOVO`, e o `=` de dentro de `subvol=` faz ele procurar um `rootflags=subvol` que não existe. A compressão vale para o que for escrito depois; o que já está no disco fica como está.
+
 ---
 
 # 7. Bootloader
@@ -1974,13 +1998,15 @@ Daí o `iso-config.toml`, versionado, que passa o kickstart inteiro:
 rootpw --lock / lang pt_BR.UTF-8 / keyboard br / timezone America/Sao_Paulo
 autopart --nohome --type=btrfs          ← esquema nosso, disco escolhido na tela
 network --device=link --bootproto=dhcp --onboot=on --activate
-%post: bootc switch --mutate-in-place --transport registry \
+%post: devolve locale.conf e vconsole.conf de /usr/etc (seção 35.2.2)
+       tira a linha de / do fstab, compress=zstd:1 no rootflags (seção 6)
+       bootc switch --mutate-in-place --transport registry \
            --enforce-container-sigpolicy <imagem>
 ```
 
 Ao receber um kickstart próprio, o builder deixa de gerar particionamento e rede, mas **não** se ausenta do `%post`. Conferido na ISO de 2026-09-24: ele grava um `osbuild-base.ks` com a linha `ostreecontainer` e um `%post` próprio, com o `bootc switch` **sem** a flag, e o nosso `osbuild.ks` o inclui na primeira linha. O Anaconda roda os `%post` na ordem em que aparecem, então os dois switches rodam, o dele primeiro, e o nosso, por ser o último a gravar a origin, é o que vale.
 
-Por isso a receita `just iso` termina extraindo os kickstarts da ISO pronta (com o `7z`), montando o conteúdo na ordem de execução e conferindo: que o `%include` do builder está no topo, que o **último** `bootc switch` exige a assinatura, o `--type=btrfs`, a linha `ostreecontainer` e uma única linha de `autopart`. Procurar a flag em qualquer lugar não bastaria: com a ordem invertida, ela estaria no kickstart e a deployment nasceria sem ela. É a única parte da instalação que o `just check` não alcança, e um erro aqui só apareceria com o disco da máquina já apagado.
+Por isso a receita `just iso` termina extraindo os kickstarts da ISO pronta (com o `7z`), montando o conteúdo na ordem de execução e conferindo: que o `%include` do builder está no topo, que o **último** `bootc switch` exige a assinatura, o `--type=btrfs`, a correção do fstab e da compressão, a linha `ostreecontainer` e uma única linha de `autopart`. Procurar a flag em qualquer lugar não bastaria: com a ordem invertida, ela estaria no kickstart e a deployment nasceria sem ela. É a única parte da instalação que o `just check` não alcança, e um erro aqui só apareceria com o disco da máquina já apagado.
 
 O `autopart` fica, e o `clearpart` sai: sem ele o spoke de destino fica incompleto e o Anaconda para na tela de seleção de disco, que é onde essa decisão pertence — mantendo o esquema (Btrfs, sem `/home` separado) declarado por nós.
 
@@ -2434,11 +2460,33 @@ Adwaita Sans na barra, nas janelas e no login
 terminal sem o aviso de [colors] do foot
 ```
 
+## 35.2.3 Primeira instalação em hardware real (2026-09-24)
+
+O notebook alvo — i5-11300H (Tiger Lake) com Iris Xe, dGPU NVIDIA desligada na BIOS —, com a variante padrão instalada pela ISO da `44.20260924.83` no NVMe secundário (NXM-512). O outro NVMe, com a instalação anterior, não foi tocado: é a primeira vez que o kickstart sem `clearpart` protege um disco que existe de verdade.
+
+```text
+deployment ostree-image-signed:docker://ghcr.io/alexrogaleski/arkmos:44
+login pelo Noctalia Greeter e sessão niri em Wayland
+conta criada no Anaconda; groups: arm wheel docker
+LANG=pt_BR.UTF-8, VC Keymap br, X11 Layout br
+22 Flatpaks instalados pelo preinstall no primeiro boot, em 4min19s
+AutomaticUpdatePolicy=stage
+```
+
+E o que o hardware mostrou que a VM não tinha mostrado — ou que ninguém tinha olhado:
+
+- **`systemd-remount-fs` falhando, e o Btrfs sem compressão.** A linha de `/` do fstab do Anaconda. Corrigido na máquina, com a linha de boot, e no kickstart para as próximas mídias (seção 6). Depois do reboot: `compress=zstd:1` no `/sysroot` e no `/var`, e `systemctl --failed` vazio. As instalações por ISO na VM saíram do mesmo Anaconda e provavelmente tinham a mesma falha, mas isso não foi conferido;
+- **subvolume `root00`**, por causa do Btrfs do outro disco (seção 6);
+- **`rhgb quiet` duas vezes na linha do kernel**, uma dos `kargs.d` da imagem e outra do Anaconda. Só estética;
+- no journal, só ruído que não é do Arkmos: o grupo `plugdev` das regras de U2F, o `docker-forwarding` já existente no firewalld e o HID de um dispositivo Bluetooth.
+
 ## 35.3 Não validado ainda
 
 ```text
 Laravel Sail em uso real
-instalação em hardware real
+ISO com a correção do fstab e da compressão no %post (seção 6): o kickstart
+  foi conferido fora do Anaconda, mas a instalação não foi ensaiada
+a variante NVIDIA no hardware, com a dGPU ligada
 o primeiro 'bootc upgrade' de uma máquina instalada pela ISO — o digest local é
   o da conversão OCI da mídia, então o download pode ser maior que o delta
   medido entre publicações (seções 28.5 e 31)
@@ -2457,18 +2505,19 @@ travamento antes do assistente no primeiro boot em VM — visto uma vez em
 ## Curto prazo
 
 1. Se o travamento antes do assistente voltar num primeiro boot em VM, abrir **View → serial0** antes de fechar a janela (seção 30).
+2. Gerar uma ISO nova e ensaiar em VM a correção do fstab e da compressão: depois de instalar, `findmnt -M /sysroot` com `compress=zstd:1` e `systemctl --failed` vazio.
 
 ## Médio prazo
 
-2. Registrar em uso real quanto o `bootc upgrade` baixa de fato, para comparar com os 559 MB medidos no registry (seção 28.5).
+3. Registrar em uso real, agora no hardware, quanto o `bootc upgrade` baixa de fato, para comparar com os 559 MB medidos no registry (seção 28.5).
+4. Validar a variante NVIDIA no hardware: `ujust arkmos-variant nvidia` com a dGPU ligada na BIOS.
 
 ## Longo prazo
 
-3. Snapshots do `/var/home` e backup para fora da máquina — o rollback do sistema já vem do bootc (seção 6).
-4. Validar instalação em hardware real.
-5. Documentar recuperação.
-6. Revisar a política de atualização depois de um mês de uso real — hoje é o encenado automático herdado da base, documentado e verificado (seção 31.1).
-7. Estabilizar a versão 1.0.0.
+5. Snapshots do `/var/home` e backup para fora da máquina — o rollback do sistema já vem do bootc (seção 6).
+6. Documentar recuperação.
+7. Revisar a política de atualização depois de um mês de uso real — hoje é o encenado automático herdado da base, documentado e verificado (seção 31.1).
+8. Estabilizar a versão 1.0.0.
 
 ---
 
@@ -2573,5 +2622,5 @@ Marcos:
 0.8.0  → fechado: imagem publicada, assinada, instalável e atualizável
 0.9.0  → fechado: aplicações declaradas e identidade visual
 0.10.0 → fechado: Noctalia configurado e ferramental alinhado ao ublue
-1.0.0  → falta uso real e hardware real (seção 37)
+1.0.0  → instalado no hardware em 2026-09-24; falta uso real (seção 37)
 ```
