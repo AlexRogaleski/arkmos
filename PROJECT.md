@@ -3,7 +3,7 @@
 Sistema operacional pessoal e reprodutível baseado em Fedora bootc, desenvolvido para facilitar instalações, reinstalações e manutenção de uma estação de trabalho Linux personalizada.
 
 > **Status:** Em desenvolvimento
-> **Versão atual:** 0.8.0
+> **Versão atual:** 0.10.0
 > **Base:** Universal Blue, Fedora 44 bootc
 > **Compositor:** Niri
 > **Shell do desktop:** Noctalia
@@ -317,7 +317,7 @@ Personalizações em relação à configuração de exemplo:
 - anel de foco de 3 px, com gradiente do azul ao roxo de destaque do Tokyo Night, e cantos arredondados de 8 px em todas as janelas, com `clip-to-geometry` para o conteúdo ser recortado no mesmo raio — sem ele o arredondamento fica só na moldura e o conteúdo aparece quadrado nos cantos;
 - `prefer-no-csd` ligado.
 
-O terminal tem fundo levemente translúcido (`alpha=0.9` em `[colors]`, declarado depois do include do tema para vencê-lo). O niri não desfoca o que está atrás, então o que aparece é o papel de parede; o `alpha-mode` fica no padrão, que aplica a translucidez só às células com a cor de fundo padrão, deixando texto selecionado e blocos coloridos sólidos.
+O terminal tem fundo levemente translúcido (`alpha=0.9` em `[colors-dark]`, declarado depois do include do tema para vencê-lo). A seção é `[colors-dark]`, e não `[colors]`: o foot 1.27 depreciou a segunda e abria imprimindo o aviso em cima do prompt; com `initial-color-theme=dark`, é a seção escura que vale. O niri não desfoca o que está atrás, então o que aparece é o papel de parede; o `alpha-mode` fica no padrão, que aplica a translucidez só às células com a cor de fundo padrão, deixando texto selecionado e blocos coloridos sólidos.
 
 O `prefer-no-csd` faz o niri anunciar decoração do lado do servidor e desenhar ele mesmo a borda e o anel de foco. Sem ele, cada aplicativo desenha a própria barra de título com o tema que conseguir adivinhar — ver seção 9.
 
@@ -640,14 +640,17 @@ systemd-homed-firstboot    criaria via homectl, mas exige systemd-homed (ausente
 
 Para mídia gerada com `bootc-image-builder` e para `bootc install to-disk` não existe caminho pronto. O assistente em TTY é a resposta.
 
-**Desde a ISO instalável (`just iso`, seção 31), o caminho normal passou a ser o do Universal Blue: a conta vem do Anaconda.** O assistente continua na imagem, e continua fazendo diferença:
+**Com a ISO instalável (`just iso`, seção 31), a conta vem do Anaconda, como no Universal Blue** — desde que o kickstart passou a ser nosso (abaixo). O assistente continua na imagem, e faz diferença nos dois cenários:
 
-- concede o grupo `docker`, que nenhum instalador concede — o Anaconda oferece `wheel` e para aí, e sem `docker` o Laravel Sail não fala com o daemon;
-- cobre a instalação em que ninguém criou conta: `bootc install to-disk` não tem instalador, e uma tela de conta pode ser pulada. Sem ele, o resultado seria uma máquina sem conta e sem senha de root, ou seja, uma reinstalação.
+- concede o grupo `docker`, que nenhum instalador concede — o Anaconda, quando cria a conta (como no sistema de origem de um rebase), oferece `wheel` e para aí, e sem `docker` o Laravel Sail não fala com o daemon;
+- cobre a instalação em que ninguém criou conta: `bootc install to-disk` não tem instalador, e a tela de conta do Anaconda pode ser pulada. Sem ele, o resultado seria uma máquina sem conta e sem senha de root, ou seja, uma reinstalação.
 
-**Verificado em VM, em 2026-09-23: o Anaconda da ISO gerada pelo bootc-image-builder NÃO cria conta.** Ele instala a imagem no disco e entrega a máquina; quem cria a conta é o assistente, no primeiro boot, também neste caminho. A prova é o próprio assistente ter aparecido — ele só roda quando não existe conta com senha, porque uma conta existente o dispensaria em silêncio.
+**Quem cria a conta depende do kickstart, e as duas ISOs ensaiadas em VM mostraram os dois lados:**
 
-Então a ideia de encolher o assistente para só conceder o grupo `docker` está descartada: no caminho principal de instalação ele é a única coisa que cria conta. O custo de mantê-lo continua sendo zero quando a conta já existe, que é o caso do rebase.
+- **2026-09-23, kickstart padrão do builder:** o Anaconda não criou conta. O kickstart dele é completo (`clearpart --all` incluído), a instalação corre sem nenhuma tela, e a conta de usuário fica sem perguntar. Quem a criou foi o assistente, no primeiro boot;
+- **2026-09-24, kickstart nosso:** sem o `clearpart`, a instalação para nas telas que faltam — disco, rede e **conta**. A conta foi criada no Anaconda, marcada como administradora, e o assistente se dispensou no primeiro boot acrescentando o `docker`: `groups` mostrou `arm wheel docker`.
+
+A ideia de encolher o assistente para só conceder o grupo `docker` continua descartada: ele é o que cria a conta quando ninguém criou, e o custo de mantê-lo é zero quando a conta já existe — no rebase e na ISO. Ao criar a conta no Anaconda, basta marcá-la como administradora: o `docker` vem do assistente, e não precisa ser acrescentado nas opções avançadas.
 
 ## 12.5 Segurança
 
@@ -1557,54 +1560,13 @@ Detalhes do desenho:
 - **O digest assinado é o publicado.** O push recomprime as camadas, e o manifesto no registry tem outro digest que o da imagem local — que o `podman inspect` continua mostrando mesmo depois do push. O workflow assina o digest do `--digestfile` e para se as três tags saírem com digests diferentes.
 
 - **O cosign faz login próprio.** Ele não lê o arquivo de autenticação do podman, e sim a configuração do Docker: sem `cosign login`, a assinatura falha com `UNAUTHORIZED` depois de o push ter dado certo. Foi assim que a primeira publicação terminou com a imagem no registry e sem assinatura.
+- **O formato da assinatura importa.** No cosign 3, `--new-bundle-format` vem ligada: a assinatura vira um bundle Sigstore anexado pela API de referrers, que o GHCR não suporta — e o cosign cai numa tag de índice `sha256-<digest>`. O podman e o bootc leem a *sigstore attachment* clássica, na tag `sha256-<digest>.sig`, que nesse formato não existe. O CI assina **e** verifica com `--new-bundle-format=false` — e, ao assinar, também com `--use-signing-config=false`, que no cosign 3 vem ligada e exige o formato novo: sozinha, a primeira opção é recusada antes de assinar. Sem isso, a imagem é validada pelo cosign e recusada pela máquina.
 - **O CI confere a assinatura publicada**, com a mesma chave pública que vai dentro da imagem. É a verificação que a máquina instalada vai exigir no `bootc upgrade`.
 - **Um job de `lint` em paralelo**, com shellcheck, actionlint e a sintaxe do Justfile, pelas mesmas receitas que rodam na máquina. Job separado, e não um passo do build: responde em menos de um minuto e não segura a publicação, que leva meia hora.
 - **Rechunk antes de verificar e publicar** (seção 28.5).
 - **Ferramenta instalada depois da limpeza de disco.** O job de build apaga o `$AGENT_TOOLSDIRECTORY` para caber a imagem, e é justamente ali que a action do `just` guarda o binário. Instalado antes, o `PATH` apontava para um diretório que deixava de existir, e o passo do rechunk morria com `just: command not found` depois de nove minutos de build. Um `just --version` logo após a instalação transforma isso em falha de um segundo.
 
-## 28.5 Rechunk: camadas por conteúdo
-
-O CI reorganiza as camadas da imagem antes de publicar, com `just ostree-rechunk`. É o passo que Bluefin, Aurora e Bazzite dão, e que o `image-template` do Universal Blue traz com esse nome; por baixo é o `rpm-ostree compose build-chunked-oci`, que recebe o sistema de arquivos pronto e o reescreve em até 127 camadas decididas por **conteúdo**, e não pela ordem dos comandos do Containerfile.
-
-Medido nesta imagem, em 2026-09-23:
-
-| | Antes | Depois |
-| --- | --- | --- |
-| Camadas | 289 | 128 |
-| Tamanho | 9,88 GB | 8,02 GB |
-
-O 1,9 GB a menos vem dos objetos duplicados que o `rpm-ostree` unifica (11.363 nesta imagem). As 289 camadas também eram um problema por si: o próprio `rpm-ostree` avisa que runtimes mais antigos engasgam acima de 200.
-
-As mesmas 289 camadas viram as mesmas 128 no runner do GitHub, nas duas variantes, com 11.469 e 11.580 objetos duplicados unificados. O custo é tempo: **6min06** na padrão e **6min37** na NVIDIA, sobre oito a nove minutos de build — mas execuções anteriores do mesmo passo levaram de 5min30 a 19min, porque o disco do runner é compartilhado e o gargalo é I/O. Na máquina, a padrão levou doze minutos. Hoje o rechunk roda em todo push, e não só ao publicar, porque o que a verificação examina tem de ser a imagem que iria ao registry.
-
-O ganho maior, porém, é no `bootc upgrade` de quem usa. Camadas decididas por conteúdo são estáveis entre publicações: sem rechunk, um `dnf install` no começo do Containerfile invalida tudo o que vem depois e cada publicação obriga a baixar gigabytes.
-
-### O delta, medido
-
-Não precisa de máquina instalada para medir: o que um `bootc upgrade` baixa são exatamente as camadas que a versão nova tem e a antiga não, e isso sai dos manifests no registry.
-
-| Atualização | Camadas | Download |
-| --- | --- | --- |
-| `.48 → .57`, as duas sem rechunk | 287 → 288 | 2.635 MB — 58% da imagem |
-| `.57 → .69`, a primeira reorganizada | 288 → 128 | 3.459 MB — 100%, o plano inteiro muda |
-| **`.69 → .75`, as duas reorganizadas** | 128 → 128, 5 novas | **559 MB — 16%** |
-| `.69 → .75` na variante NVIDIA | 128 → 128, 5 novas | 668 MB — 15% |
-
-De **2,6 GB para 559 MB** por atualização, e a publicação medida não era pequena: trocou o id de `.desktop` do VS Code, recortou o menu do ujust, acrescentou receitas e mexeu no `mimeapps.list`.
-
-A linha do meio é o preço de entrada, e cobra uma vez: a primeira publicação reorganizada não compartilha camada nenhuma com a anterior. A partir dela, cada publicação herda o plano da última — é o `--previous-build`, e o log diz `plano de camadas herdado de ... (128 camadas)` quando ele entra.
-
-Três detalhes que o caminho ensinou:
-
-- **Os labels não sobrevivem sozinhos.** O `build-chunked-oci` monta uma imagem nova a partir do sistema de arquivos e não herda a configuração: dos 16 labels sobravam 3, e com eles iam a variante (que o `just check` lê) e a versão (que o `bootc status` mostra). A receita os repassa um a um, lidos da imagem de origem, então um label novo no Containerfile viaja sem ninguém editar o `Justfile`. A receita do image-template não faz isso, e por isso não serviu como está.
-- **O `--from` não substitui o `--rootfs` aqui.** Ele espera a imagem no storage do próprio container, e o nosso está montado do host; a sintaxe de storage explícita, que o `--output` aceita, ele recusa. Ficaram perdidos `ENV` e `CMD`, que nesta imagem são o `PATH` padrão e `/usr/bin/bash` — os dois só afetam `podman run`, e o podman injeta o mesmo `PATH` quando não há nenhum.
-- **`--previous-build` entra condicionado.** Ele mantém o plano de camadas da publicação anterior, e só faz sentido quando a imagem publicada já é reorganizada. Quem diz isso é a **contagem de camadas**, e não o label `ostree.final-diffid`: esse label vem da base do Universal Blue e é herdado por toda imagem derivada, então está presente também numa publicação de 288 camadas — o CI anunciou "plano herdado" para uma imagem que não tinha plano nenhum antes de o critério ser trocado.
-- **O nome curto grava no lugar errado.** `podman build --tag arkmos:latest` cria `localhost/arkmos:latest`; o transporte `containers-storage` normaliza o mesmo nome curto para `docker.io/library/arkmos:latest`. Com o nome sem qualificação, o `rpm-ostree` gravava uma imagem nova sob o Docker Hub, imprimia `Pushed digest`, saía com zero — e a tag do build continuava apontando para a imagem de 289 camadas. O CI ficou verde duas vezes tendo verificado a imagem **não** reorganizada. A receita qualifica o alvo com `localhost/` quando ele vem sem registry, lê o driver do `podman info` em vez de fixar `overlay`, e no fim confere a contagem de camadas: mais de 128 na tag depois do rechunk é erro, não aviso.
-
-A verificação roda **depois** do rechunk, de propósito: o que o `just check` examina é exatamente a imagem que vai ao registry. E o rechunk grava só na tag que recebeu, então as outras duas são reapontadas em seguida — sem isso, `44` e a versão do dia continuariam na imagem antiga.
-- **O formato da assinatura importa.** No cosign 3, `--new-bundle-format` vem ligada: a assinatura vira um bundle Sigstore anexado pela API de referrers, que o GHCR não suporta — e o cosign cai numa tag de índice `sha256-<digest>`. O podman e o bootc leem a *sigstore attachment* clássica, na tag `sha256-<digest>.sig`, que nesse formato não existe. O CI assina **e** verifica com `--new-bundle-format=false` — e, ao assinar, também com `--use-signing-config=false`, que no cosign 3 vem ligada e exige o formato novo: sozinha, a primeira opção é recusada antes de assinar. Sem isso, a imagem é validada pelo cosign e recusada pela máquina.
-
-Esses três só apareceram ao publicar de verdade, porque é o único trecho que um push comum não executa.
+O digest assinado, o login do cosign e o formato da assinatura só apareceram ao publicar de verdade, porque é o único trecho que um push comum não executa.
 
 ### Como publicar
 
@@ -1777,6 +1739,49 @@ A imagem deriva do Fedora, mas não se chama Fedora nem usa a marca — que é o
 
 ---
 
+## 28.5 Rechunk: camadas por conteúdo
+
+O CI reorganiza as camadas da imagem antes de publicar, com `just ostree-rechunk`. É o passo que Bluefin, Aurora e Bazzite dão, e que o `image-template` do Universal Blue traz com esse nome; por baixo é o `rpm-ostree compose build-chunked-oci`, que recebe o sistema de arquivos pronto e o reescreve em até 127 camadas decididas por **conteúdo**, e não pela ordem dos comandos do Containerfile.
+
+Medido nesta imagem, em 2026-09-23:
+
+| | Antes | Depois |
+| --- | --- | --- |
+| Camadas | 289 | 128 |
+| Tamanho | 9,88 GB | 8,02 GB |
+
+O 1,9 GB a menos vem dos objetos duplicados que o `rpm-ostree` unifica (11.363 nesta imagem). As 289 camadas também eram um problema por si: o próprio `rpm-ostree` avisa que runtimes mais antigos engasgam acima de 200.
+
+As mesmas 289 camadas viram as mesmas 128 no runner do GitHub, nas duas variantes, com 11.469 e 11.580 objetos duplicados unificados. O custo é tempo: **6min06** na padrão e **6min37** na NVIDIA, sobre oito a nove minutos de build — mas execuções anteriores do mesmo passo levaram de 5min30 a 19min, porque o disco do runner é compartilhado e o gargalo é I/O. Na máquina, a padrão levou doze minutos. Hoje o rechunk roda em todo push, e não só ao publicar, porque o que a verificação examina tem de ser a imagem que iria ao registry.
+
+O ganho maior, porém, é no `bootc upgrade` de quem usa. Camadas decididas por conteúdo são estáveis entre publicações: sem rechunk, um `dnf install` no começo do Containerfile invalida tudo o que vem depois e cada publicação obriga a baixar gigabytes.
+
+### O delta, medido
+
+Não precisa de máquina instalada para medir: o que um `bootc upgrade` baixa são exatamente as camadas que a versão nova tem e a antiga não, e isso sai dos manifests no registry.
+
+| Atualização | Camadas | Download |
+| --- | --- | --- |
+| `.48 → .57`, as duas sem rechunk | 287 → 288 | 2.635 MB — 58% da imagem |
+| `.57 → .69`, a primeira reorganizada | 288 → 128 | 3.459 MB — 100%, o plano inteiro muda |
+| **`.69 → .75`, as duas reorganizadas** | 128 → 128, 5 novas | **559 MB — 16%** |
+| `.69 → .75` na variante NVIDIA | 128 → 128, 5 novas | 668 MB — 15% |
+
+De **2,6 GB para 559 MB** por atualização, e a publicação medida não era pequena: trocou o id de `.desktop` do VS Code, recortou o menu do ujust, acrescentou receitas e mexeu no `mimeapps.list`.
+
+A linha do meio é o preço de entrada, e cobra uma vez: a primeira publicação reorganizada não compartilha camada nenhuma com a anterior. A partir dela, cada publicação herda o plano da última — é o `--previous-build`, e o log diz `plano de camadas herdado de ... (128 camadas)` quando ele entra.
+
+Quatro detalhes que o caminho ensinou:
+
+- **Os labels não sobrevivem sozinhos.** O `build-chunked-oci` monta uma imagem nova a partir do sistema de arquivos e não herda a configuração: dos 16 labels sobravam 3, e com eles iam a variante (que o `just check` lê) e a versão (que o `bootc status` mostra). A receita os repassa um a um, lidos da imagem de origem, então um label novo no Containerfile viaja sem ninguém editar o `Justfile`. A receita do image-template não faz isso, e por isso não serviu como está.
+- **O `--from` não substitui o `--rootfs` aqui.** Ele espera a imagem no storage do próprio container, e o nosso está montado do host; a sintaxe de storage explícita, que o `--output` aceita, ele recusa. Ficaram perdidos `ENV` e `CMD`, que nesta imagem são o `PATH` padrão e `/usr/bin/bash` — os dois só afetam `podman run`, e o podman injeta o mesmo `PATH` quando não há nenhum.
+- **`--previous-build` entra condicionado.** Ele mantém o plano de camadas da publicação anterior, e só faz sentido quando a imagem publicada já é reorganizada. Quem diz isso é a **contagem de camadas**, e não o label `ostree.final-diffid`: esse label vem da base do Universal Blue e é herdado por toda imagem derivada, então está presente também numa publicação de 288 camadas — o CI anunciou "plano herdado" para uma imagem que não tinha plano nenhum antes de o critério ser trocado.
+- **O nome curto grava no lugar errado.** `podman build --tag arkmos:latest` cria `localhost/arkmos:latest`; o transporte `containers-storage` normaliza o mesmo nome curto para `docker.io/library/arkmos:latest`. Com o nome sem qualificação, o `rpm-ostree` gravava uma imagem nova sob o Docker Hub, imprimia `Pushed digest`, saía com zero — e a tag do build continuava apontando para a imagem de 289 camadas. O CI ficou verde duas vezes tendo verificado a imagem **não** reorganizada. A receita qualifica o alvo com `localhost/` quando ele vem sem registry, lê o driver do `podman info` em vez de fixar `overlay`, e no fim confere a contagem de camadas: mais de 128 na tag depois do rechunk é erro, não aviso.
+
+A verificação roda **depois** do rechunk, de propósito: o que o `just check` examina é exatamente a imagem que vai ao registry. E o rechunk grava só na tag que recebeu, então as outras duas são reapontadas em seguida — sem isso, `44` e a versão do dia continuariam na imagem antiga.
+
+---
+
 # 29. Processo de Build
 
 ```bash
@@ -1863,6 +1868,8 @@ just run-vm   # sobe a VM
 
 O `just vm` usa o [bootc-image-builder](https://github.com/osbuild/bootc-image-builder), que substituiu o antigo `truncate` + `losetup` + `bootc install to-disk`: um comando só, particionamento declarativo e rotulagem SELinux correta. Ele pede a senha do sudo duas vezes — roda privilegiado e só enxerga o storage do root, enquanto `just build` constrói sem privilégio; o `podman image scp` transfere a imagem entre os dois storages sem reconstruir.
 
+**O builder roda com `--network=host`.** Ele resolve pacotes do Fedora durante a geração, e na rede bridge do podman rootful o DNS não sai quando o Docker está rodando: o Docker põe a chain `FORWARD` em `DROP`. Apareceu ao gerar a ISO no desktop, em 2026-09-24: o pull da imagem funcionava, porque é do host, e o builder falhava em `Could not resolve host: mirrors.fedoraproject.org`. O mesmo `getent hosts` falhava num container rootful pela bridge e resolvia no mesmo container com `--network=host`, e também num rootless. Como o Arkmos traz o Docker ligado, toda máquina Arkmos cairia nisso. O container já é `--privileged`, então a rede do host não abre nada novo.
+
 Para o Niri, a VM precisa de aceleração 3D, e mais duas coisas que a experiência impôs:
 
 ```text
@@ -1916,7 +1923,7 @@ Há três caminhos de instalação, e os três terminam no mesmo sistema.
 just iso    # gera output/bootiso/install.iso
 ```
 
-A ISO leva o Anaconda: escolha do disco, particionamento, cifragem se quiser, e a criação da conta. Ela embute a imagem **comprimida** mais o ambiente do instalador, então fica na faixa das ISOs do Universal Blue, 6 a 7 GB — um pendrive de 8 GB serve. No host, reserve uns 20 GB: o osbuild descomprime a imagem em árvore intermediária antes de montar a mídia.
+A ISO leva o Anaconda, em português e em ABNT2: escolha do disco, particionamento, cifragem se quiser, e a criação da conta, que o assistente do primeiro boot completa com o grupo `docker` (seção 12.4). Ela embute a imagem **comprimida** mais o ambiente do instalador: a gerada em 2026-09-23 ficou em 4,5 GB, abaixo das ISOs do Universal Blue (6 a 7 GB) — um pendrive de 8 GB serve. No host, reserve uns 20 GB: o osbuild descomprime a imagem em árvore intermediária antes de montar a mídia.
 
 Para dimensionar, os tamanhos comprimidos no registry em 2026-09-23:
 
@@ -1949,7 +1956,9 @@ network --device=link --bootproto=dhcp --onboot=on --activate
            --enforce-container-sigpolicy <imagem>
 ```
 
-Ao receber um kickstart próprio, o builder acrescenta só a linha `ostreecontainer` e mais nada — particionamento, rede e `%post` passam a ser responsabilidade do arquivo. Por isso a receita `just iso` termina extraindo os kickstarts da ISO pronta (com o `7z`) e conferindo quatro coisas: a exigência de assinatura, o `--type=btrfs`, a linha `ostreecontainer` do builder e uma única linha de `autopart`. É a única parte da instalação que o `just check` não alcança, e um erro aqui só apareceria com o disco da máquina já apagado.
+Ao receber um kickstart próprio, o builder deixa de gerar particionamento e rede, mas **não** se ausenta do `%post`. Conferido na ISO de 2026-09-24: ele grava um `osbuild-base.ks` com a linha `ostreecontainer` e um `%post` próprio, com o `bootc switch` **sem** a flag, e o nosso `osbuild.ks` o inclui na primeira linha. O Anaconda roda os `%post` na ordem em que aparecem, então os dois switches rodam, o dele primeiro, e o nosso, por ser o último a gravar a origin, é o que vale.
+
+Por isso a receita `just iso` termina extraindo os kickstarts da ISO pronta (com o `7z`), montando o conteúdo na ordem de execução e conferindo: que o `%include` do builder está no topo, que o **último** `bootc switch` exige a assinatura, o `--type=btrfs`, a linha `ostreecontainer` e uma única linha de `autopart`. Procurar a flag em qualquer lugar não bastaria: com a ordem invertida, ela estaria no kickstart e a deployment nasceria sem ela. É a única parte da instalação que o `just check` não alcança, e um erro aqui só apareceria com o disco da máquina já apagado.
 
 O `autopart` fica, e o `clearpart` sai: sem ele o spoke de destino fica incompleto e o Anaconda para na tela de seleção de disco, que é onde essa decisão pertence — mantendo o esquema (Btrfs, sem `/home` separado) declarado por nós.
 
@@ -2093,6 +2102,7 @@ arkmos/
 ├── .containerignore               o que não vai no contexto do build
 ├── .editorconfig                  estilo dos arquivos (o shfmt o lê)
 ├── config.toml                    bootc-image-builder (a MÍDIA, não a imagem)
+├── iso-config.toml                kickstart da ISO: disco escolhido, assinatura
 ├── README.md                      uso
 ├── PROJECT.md                     arquitetura e decisões
 ├── .gitignore
@@ -2372,6 +2382,22 @@ Duas coisas que o ensaio mostrou e que não são defeito:
 - **a tela de login nasce com o tema padrão do Noctalia.** A aparência do greeter chega pelo sync a partir da conta (`[shell.greeter_sync] auto_sync = true`), e antes do primeiro login não existe conta de onde sincronizar;
 - **a área de transferência do SPICE não funciona na sessão.** O socket, o daemon e o `spice-vdagent.service` do usuário estavam todos ativos — o agente é que roda em modo X11 (`spice-vdagent -x`), e no niri, Wayland puro, não há ponte de área de transferência com o X11 como o mutter faz no GNOME. Para trazer saídas de dentro da VM, o caminho é o ssh: `sudo systemctl start sshd` na VM (a imagem o mantém desligado) e `ssh -t usuario@IP 'comando' | tee arquivo` no host.
 
+## 35.2.2 Instalação pela ISO com o kickstart próprio, em VM (2026-09-24)
+
+No desktop, com a ISO gerada a partir da mesma `44.20260923.75` e instalada pelo `just run-iso`.
+
+```text
+Anaconda em português, teclado ABNT2 (módulo de localização ligado)
+disco, rede e conta escolhidos nas telas; root bloqueado
+reboot do fim da instalação direto no sistema instalado
+conta criada no Anaconda; groups: arm wheel docker
+```
+
+O que o ensaio mostrou, e já foi corrigido para a próxima ISO:
+
+- **o módulo de localização reescreve o `/etc`.** O `ostree admin config-diff` mostrou `locale.conf` e `vconsole.conf` modificados, com os mesmos valores entre aspas, e um `/etc/X11/xorg.conf.d/00-keyboard.conf` novo, para onde o `systemd-localed` moveu o `XKBLAYOUT` e o `XKBMODEL`. O `%post` do kickstart passou a devolver os dois arquivos de `/usr/etc` e a apagar o do X11 — **ainda não ensaiado**;
+- **o aviso `deprecated: foot: [colors]`** vem da imagem publicada, anterior à correção do `[colors-dark]` (seção 8.1): a ISO sai da imagem publicada, e não da local.
+
 ## 35.3 Não validado ainda
 
 ```text
@@ -2398,16 +2424,16 @@ travamento antes do assistente no primeiro boot em VM — visto uma vez em
 
 ## Médio prazo
 
-3. Fechar o que falta da identidade visual: cursores, tipografia e as cores do Zsh (seção 26.2).
-4. Registrar em uso real quanto o `bootc upgrade` baixa de fato, para comparar com os 559 MB medidos no registry (seção 28.5).
+2. Fechar o que falta da identidade visual: cursores, tipografia e as cores do Zsh (seção 26.2).
+3. Registrar em uso real quanto o `bootc upgrade` baixa de fato, para comparar com os 559 MB medidos no registry (seção 28.5).
 
 ## Longo prazo
 
-5. Snapshots do `/var/home` e backup para fora da máquina — o rollback do sistema já vem do bootc (seção 6).
-6. Validar instalação em hardware real.
-7. Documentar recuperação.
-8. Revisar a política de atualização depois de um mês de uso real — hoje é o encenado automático herdado da base, documentado e verificado (seção 31.1).
-9. Estabilizar a versão 1.0.0.
+4. Snapshots do `/var/home` e backup para fora da máquina — o rollback do sistema já vem do bootc (seção 6).
+5. Validar instalação em hardware real.
+6. Documentar recuperação.
+7. Revisar a política de atualização depois de um mês de uso real — hoje é o encenado automático herdado da base, documentado e verificado (seção 31.1).
+8. Estabilizar a versão 1.0.0.
 
 ---
 
@@ -2441,7 +2467,7 @@ Fedora bootc                    sistema como imagem, atualizável e reversível
 Btrfs                           snapshots do /var, que o bootc não cobre
 Niri                            compositor
 Noctalia                        shell do desktop
-greetd + tuigreet               login, com fallback de texto
+greetd + Noctalia Greeter       login; tuigreet de recuperação (seção 8.3)
 Docker CE real                  Laravel Sail (seção 15)
 VS Code na imagem               terminal integrado precisa do docker do host;
                                 redistribuição assumida conscientemente (seção 28.4)
