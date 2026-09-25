@@ -730,6 +730,8 @@ O modo vi fica deliberadamente fora: `bindkey -v` no `local.zsh` resolve, e é e
 
 O zsh é o shell de toda conta, e não só da que o assistente do primeiro boot cria com `--shell`. A conta de quem instala pela ISO é criada pelo Anaconda, que chama o `useradd` sem `--shell`; com o padrão do Fedora ela nascia no bash, e nada desta configuração era usado — visto na instalação em hardware de 2026-09-24. O `/etc/default/useradd` da imagem troca só o `SHELL`. Uma conta que já existe continua com o shell que tem: `sudo usermod -s /usr/bin/zsh <usuário>` e um novo login.
 
+O `tools.zsh` põe `~/.local/bin` e `~/bin` na frente do `PATH`. O Fedora faz isso pelo `~/.bashrc` e pelo `~/.zprofile`, e o `ZDOTDIR` faz o zsh ignorar o segundo: sem a linha, o que se instala na conta — Claude Code, pipx, scripts próprios — sumia do `PATH` na troca para o zsh. Visto no notebook em 2026-09-25, logo depois da troca. Isso vale para o terminal; o que é aberto pela sessão gráfica (VS Code pelo lançador, os servidores MCP que ele sobe) herda o `PATH` do `systemd --user`, e um diretório a mais ali vai num `~/.config/environment.d/*.conf` da conta.
+
 O `.zshrc` também troca `/var/home/<usuário>` por `$HOME` no diretório inicial. A sessão herda o caminho resolvido do link `/home → /var/home`, e sem isso todo terminal abria fora do `~` aos olhos do prompt.
 
 O `zoxide` substitui o `cd` (`zoxide init --cmd cd`): caminho normal continua funcionando, e um pedaço do nome de um diretório já visitado também — `cd ark` vai para `~/Projetos/arkmos`, e `cdi` escolhe entre os candidatos pelo fzf.

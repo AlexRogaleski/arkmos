@@ -2,6 +2,14 @@
 
 # --- Ambiente --------------------------------------------------------------
 
+# ~/.local/bin e ~/bin na frente do PATH, como o Fedora faz para quem usa bash
+# (~/.bashrc) e para quem usa zsh (~/.zprofile). O ZDOTDIR desta configuração
+# faz o zsh ignorar o ~/.zprofile, e sem esta linha o que se instala na conta
+# — Claude Code, pipx, scripts próprios — some do PATH na troca de shell.
+# O typeset -U descarta repetição, para um PATH herdado que já os tenha.
+typeset -U path
+path=("$HOME/.local/bin" "$HOME/bin" $path)
+
 # Atribuído direto, e não com ${EDITOR:-...}: o Fedora traz
 # /etc/profile.d/nano-default-editor.sh, que define EDITOR=/usr/bin/nano, e o
 # /etc/zshrc faz source dos profile.d ANTES desta configuração. Com ':-' o

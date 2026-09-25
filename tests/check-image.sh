@@ -1125,6 +1125,14 @@ check "config do zsh carrega inteira sem rede" \
 # HOME=/tmp porque o /root da imagem é symlink para var/roothome, que só nasce
 # no boot: sem HOME gravável o mise apenas reclama, e a verificação passaria a
 # medir o container descartável em vez da imagem.
+# O Fedora põe ~/.local/bin no PATH pelo ~/.bashrc e pelo ~/.zprofile, e o
+# ZDOTDIR da imagem faz o zsh ignorar o segundo. Sem a linha do tools.zsh, o que
+# se instala na conta some do PATH quando a conta passa para o zsh.
+check "zsh põe ~/.local/bin no PATH" \
+    sh -c 'podman run --rm --network=none -e HOME=/tmp "'"$IMAGE"'" zsh -ic "
+        [[ \":\$PATH:\" == *:/tmp/.local/bin:* ]] || { print -u2 \"sem ~/.local/bin: \$PATH\"; exit 1; }
+    " 2>&1'
+
 check "zsh ativa o mise" \
     sh -c 'podman run --rm --network=none -e HOME=/tmp "'"$IMAGE"'" zsh -ic "
         [[ \$MISE_SHELL == zsh ]]             || { print -u2 \"MISE_SHELL=\$MISE_SHELL, esperado zsh\"; exit 1; }
