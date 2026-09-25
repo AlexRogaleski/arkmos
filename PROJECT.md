@@ -1084,7 +1084,7 @@ Onde fica cada aplicativo em uso:
 | VS Code | imagem: precisa do docker do host (seção 17.1) |
 | Nautilus, Discos, compactação, assistente de impressão | imagem: integração com o sistema (25.1, 25.2) |
 | Chrome, Thunderbird, Spotify, Discord, OnlyOffice, Inkscape, Switcheroo, AnyDesk | Flatpak |
-| gedit (texto), Papers (PDF), Loupe (imagens), Showtime (vídeo), Calculadora | Flatpak |
+| Editor de Texto do GNOME, Papers (PDF), Loupe (imagens), Showtime (vídeo), Calculadora | Flatpak |
 | Fedora Media Writer, LocalSend, Galaxy Buds Client, Mecalin | Flatpak |
 | Monitor de sistema: btop, no lugar do htop da base | imagem |
 | Flatseal, Warehouse, Bazaar (loja), Embellish (Nerd Fonts), DistroShelf (Distrobox) | Flatpak |

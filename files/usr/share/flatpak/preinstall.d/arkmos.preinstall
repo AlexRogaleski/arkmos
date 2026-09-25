@@ -47,7 +47,7 @@ Branch=stable
 Branch=stable
 
 # Editor de texto
-[Flatpak Preinstall org.gnome.gedit]
+[Flatpak Preinstall org.gnome.TextEditor]
 Branch=stable
 
 # Leitor de PDF
