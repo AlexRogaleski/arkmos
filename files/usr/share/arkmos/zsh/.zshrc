@@ -19,6 +19,18 @@
 # resolve links e :h corta o nome do arquivo.
 ARKMOS_ZSH="${${(%):-%x}:A:h}"
 
+# /home é link para /var/home, e o kernel só guarda o caminho resolvido. A
+# sessão herda PWD=/var/home/<usuário> de quem a sobe, e todo terminal aberto
+# dela nascia fora do $HOME aos olhos do shell: o prompt mostrava o caminho
+# inteiro no lugar do ~. Mesmo diretório, então basta trocar o prefixo.
+if [[ $PWD != $HOME && $PWD != $HOME/* ]]; then
+    _arkmos_home="${HOME:A}"
+    if [[ $_arkmos_home != $HOME && ($PWD == $_arkmos_home || $PWD == $_arkmos_home/*) ]]; then
+        builtin cd -q -- "$HOME${PWD#$_arkmos_home}"
+    fi
+    unset _arkmos_home
+fi
+
 for _module in history completion keybindings aliases tools plugins; do
     [[ -r "$ARKMOS_ZSH/$_module.zsh" ]] && source "$ARKMOS_ZSH/$_module.zsh"
 done

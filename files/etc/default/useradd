@@ -1,0 +1,15 @@
+# Arkmos: padrões do useradd, iguais aos do shadow-utils do Fedora, com o zsh
+# no lugar do bash.
+#
+# A conta de quem instala pela ISO é criada pelo Anaconda, e não pelo
+# assistente do primeiro boot — que é o único que passa '--shell' explícito. O
+# Anaconda chama o useradd dentro do sistema instalado sem '--shell', e o
+# useradd cai no SHELL daqui. Com o padrão do Fedora a conta nascia no bash, e
+# toda a configuração do zsh da imagem ficava sem uso (seção 13).
+GROUP=100
+HOME=/var/home
+INACTIVE=-1
+EXPIRE=
+SHELL=/usr/bin/zsh
+SKEL=/etc/skel
+CREATE_MAIL_SPOOL=yes

@@ -40,7 +40,37 @@ Na variante padrão não há driver NVIDIA nenhum: numa máquina cuja dGPU é li
 
 ## Instalar
 
-Num disco, a partir da imagem publicada:
+### Pela ISO, num pendrive
+
+O caminho para máquina de verdade. A mídia instala a imagem **publicada** no GHCR, e não a local: é essa referência que a máquina passa a seguir nos `bootc upgrade`.
+
+Requer `podman`, `just` e `7z` (`p7zip`), e uns 20 GB livres — o builder descomprime a imagem inteira antes de montar a mídia. A ISO final tem uns 4,5 GB.
+
+```bash
+just iso                    # gera output/bootiso/install.iso (pede sudo)
+just variant=nvidia iso     # o mesmo, para a variante NVIDIA → output-nvidia/
+```
+
+A receita confere o kickstart dentro da ISO antes de terminar — assinatura exigida no `bootc switch`, raiz em Btrfs comprimido, a imagem certa — e para com erro se algo faltar.
+
+Para ensaiar a instalação numa VM antes de ir ao hardware (requer também `qemu` e `edk2-ovmf`):
+
+```bash
+just run-iso                # instala num disco virtual novo, de 60G
+just run-iso-instalado      # boots seguintes, sem a ISO
+```
+
+Para gravar no pendrive, confira o device com `lsblk` — tudo nele é apagado:
+
+```bash
+sudo dd if=output/bootiso/install.iso of=/dev/sdX bs=4M status=progress oflag=direct
+```
+
+O instalador abre em português e em ABNT2, e pede o disco, a rede e a conta. Ele **não apaga disco nenhum sozinho**: o destino é escolhido na tela. No fim, reinicia direto no sistema instalado.
+
+### Num disco, direto da imagem
+
+A partir da imagem publicada:
 
 ```bash
 sudo podman run --rm --privileged --pid=host \

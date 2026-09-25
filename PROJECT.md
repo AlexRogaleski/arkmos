@@ -726,6 +726,12 @@ Tudo vive em `/usr`: read-only, igual para todo usuário, atualizado junto com a
 
 O modo vi fica deliberadamente fora: `bindkey -v` no `local.zsh` resolve, e é escolha de quem usa, não do sistema.
 
+O zsh é o shell de toda conta, e não só da que o assistente do primeiro boot cria com `--shell`. A conta de quem instala pela ISO é criada pelo Anaconda, que chama o `useradd` sem `--shell`; com o padrão do Fedora ela nascia no bash, e nada desta configuração era usado — visto na instalação em hardware de 2026-09-24. O `/etc/default/useradd` da imagem troca só o `SHELL`. Uma conta que já existe continua com o shell que tem: `sudo usermod -s /usr/bin/zsh <usuário>` e um novo login.
+
+O `.zshrc` também troca `/var/home/<usuário>` por `$HOME` no diretório inicial. A sessão herda o caminho resolvido do link `/home → /var/home`, e sem isso todo terminal abria fora do `~` aos olhos do prompt.
+
+O `zoxide` substitui o `cd` (`zoxide init --cmd cd`): caminho normal continua funcionando, e um pedaço do nome de um diretório já visitado também — `cd ark` vai para `~/Projetos/arkmos`, e `cdi` escolhe entre os candidatos pelo fzf.
+
 ## 13.2 Plugins: RPM, não git clone
 
 ```text

@@ -1151,6 +1151,11 @@ check "bash ativa o mise" \
 check "skel liga o bash ao profile.d" \
     run sh -c 'grep -q "\. /etc/bashrc" /etc/skel/.bashrc'
 
+# A conta criada pelo Anaconda não passa --shell, e cai neste padrão. Com o do
+# Fedora ela nascia no bash, e nada da config do zsh abaixo era usado.
+check "useradd sem --shell cria a conta no zsh" \
+    run sh -c 'useradd -D | grep -qx SHELL=/usr/bin/zsh'
+
 check "ZDOTDIR aponta para a config da imagem" \
     run sh -c 'test -r /usr/share/arkmos/zsh/.zshrc &&
                grep -q /usr/share/arkmos/zsh /etc/zshenv'
