@@ -335,7 +335,7 @@ files/etc/niri/config.kdl
 Personalizações em relação à configuração de exemplo:
 
 - `spawn-at-startup "noctalia"` no lugar da Waybar;
-- `Mod+T` abre o Foot;
+- `Mod+T` abre o Foot, e `Mod+E` o Nautilus — o `E` de *explorer*, o mesmo atalho do Windows e de boa parte dos desktops Linux;
 - `Mod+D` e `Mod+Space` abrem o lançador do Noctalia, e `Super+Alt+L` bloqueia a tela pelo Noctalia. A configuração de exemplo apontava para o fuzzel e o swaylock, dois programas à parte, e o lançador do Noctalia ficava sem atalho;
 - `Shift+Print` faz captura com anotação (seção 25);
 - anel de foco de 3 px, com gradiente do azul ao roxo de destaque do Tokyo Night, e cantos arredondados de 8 px em todas as janelas, com `clip-to-geometry` para o conteúdo ser recortado no mesmo raio — sem ele o arredondamento fica só na moldura e o conteúdo aparece quadrado nos cantos;
@@ -549,7 +549,7 @@ Conta que já existe ganha as pastas no primeiro login depois da atualização.
 
 ## 11.2 O que continua em inglês
 
-- **Overlay de atalhos do niri.** O niri não tem tradução. Cada linha aceita um `hotkey-overlay-title`, e as 19 ações que ele lista têm título em português na `config.kdl` — o `just check` barra ação sem título. O cabeçalho "Important Hotkeys" é fixo no binário. O overlay não abre sozinho no login (`skip-at-startup`); `Mod+Shift+/` o mostra.
+- **Overlay de atalhos do niri.** O niri não tem tradução. Cada linha aceita um `hotkey-overlay-title`, e as ações que ele lista têm título em português na `config.kdl` — o `just check` barra ação sem título. O cabeçalho "Important Hotkeys" é fixo no binário. O overlay não abre sozinho no login (`skip-at-startup`); `Mod+Shift+/` o mostra.
 - **Noctalia Greeter.** Não tem mecanismo de tradução: "Type password", "Search users…", "Shut down", "Restart", "No users found" e mais uns poucos textos estão fixos no código. O Noctalia Shell, esse sim, tem `pt-BR`. **Decisão (2026-09-15): aceito em inglês.** Traduzir no build seria o primeiro patch em código de terceiro do projeto, a conferir a cada versão, por uns dez textos.
 
 ---
@@ -1084,7 +1084,7 @@ Onde fica cada aplicativo em uso:
 | VS Code | imagem: precisa do docker do host (seção 17.1) |
 | Nautilus, Discos, compactação, assistente de impressão | imagem: integração com o sistema (25.1, 25.2) |
 | Chrome, Thunderbird, Spotify, Discord, OnlyOffice, Inkscape, Switcheroo, AnyDesk | Flatpak |
-| Papers (PDF), Loupe (imagens), Showtime (vídeo), Calculadora | Flatpak |
+| gedit (texto), Papers (PDF), Loupe (imagens), Showtime (vídeo), Calculadora | Flatpak |
 | Fedora Media Writer, LocalSend, Galaxy Buds Client, Mecalin | Flatpak |
 | Monitor de sistema: btop, no lugar do htop da base | imagem |
 | Flatseal, Warehouse, Bazaar (loja), Embellish (Nerd Fonts), DistroShelf (Distrobox) | Flatpak |

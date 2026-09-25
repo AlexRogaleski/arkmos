@@ -414,6 +414,10 @@ binds {
 
     // Suggested binds for running programs: terminal, app launcher, screen locker.
     Mod+T hotkey-overlay-title="Abrir um terminal: foot" { spawn "foot"; }
+    // Arkmos: o Nautilus é o gerenciador de arquivos da imagem. --new-window
+    // porque ele pode já estar rodando como serviço D-Bus, e aí sem a flag só
+    // traria para a frente uma janela que talvez nem exista.
+    Mod+E hotkey-overlay-title="Abrir o gerenciador de arquivos: Nautilus" { spawn "nautilus" "--new-window"; }
     // Arkmos: o lançador e o bloqueio são os do Noctalia. A configuração de
     // exemplo do niri apontava para o fuzzel e o swaylock, dois programas à
     // parte, com outra aparência, e o lançador do Noctalia ficava sem atalho.

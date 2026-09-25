@@ -46,6 +46,10 @@ Branch=stable
 [Flatpak Preinstall com.anydesk.Anydesk]
 Branch=stable
 
+# Editor de texto
+[Flatpak Preinstall org.gnome.gedit]
+Branch=stable
+
 # Leitor de PDF
 [Flatpak Preinstall org.gnome.Papers]
 Branch=stable
