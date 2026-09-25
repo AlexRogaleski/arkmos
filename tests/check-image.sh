@@ -1125,9 +1125,9 @@ check "config do zsh carrega inteira sem rede" \
 # HOME=/tmp porque o /root da imagem é symlink para var/roothome, que só nasce
 # no boot: sem HOME gravável o mise apenas reclama, e a verificação passaria a
 # medir o container descartável em vez da imagem.
-# O Fedora põe ~/.local/bin no PATH pelo ~/.bashrc e pelo ~/.zprofile, e o
-# ZDOTDIR da imagem faz o zsh ignorar o segundo. Sem a linha do tools.zsh, o que
-# se instala na conta some do PATH quando a conta passa para o zsh.
+# O Fedora põe ~/.local/bin no PATH pelo ~/.bashrc, mas no zsh só pelo
+# ~/.zprofile, que o foot não lê (não abre shell de login). Sem a linha do
+# tools.zsh, o que se instala na conta fica fora do PATH no terminal.
 check "zsh põe ~/.local/bin no PATH" \
     sh -c 'podman run --rm --network=none -e HOME=/tmp "'"$IMAGE"'" zsh -ic "
         [[ \":\$PATH:\" == *:/tmp/.local/bin:* ]] || { print -u2 \"sem ~/.local/bin: \$PATH\"; exit 1; }
@@ -1171,9 +1171,22 @@ check "skel liga o bash ao profile.d" \
 check "useradd sem --shell cria a conta no zsh" \
     run sh -c 'useradd -D | grep -qx SHELL=/usr/bin/zsh'
 
-check "ZDOTDIR aponta para a config da imagem" \
-    run sh -c 'test -r /usr/share/arkmos/zsh/.zshrc &&
-               grep -q /usr/share/arkmos/zsh /etc/zshenv'
+# A config da imagem entra pelo /etc/zshrc, e o ~/.zshrc da conta é lido depois
+# e vence. É o que faz as linhas que instaladores acrescentam ao ~/.zshrc
+# funcionarem — com o ZDOTDIR de antes, elas eram ignoradas em silêncio.
+zsh_zshrc_da_conta() {
+    podman run --rm -i --network=none -e HOME=/tmp "$IMAGE" sh -s <<'SCRIPT'
+if grep -q ZDOTDIR /etc/zshenv; then echo "/etc/zshenv ainda define ZDOTDIR"; exit 1; fi
+cp /etc/skel/.zshrc /tmp/.zshrc
+echo 'alias ll="echo da-conta"' >> /tmp/.zshrc
+cd /tmp
+zsh -ic '
+    (( $+functions[_zsh_autosuggest_start] )) || { print -u2 "a config da imagem não carregou"; exit 1; }
+    [[ $(ll) == da-conta ]]                   || { print -u2 "o ~/.zshrc da conta não venceu"; exit 1; }
+'
+SCRIPT
+}
+check "zsh lê a config da imagem e depois o ~/.zshrc" zsh_zshrc_da_conta
 
 # 'print-config' imprime a configuração efetiva. Procurar por uma linha que só
 # existe no nosso arquivo prova as duas coisas de uma vez: que o starship achou

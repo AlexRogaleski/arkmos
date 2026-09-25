@@ -2,7 +2,7 @@
 #
 # Modo emacs, que é o padrão do zsh. 'bindkey -v' para vi mode fica fora daqui
 # de propósito: é escolha de quem usa, não do sistema — o lugar dela é o
-# ~/.config/zsh/local.zsh.
+# ~/.zshrc.
 
 bindkey -e
 

@@ -2,10 +2,10 @@
 
 # --- Ambiente --------------------------------------------------------------
 
-# ~/.local/bin e ~/bin na frente do PATH, como o Fedora faz para quem usa bash
-# (~/.bashrc) e para quem usa zsh (~/.zprofile). O ZDOTDIR desta configuração
-# faz o zsh ignorar o ~/.zprofile, e sem esta linha o que se instala na conta
-# — Claude Code, pipx, scripts próprios — some do PATH na troca de shell.
+# ~/.local/bin e ~/bin na frente do PATH. O Fedora faz isso no ~/.bashrc para
+# o bash, mas no zsh só no ~/.zprofile, que é lido apenas em shell de login — e
+# o foot não abre shell de login. Sem esta linha, o que se instala na conta
+# (Claude Code, lerd, pipx, scripts próprios) fica fora do PATH no terminal.
 # O typeset -U descarta repetição, para um PATH herdado que já os tenha.
 typeset -U path
 path=("$HOME/.local/bin" "$HOME/bin" $path)
@@ -15,8 +15,7 @@ path=("$HOME/.local/bin" "$HOME/bin" $path)
 # /etc/zshrc faz source dos profile.d ANTES desta configuração. Com ':-' o
 # nano ganharia sempre, e o neovim que a imagem instala nunca seria usado.
 #
-# Quem preferir outro editor troca em ~/.config/zsh/local.zsh, carregado
-# depois deste arquivo.
+# Quem preferir outro editor troca no ~/.zshrc, lido depois deste arquivo.
 export EDITOR=nvim
 export VISUAL="$EDITOR"
 export PAGER=less

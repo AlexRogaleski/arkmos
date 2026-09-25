@@ -1,15 +1,14 @@
 # Arkmos — configuração do Zsh.
 #
 # Vive em /usr, read-only, e é igual para todo usuário: atualiza junto com a
-# imagem. O ZDOTDIR que aponta para cá é definido em /etc/zshenv, que é o
-# único lugar de onde isso é possível.
+# imagem. Quem a carrega é o /etc/zshrc, numa linha que o Containerfile
+# acrescenta ao do Fedora, e o zsh lê o /etc/zshrc ANTES do ~/.zshrc. Por isso
+# o ~/.zshrc continua sendo da conta, lido por último, com a última palavra —
+# e o que um instalador acrescentar lá (lerd, nvm, rustup) funciona como em
+# qualquer outro sistema.
 #
-# Dois pontos de escape, em ordem de precedência:
-#
-#   1. ~/.config/zsh/.zshrc próprio — assume o controle total, e o
-#      /etc/zshenv passa a apontar o ZDOTDIR para lá.
-#   2. ~/.config/zsh/local.zsh — carregado por último por este arquivo, com
-#      a última palavra sobre tudo o que vem abaixo.
+# Antes (até 2026-09-25) a configuração era apontada pelo ZDOTDIR, e o zsh
+# ignorava o ~/.zshrc e o ~/.zprofile em silêncio. Ver PROJECT.md, seção 13.1.
 #
 # A ordem dos módulos importa: os plugins vêm no fim porque o
 # syntax-highlighting embrulha os widgets já definidos e o autosuggestions se
@@ -35,7 +34,3 @@ for _module in history completion keybindings aliases tools plugins; do
     [[ -r "$ARKMOS_ZSH/$_module.zsh" ]] && source "$ARKMOS_ZSH/$_module.zsh"
 done
 unset _module
-
-_arkmos_local="${XDG_CONFIG_HOME:-$HOME/.config}/zsh/local.zsh"
-[[ -r "$_arkmos_local" ]] && source "$_arkmos_local"
-unset _arkmos_local

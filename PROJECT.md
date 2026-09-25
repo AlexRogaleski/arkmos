@@ -706,7 +706,7 @@ A configuração é do Arkmos e vive versionada no repositório:
 
 ```text
 files/usr/share/arkmos/zsh/
-├── .zshrc           ponto de entrada, carrega os módulos na ordem
+├── arkmos.zsh       ponto de entrada, carrega os módulos na ordem
 ├── history.zsh      histórico no state dir do usuário
 ├── completion.zsh   compinit com cache no cache dir do usuário
 ├── keybindings.zsh  modo emacs, busca por prefixo no histórico
@@ -721,18 +721,17 @@ A ordem importa: `plugins.zsh` vem no fim porque o syntax-highlighting embrulha 
 
 Tudo vive em `/usr`: read-only, igual para todo usuário, atualizado junto com a imagem. O que é dado de quem usa — histórico, cache do compinit — vai para os diretórios XDG do usuário, porque em `/usr` não poderia ser escrito. O `zsh` não cria o diretório do `HISTFILE` e falha em silêncio sem ele, então a configuração o cria.
 
-`ZDOTDIR` é apontado por `/etc/zshenv`, o único lugar de onde isso é possível. Dois pontos de escape, em ordem de precedência:
+Quem carrega o `arkmos.zsh` é o `/etc/zshrc`, numa linha que o Containerfile acrescenta ao do Fedora. O zsh lê os arquivos globais antes dos da conta, então a ordem num terminal é: `/etc/zshrc` do Fedora (que carrega os `/etc/profile.d`), a configuração do Arkmos, e por último o `~/.zshrc`, que é **da conta** e tem a última palavra. O `/etc/skel` entrega um `~/.zshrc` só com comentários no lugar do que vem no pacote do zsh, que rodava o `compinit` uma segunda vez.
 
-1. `~/.config/zsh/.zshrc` próprio assume o controle total, e o `/etc/zshenv` passa a apontar o `ZDOTDIR` para lá.
-2. `~/.config/zsh/local.zsh` é carregado por último pelo `.zshrc` da imagem, com a última palavra.
+**Por que não o `ZDOTDIR`.** Até 2026-09-25 a configuração era apontada por um `ZDOTDIR` no `/etc/zshenv`, com dois pontos de escape em `~/.config/zsh`. Funcionava, mas fazia o zsh ignorar o `~/.zshrc` e o `~/.zprofile` **em silêncio** — e muita coisa assume que o `~/.zshrc` é lido: os instaladores de lerd, nvm, rustup, bun e conda acrescentam linhas nele, e as instruções de quase toda ferramenta mandam editá-lo. No notebook, logo depois da troca para o zsh, o `lerd` e o `claude` sumiram do `PATH`, e a linha que os devolveria, posta no `~/.zshrc`, não tinha efeito. Pelo `/etc/zshrc`, a configuração continua em `/usr` e atualiza com a imagem, e o `~/.zshrc` volta a funcionar como em qualquer sistema. O custo é pequeno: os plugins carregam antes do `~/.zshrc`, então um widget definido lá não ganha o destaque de sintaxe; e quem instalar um framework como o oh-my-zsh roda o `compinit` duas vezes. O `just check` confere a ordem, com um alias do `~/.zshrc` vencendo o da imagem.
 
-O modo vi fica deliberadamente fora: `bindkey -v` no `local.zsh` resolve, e é escolha de quem usa, não do sistema.
+O modo vi fica deliberadamente fora: `bindkey -v` no `~/.zshrc` resolve, e é escolha de quem usa, não do sistema.
 
 O zsh é o shell de toda conta, e não só da que o assistente do primeiro boot cria com `--shell`. A conta de quem instala pela ISO é criada pelo Anaconda, que chama o `useradd` sem `--shell`; com o padrão do Fedora ela nascia no bash, e nada desta configuração era usado — visto na instalação em hardware de 2026-09-24. O `/etc/default/useradd` da imagem troca só o `SHELL`. Uma conta que já existe continua com o shell que tem: `sudo usermod -s /usr/bin/zsh <usuário>` e um novo login.
 
-O `tools.zsh` põe `~/.local/bin` e `~/bin` na frente do `PATH`. O Fedora faz isso pelo `~/.bashrc` e pelo `~/.zprofile`, e o `ZDOTDIR` faz o zsh ignorar o segundo: sem a linha, o que se instala na conta — Claude Code, pipx, scripts próprios — sumia do `PATH` na troca para o zsh. Visto no notebook em 2026-09-25, logo depois da troca. Isso vale para o terminal; o que é aberto pela sessão gráfica (VS Code pelo lançador, os servidores MCP que ele sobe) herda o `PATH` do `systemd --user`, e um diretório a mais ali vai num `~/.config/environment.d/*.conf` da conta.
+O `tools.zsh` põe `~/.local/bin` e `~/bin` na frente do `PATH`. O Fedora faz isso no `~/.bashrc` para o bash, mas no zsh só no `~/.zprofile`, que é lido apenas em shell de login — e o foot não abre shell de login. Sem a linha, o que se instala na conta — Claude Code, pipx, scripts próprios — fica fora do `PATH` no terminal. Isso vale para o terminal; o que é aberto pela sessão gráfica (VS Code pelo lançador, os servidores MCP que ele sobe) herda o `PATH` do `systemd --user`, e um diretório a mais ali vai num `~/.config/environment.d/*.conf` da conta.
 
-O `.zshrc` também troca `/var/home/<usuário>` por `$HOME` no diretório inicial. A sessão herda o caminho resolvido do link `/home → /var/home`, e sem isso todo terminal abria fora do `~` aos olhos do prompt.
+O `arkmos.zsh` também troca `/var/home/<usuário>` por `$HOME` no diretório inicial. A sessão herda o caminho resolvido do link `/home → /var/home`, e sem isso todo terminal abria fora do `~` aos olhos do prompt.
 
 O `zoxide` substitui o `cd` (`zoxide init --cmd cd`): caminho normal continua funcionando, e um pedaço do nome de um diretório já visitado também — `cd ark` vai para `~/Projetos/arkmos`, e `cdi` escolhe entre os candidatos pelo fzf.
 
@@ -2203,12 +2202,11 @@ arkmos/
     │   ├── nvidia/…
     │   ├── plymouth/plymouthd.conf
     │   ├── profile.d/mise.sh      ativação do mise no bash
-    │   ├── skel/                  defaults de VS Code, Noctalia e btop
+    │   ├── skel/                  defaults de VS Code, Noctalia e btop; ~/.zshrc vazio
     │   ├── xdg/mimeapps.list      aplicativos padrão por tipo de arquivo
     │   ├── xdg/xdg-terminals.list terminal padrão (foot)
     │   ├── xdg-desktop-portal/niri-portals.conf
-    │   ├── yum.repos.d/           docker-ce e vscode, enabled=0
-    │   └── zshenv
+    │   └── yum.repos.d/           docker-ce e vscode, enabled=0
     └── usr/
         ├── lib/
         │   ├── bootc/install/     filesystem raiz

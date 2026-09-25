@@ -425,6 +425,21 @@ COPY files/ /
 # futuras atualizações da imagem.
 RUN ln -sf ../usr/share/zoneinfo/America/Sao_Paulo /etc/localtime
 
+# zsh: a configuração do Arkmos (files/usr/share/arkmos/zsh) é carregada pelo
+# /etc/zshrc, que o zsh lê em todo shell interativo ANTES do ~/.zshrc. Assim
+# ela atualiza com a imagem e o ~/.zshrc continua da conta, com a última
+# palavra — e o que um instalador escrever nele funciona.
+#
+# Acrescentada ao arquivo do Fedora, e não um /etc/zshrc nosso no lugar dele:
+# o do pacote carrega os /etc/profile.d e define o pathmunge, e copiá-lo aqui
+# seria manter à mão uma cópia que diverge a cada atualização do zsh. O grep
+# falha o build se a linha não entrar.
+RUN printf '\n%s\n%s\n' \
+        '# Arkmos: configuração do zsh da imagem, antes do ~/.zshrc da conta.' \
+        '[[ -r /usr/share/arkmos/zsh/arkmos.zsh ]] && source /usr/share/arkmos/zsh/arkmos.zsh' \
+        >> /etc/zshrc \
+    && grep -qx '.*source /usr/share/arkmos/zsh/arkmos.zsh' /etc/zshrc
+
 # Menu de aplicativos: o que aparece e não deveria.
 #
 # O foot traz três entradas (o terminal, o modo servidor e o cliente dele), e
