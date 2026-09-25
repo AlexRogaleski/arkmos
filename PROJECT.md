@@ -1099,7 +1099,7 @@ Onde fica cada aplicativo em uso:
 | Editor de Texto do GNOME, Papers (PDF), Loupe (imagens), Showtime (vídeo), Calculadora | Flatpak |
 | Fedora Media Writer, LocalSend, Galaxy Buds Client, Mecalin | Flatpak |
 | Monitor de sistema: btop, no lugar do htop da base | imagem |
-| Flatseal, Warehouse, Bazaar (loja), Embellish (Nerd Fonts), DistroShelf (Distrobox) | Flatpak |
+| Flatseal, Bazaar (loja), Embellish (Nerd Fonts), DistroShelf (Distrobox) | Flatpak |
 | Insync, Android Studio com emulador, MySQL Workbench | Distrobox, declarado num repositório privado (seção 16) |
 | Tolaria, Tabularis | AppImage, pelo AppManager |
 | Captura de tela com anotação | Noctalia, no `Shift+Print` |

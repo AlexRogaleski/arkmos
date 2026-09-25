@@ -78,10 +78,6 @@ Branch=stable
 [Flatpak Preinstall com.github.tchx84.Flatseal]
 Branch=stable
 
-# Gerenciar Flatpaks instalados
-[Flatpak Preinstall io.github.flattool.Warehouse]
-Branch=stable
-
 # Loja de Flatpaks
 [Flatpak Preinstall io.github.kolunmi.Bazaar]
 Branch=stable
