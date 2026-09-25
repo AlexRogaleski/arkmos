@@ -1602,13 +1602,19 @@ O workflow tem duas funções, e elas entram em momentos diferentes do projeto.
 
 **Verificar** vale agora. Cada push e cada pull request na `main` constrói as duas variantes e roda o mesmo `tests/check-image.sh` que o `just check` roda na máquina. É o que pega regressão enquanto o projeto muda rápido, sem depender de alguém lembrar de verificar antes de commitar.
 
-**Publicar** só vale quando houver máquina instalada para atualizar — é a peça que transforma o Arkmos de "reconstruir e reinstalar" em um sistema atualizável por `bootc upgrade`. Até lá, publicar é encher o registry de versões que ninguém baixa. Fica atrás de um acionamento manual (`workflow_dispatch` com a caixa `publish` marcada), e as tags seguem o esquema por data: `44.AAAAMMDD.N`, mais `44` e `latest`.
+**Publicar** é a peça que transforma o Arkmos de "reconstruir e reinstalar" em um sistema atualizável por `bootc upgrade`. Acontece de duas formas, e nunca num push — os pushes são muitos, e boa parte é documentação:
+
+- **toda semana**, pelo `schedule` (sábado às 06:00 UTC), para a máquina instalada acompanhar a base do Universal Blue mesmo numa semana sem commit;
+- **à mão**, pelo `workflow_dispatch` com a caixa `publish` marcada, quando uma mudança precisa chegar antes do sábado.
+
+As tags seguem o esquema por data: `44.AAAAMMDD.N`, mais `44` e `latest`.
 
 Detalhes do desenho:
 
 - **Uma variante por job** (`strategy.matrix`). O runner do GitHub já precisa de limpeza para caber **uma** imagem de ~11 GB; as duas no mesmo job estouram o disco. Em jobs separados também constroem em paralelo.
 - **As duas variantes são construídas, verificadas e publicadas.** A NVIDIA passou a publicar depois que o ciclo de publicar, instalar e atualizar foi validado na padrão (seção 35.2); são ~5 GB por versão, e em repositório público não há cota de registry. Ela compartilha a árvore `files/` inteira com a padrão, então o que pode quebrar só nela vem da base — a imagem sair do ar, mudar de nome, deixar de trazer um pacote.
-- **Sem `schedule` por enquanto.** O cron existe para acompanhar a reconstrução diária da base do Universal Blue — cujas tags, aliás, expiram em 4 semanas — e isso só protege uma imagem que está em uso. Entra quando a publicação virar rotina.
+- **`schedule` semanal, e não diário** (ligado em 2026-09-25, com o notebook instalado e recebendo atualização). As tags da base expiram em 4 semanas; a retenção guarda ~6 publicações, o que dá 6 semanas de histórico, contra 6 dias num cron diário; e cada publicação é um download na máquina. Os Flatpaks, que têm o navegador, se atualizam sozinhos todo dia. O horário, 03:00 em Brasília, deixa a meia hora de build terminar antes das 04:00, quando o `rpm-ostreed-automatic` prepara a versão nova para o próximo boot. O GitHub desliga workflows agendados depois de 60 dias sem atividade no repositório, com aviso por e-mail.
+- **Uma publicação não é cancelada por um push.** O evento faz parte do grupo de `concurrency`, e só push e pull request cancelam o anterior: um push no meio de uma publicação a interromperia entre o push da imagem e a assinatura.
 - **Assina com cosign** quando o secret `SIGNING_SECRET` existe.
 - **Nome do registry em minúsculas.** O dono da conta é `AlexRogaleski`, e `github.repository_owner` vem com as maiúsculas; o podman recusa o nome ("repository name must be lowercase"). O workflow monta `ghcr.io/alexrogaleski` num passo de shell e passa o mesmo valor ao build, para a política de assinatura apontar para onde a imagem é publicada.
 - **O digest assinado é o publicado.** O push recomprime as camadas, e o manifesto no registry tem outro digest que o da imagem local — que o `podman inspect` continua mostrando mesmo depois do push. O workflow assina o digest do `--digestfile` e para se as três tags saírem com digests diferentes.
@@ -1636,7 +1642,7 @@ O projeto já era construído com essa hipótese: nada pessoal é declarado na i
 
 ### Retenção
 
-Cada publicação cria **uma** versão (um digest) carregando três tags: `44.AAAAMMDD.N`, `44` e `latest`. Sem limpeza, nada remove as anteriores e cada uma ocupa ~4 GB. Em repositório público isso não custa cota, mas uma listagem com centenas de versões deixa de ser navegável — e no dia em que o `schedule` for ligado, passa a crescer sozinha.
+Cada publicação cria **uma** versão (um digest) carregando três tags: `44.AAAAMMDD.N`, `44` e `latest`. Sem limpeza, nada remove as anteriores e cada uma ocupa ~4 GB. Em repositório público isso não custa cota, mas uma listagem com centenas de versões deixa de ser navegável — e com o `schedule` ligado ela cresce sozinha.
 
 Dois passos, com critérios diferentes:
 

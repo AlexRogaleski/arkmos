@@ -7,15 +7,28 @@ name: build
 # projeto muda rápido, sem depender de alguém lembrar de rodar a verificação
 # na máquina.
 #
-# PUBLICAR só vale quando houver máquina instalada para atualizar — é a peça
-# que transforma o Arkmos de "reconstruir e reinstalar" em um sistema
-# atualizável por 'bootc upgrade'. Até lá publicar é encher o registry de
-# versões que ninguém baixa, então fica atrás de um acionamento manual.
+# PUBLICAR acontece de duas formas, e nunca num push: os pushes são muitos,
+# e boa parte é documentação.
 #
-# Sem 'schedule' por enquanto: o cron existe para acompanhar a reconstrução
-# diária da base do Universal Blue, e isso só protege uma imagem que está em
-# uso. Ligar quando a publicação virar rotina.
+#   - toda semana, pelo 'schedule', para a máquina instalada acompanhar a
+#     base do Universal Blue — correções do Fedora, kernel, driver — mesmo
+#     numa semana sem commit;
+#   - à mão, pelo 'workflow_dispatch' com a caixa marcada, quando uma mudança
+#     daqui precisa chegar antes do sábado.
+#
+# Semanal, e não diário: as tags da base expiram em 4 semanas, a retenção
+# abaixo guarda ~6 publicações (6 semanas de histórico, contra 6 dias num
+# cron diário), e cada publicação é um download na máquina. Os Flatpaks, que
+# têm o navegador, se atualizam por conta própria todo dia.
+#
+# Sábado às 06:00 UTC (03:00 em Brasília): a meia hora de build termina antes
+# das 04:00, quando o rpm-ostreed-automatic da máquina baixa e prepara a
+# versão para o próximo boot. O GitHub pode atrasar um cron em horário de
+# pico, e desliga os agendados depois de 60 dias sem atividade no
+# repositório — nesse caso, um aviso por e-mail e um clique para religar.
 on:
+  schedule:
+    - cron: "0 6 * * 6"
   push:
     branches: [main]
   pull_request:
@@ -30,9 +43,12 @@ on:
 env:
   FEDORA_MAJOR: "44"
 
+# O evento entra no grupo, e só push e pull request se cancelam: um push
+# durante uma publicação não pode interrompê-la no meio, entre o push da
+# imagem e a assinatura. Duas publicações seguidas esperam uma pela outra.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
 
 jobs:
   # shellcheck nos scripts, actionlint neste arquivo e a sintaxe do Justfile,
@@ -110,11 +126,11 @@ jobs:
       HAS_SIGNING_KEY: ${{ secrets.SIGNING_SECRET != '' }}
       IMAGE: arkmos${{ matrix.suffix }}
 
-      # Publica só quando o acionamento é manual E a caixa foi marcada E esta
-      # variante é publicável. Em push e em pull request o job constrói e
-      # verifica, e para aí.
-      PUBLICAR: ${{ github.event_name == 'workflow_dispatch'
-                    && inputs.publish
+      # Publica no agendamento semanal, ou no acionamento manual com a caixa
+      # marcada — e só se esta variante é publicável. Em push e em pull
+      # request o job constrói e verifica, e para aí.
+      PUBLICAR: ${{ (github.event_name == 'schedule'
+                     || (github.event_name == 'workflow_dispatch' && inputs.publish))
                     && matrix.publishable }}
 
     steps:
@@ -323,7 +339,7 @@ jobs:
       # 44.AAAAMMDD.N, 44 e latest. Nada remove as anteriores, e cada uma
       # ocupa ~4 GB. Em repositório público isso não custa cota, mas uma
       # listagem de pacote com centenas de versões deixa de ser navegável — e
-      # no dia em que o schedule for ligado, passa a crescer sozinha.
+      # com o schedule ligado ela cresce sozinha.
       #
       # Dois passos, porque as duas limpezas têm critérios diferentes.
 
