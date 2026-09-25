@@ -1,26 +1,13 @@
 #!/usr/bin/env bash
 #
-# Verificações da imagem do Arkmos.
+# Verificações da imagem do Arkmos: ./tests/check-image.sh localhost/arkmos:dev
 #
-#   ./tests/check-image.sh localhost/arkmos:dev
-#
-# Um script só, usado pelo 'just check' e pelo CI. Antes as duas listas eram
-# mantidas à mão em lugares separados e já divergiam — o que significa que uma
-# verificação nova valia num fluxo e não no outro.
-#
-# O critério para entrar aqui é ser um erro que a imagem consegue esconder:
-# algo que constrói, passa no lint e só aparece como falha no boot da máquina.
+# Usado pelo 'just check' e pelo CI (§28.1). Entra aqui o erro que a imagem
+# consegue esconder: constrói, passa no lint e só falha no boot da máquina.
 
-# Dois avisos do shellcheck são inerentes a este script e ficam desligados:
-#
-#   SC2016  as verificações mandam código de shell para DENTRO do container,
-#           em aspas simples. Não expandir aqui é o ponto: quem expande é o
-#           shell de lá.
-#   SC2329  as funções de verificação (firstboot_e2e, image_file_matches…) são
-#   SC2317  chamadas indiretamente, pelo 'check "descrição" função'. São dois
-#           códigos para a mesma observação: o shellcheck 0.11 usa o SC2329, e
-#           o 0.9, que é o do runner do GitHub, o SC2317.
-#
+# SC2016: o código vai para DENTRO do container, em aspas simples, de propósito.
+# SC2329 (shellcheck 0.11) e SC2317 (0.9, o do runner): as funções de
+# verificação são chamadas indiretamente, pelo 'check'.
 # shellcheck disable=SC2016,SC2329,SC2317
 
 set -uo pipefail
@@ -28,9 +15,7 @@ set -uo pipefail
 IMAGE="${1:-localhost/arkmos:dev}"
 FAILED=0
 
-# A variante vem do label que o Containerfile grava, e não do nome da imagem:
-# o nome é convenção do Justfile e do CI, o label é o que a máquina instalada
-# consegue consultar depois.
+# A variante vem do label que o Containerfile grava, não do nome da imagem.
 VARIANT="$(podman inspect --format '{{index .Config.Labels "org.arkmos.variant"}}' \
     "$IMAGE" 2>/dev/null)"
 VARIANT="${VARIANT:-desconhecida}"
@@ -69,10 +54,8 @@ check() {
     fi
 }
 
-# O assistente do primeiro boot roda uma única vez, na instalação: um erro nele
-# não aparece em build nem em lint, aparece com a máquina já instalada e sem
-# conta para entrar. Aqui ele roda de verdade, num container descartável, com
-# as respostas vindas do stdin.
+# O assistente roda de verdade, com as respostas no stdin: um erro nele só
+# apareceria com a máquina instalada e sem conta para entrar.
 firstboot_e2e() {
     printf 'arkteste\nTeste Arkmos\nsenha-de-teste-longa\nsenha-de-teste-longa\n' |
         podman run --rm -i "$IMAGE" bash -c '
@@ -93,9 +76,8 @@ firstboot_e2e() {
             test -f /var/lib/arkmos/initialized \
                 || { echo "não gravou a marca de inicializado"; exit 1; }
 
-            # /etc/skel só é copiado por useradd --create-home, e só para
-            # conta nova. Se o assistente perder essa flag, os defaults de
-            # aplicativo somem sem nenhum erro aparecer.
+            # O skel só é copiado por useradd --create-home: sem a flag,
+            # os defaults somem sem erro.
             test -s /var/home/arkteste/.config/Code/User/settings.json \
                 || { echo "o /etc/skel não foi copiado para o home"; exit 1; }
             test -s /var/home/arkteste/.config/noctalia/arkmos.toml \
@@ -103,10 +85,8 @@ firstboot_e2e() {
         '
 }
 
-# Rebase a partir de outro Fedora Atomic: a conta já existe, criada pelo
-# Anaconda de lá, e atravessa a troca junto com o /var/home. O assistente tem
-# de sair sozinho e em silêncio, sem exigir senha nova, e dar o grupo docker só
-# a quem já administrava o sistema — estar no docker equivale a ser root.
+# Rebase de outro Fedora Atomic, com a conta já existente: o assistente sai
+# sozinho e calado, e dá o grupo docker só a quem está no wheel (§12.1).
 firstboot_rebase() {
     podman run --rm "$IMAGE" bash -c '
         useradd -u 1000 -m -G wheel ana >/dev/null 2>&1
@@ -137,8 +117,7 @@ echo
 
 check "bootc container lint" run bootc container lint
 
-# Pega erro de sintaxe e de ordenação nas units do Arkmos, inclusive no
-# drop-in que adicionamos ao greetd.
+# Sintaxe e ordenação das units do Arkmos, inclusive o drop-in do greetd.
 check "systemd-analyze verify (units do Arkmos)" \
     run systemd-analyze verify \
     /usr/lib/systemd/system/arkmos-firstboot.service \
@@ -157,20 +136,14 @@ check "timezone America/Sao_Paulo" \
 check "teclado ABNT2 (KEYMAP=br)" \
     run sh -c 'grep -qx "KEYMAP=br" /etc/vconsole.conf'
 
-# Sem isto o systemd cai no default e a máquina se apresenta como "fedora".
-#
-# Lido com 'podman cp' e não com 'podman run': o podman faz bind-mount de
-# /etc/hostname no container com o id dele, então dentro de um 'run' o arquivo
-# sempre existe e sempre tem conteúdo — a verificação passaria mesmo com a
-# imagem sem hostname nenhum, que era exatamente o caso.
+# Sem isto a máquina se chama "fedora". Com 'podman cp': num 'run' o podman
+# monta um /etc/hostname próprio, e a verificação sempre passaria.
 check "hostname declarado na imagem" image_file_matches /etc/hostname arkmos
 
 # --- Login -----------------------------------------------------------------
 
-# A conta do greeter tem nome diferente em cada distribuição, e errá-la não
-# produz erro de configuração: o greetd falha 5 vezes, desiste, e como ele
-# entra em conflito com getty@tty1 a vt1 fica preta. Foi o que aconteceu na
-# primeira VM. Este é o teste que faltava.
+# A conta do greeter muda de nome entre distribuições, e errá-la não dá erro de
+# configuração: o greetd falha cinco vezes, desiste e a vt1 fica preta (§8.3).
 check "conta do greeter do greetd existe" \
     run sh -c '
         u=$(sed -n "s/^[[:space:]]*user[[:space:]]*=[[:space:]]*\"\([^\"]*\)\".*/\1/p" \
@@ -192,20 +165,16 @@ check "assistente dispensado em rebase (conta existente)" firstboot_rebase
 
 # --- Sessão: autenticação e localização -------------------------------------
 
-# O /etc/pam.d/greetd já referencia pam_gnome_keyring com '-' na frente, que
-# manda ignorar em silêncio quando o módulo não existe. Sem o pacote -pam,
-# portanto, nada falha e nada avisa: o chaveiro não é destravado com a senha do
-# login, e a sessão abre pedindo a mesma senha outra vez, num prompt sem tema e
-# em inglês. Foi o que apareceu no teste em VM.
+# O PAM do greetd referencia o módulo com '-', que ignora se ele faltar: sem o
+# pacote -pam, o chaveiro não abre com o login e a sessão pede a senha de novo.
 check "pam_gnome_keyring presente e referenciado" \
     run sh -c 'test -e /usr/lib64/security/pam_gnome_keyring.so \
         || { echo "o módulo não está instalado (falta gnome-keyring-pam)"; exit 1; }
       grep -q pam_gnome_keyring /etc/pam.d/greetd \
         || { echo "o PAM do greetd não referencia o módulo"; exit 1; }'
 
-# O autostart XDG do agente tem OnlyShowIn=MATE, e XDG_CURRENT_DESKTOP=niri não
-# casa com isso: ele nunca subiria sozinho. Sem agente, toda autorização falha
-# sem mostrar janela nem erro.
+# O autostart do agente tem OnlyShowIn=MATE e nunca subiria no niri. Sem
+# agente, toda autorização falha sem janela nem erro.
 check "agente polkit iniciado pelo niri" \
     run sh -c 'grep -q "^spawn-at-startup \"/usr/libexec/polkit-mate-authentication-agent-1\"$" /etc/niri/config.kdl \
         && test -x /usr/libexec/polkit-mate-authentication-agent-1'
@@ -229,9 +198,8 @@ check "arkmos-diag disponível e válido" \
 
 # --- Aparência -------------------------------------------------------------
 
-# É esta opção que faz o compositor desenhar a decoração. Sem ela cada cliente
-# desenha a própria, e o foot usa a cor de foreground padrão: uma barra de
-# título branca em cima de um terminal escuro.
+# Sem ela cada cliente desenha a própria decoração, e o foot ganha uma barra de
+# título branca.
 check "niri com prefer-no-csd ativo" \
     run grep -qE '^prefer-no-csd$' /etc/niri/config.kdl
 
@@ -240,9 +208,8 @@ check "foot.ini válido" run foot --check-config
 check "foot com titlebar desligada" \
     run sh -c 'grep -qx "preferred=none" /etc/xdg/foot/foot.ini'
 
-# O banco do dconf é um GVDB binário; as strings ficam legíveis dentro dele, o
-# que serve para afirmar que o 'dconf update' rodou E que o valor entrou. Sem
-# o update, os arquivos-fonte ficam na imagem sem efeito nenhum.
+# As strings do banco compilado são legíveis: prova que o 'dconf update' rodou
+# e que o valor entrou.
 check "banco do dconf compilado com tema escuro" \
     run sh -c 'test -s /etc/dconf/db/local &&
                grep -q prefer-dark /etc/dconf/db/local &&
@@ -252,23 +219,17 @@ check "banco do dconf compilado com tema escuro" \
 check "profile do dconf inclui o banco do sistema" \
     run sh -c 'grep -qx "system-db:local" /etc/dconf/profile/user'
 
-# O dconf precisa estar LEGÍVEL, não só compilado — um banco presente mas
-# ilegível é indistinguível de ausente para quem consulta.
+# Legível, e não só compilado: ilegível é o mesmo que ausente.
 check "valores do dconf legíveis" \
     run sh -c 'DCONF_PROFILE=user dconf read /org/gnome/desktop/interface/color-scheme 2>/dev/null | grep -q prefer-dark'
 
-# O dconf pode estar perfeito e o tema ainda sair claro: é por este backend
-# que Firefox e aplicativos Electron perguntam se o sistema está no escuro. Se
-# a interface Settings cair no backend do GNOME — que pressupõe uma sessão
-# GNOME — ninguém responde, e cada um usa o default claro embutido.
+# Firefox e Electron perguntam pelo tema neste backend; no do GNOME, sem sessão
+# GNOME, ninguém responde e todos caem no claro.
 check "portal de Settings apontado para o backend gtk" \
     run sh -c 'grep -qx "org.freedesktop.impl.portal.Settings=gtk;" /etc/xdg-desktop-portal/niri-portals.conf'
 
-# Caminho de leitura independente de portal e de D-Bus: se o portal não subir,
-# o GTK3 ainda encontra o tema aqui em vez de cair no Adwaita claro.
-# O VS Code tem sistema de temas próprio: nenhum portal ou variável alcança o
-# 'workbench.colorTheme'. O que alcança é semear o settings.json do usuário
-# pelo /etc/skel, que o useradd copia ao criar a conta.
+# O tema do VS Code não é alcançado por portal nem variável: o settings.json é
+# semeado pelo /etc/skel.
 check "defaults do VS Code semeados no /etc/skel" \
     run python3 -c '
 import json
@@ -277,12 +238,12 @@ assert c.get("window.autoDetectColorScheme") is True, "não segue o tema do sist
 assert c.get("update.mode") == "none", "auto-update ligado numa imagem read-only"
 '
 
+# Caminho sem portal nem D-Bus: se o portal não subir, o GTK3 acha o tema aqui.
 check "tema GTK declarado também fora do dconf" \
     run sh -c 'grep -qx "gtk-theme-name=adw-gtk3-dark" /etc/xdg/gtk-3.0/settings.ini && grep -qx "gtk-application-prefer-dark-theme=1" /etc/xdg/gtk-3.0/settings.ini'
 
-# O mesmo tema de ícones nos três caminhos de leitura, e o tema instalado: um
-# nome que não existe não dá erro nenhum, o GTK só cai nos ícones de fallback.
-# E as pastas em violeta, que o build troca repontando symlinks do Papirus.
+# Nome de tema inexistente não dá erro, o GTK cai no fallback. As pastas em
+# violeta são symlinks repontados no build.
 check "ícones Papirus-Dark, com as pastas em violeta" \
     run sh -c 'test -f /usr/share/icons/Papirus-Dark/index.theme &&
                grep -qx "gtk-icon-theme-name=Papirus-Dark" /etc/xdg/gtk-3.0/settings.ini &&
@@ -291,11 +252,8 @@ check "ícones Papirus-Dark, com as pastas em violeta" \
                test "$(readlink /usr/share/icons/Papirus/64x64/places/folder.svg)" = folder-violet.svg &&
                test "$(readlink /usr/share/icons/Papirus/48x48/places/user-home.svg)" = user-violet-home.svg'
 
-# O cursor é declarado em cinco lugares, e cada um alcança uma classe de
-# programa: dconf (GTK4 e libadwaita), settings.ini (GTK 3 e 4 sem D-Bus), niri
-# (o desktop e XCURSOR_THEME para o resto) e a tela de login. Um nome que não
-# existe não dá erro: o programa cai no cursor padrão, e o sistema fica com dois
-# cursores diferentes conforme a janela.
+# Cada lugar alcança uma classe de programa. Nome inexistente não dá erro: o
+# programa cai no cursor padrão, e o sistema fica com dois cursores.
 check "cursor Bibata-Modern-Ice instalado e declarado nos cinco lugares" \
     run sh -c 'c=Bibata-Modern-Ice
                test -f /usr/share/icons/$c/index.theme && test -e /usr/share/icons/$c/cursors/left_ptr ||
@@ -307,15 +265,9 @@ check "cursor Bibata-Modern-Ice instalado e declarado nos cinco lugares" \
                grep -qx "    xcursor-theme \"$c\"" /etc/niri/config.kdl || { echo "niri"; exit 1; }
                grep -qx "theme = \"$c\"" /usr/share/arkmos/noctalia-greeter.toml || { echo "greeter"; exit 1; }'
 
-# O parser TOML do greetd é mais restrito que o TOML 1.0, e rejeita
-# construções que outros parsers aceitam — uma string multi-linha com barra
-# invertida no fim da linha, por exemplo. Validar o arquivo com o tomllib do
-# Python NÃO pega isso: ele aceita, o greetd aborta, e o sintoma é o mesmo de
-# uma conta de greeter inexistente (cinco restarts e desiste). Custou um teste
-# em VM. Quem valida o arquivo do greetd é o greetd.
-#
-# Sem VT, o greetd falha ao abrir o terminal — e é justamente isso que se
-# exige aqui: ter chegado até o terminal significa que o config foi lido.
+# O parser do greetd recusa o que o tomllib aceita (string multilinha com barra
+# no fim, por exemplo), então quem valida é o greetd. Sem VT ele falha ao abrir
+# o terminal, e chegar até ali prova que o config foi lido.
 check "greetd consegue ler o próprio config" \
     run sh -c '
         saida=$(greetd --config /etc/greetd/config.toml 2>&1)
@@ -328,9 +280,7 @@ check "greetd consegue ler o próprio config" \
 check "script da tela de login é executável" \
     run test -x /usr/libexec/arkmos-greeter
 
-# O drop-in e a unit de recuperação só servem juntos: um OnFailure apontando
-# para unit inexistente é aceito em silêncio pelo systemd, e a rede de
-# segurança simplesmente não existiria.
+# OnFailure apontando para unit inexistente é aceito em silêncio.
 check "fallback de login ligado ao greetd" \
     run sh -c '
         grep -q "^OnFailure=arkmos-login-fallback.service$" \
@@ -340,9 +290,8 @@ check "fallback de login ligado ao greetd" \
             || { echo "a unit de fallback não existe"; exit 1; }
     '
 
-# Flag errada aqui produz o mesmo sintoma. Rodar o tuigreet não denuncia:
-# sem tty ele estoura no terminal antes de reclamar do argumento, e ainda sai
-# com código 0. Então as flags são conferidas contra o --help.
+# Sem tty o tuigreet estoura antes de reclamar da flag, e sai com 0: as flags
+# são conferidas contra o --help.
 check "opções do tuigreet existem nesta versão" \
     run python3 -c '
 import re, subprocess, sys
@@ -363,17 +312,14 @@ check "binários do Noctalia Greeter instalados" \
         test -x "/usr/bin/$b" || { echo "falta /usr/bin/$b"; exit 1; }
     done'
 
-# Compilado noutro estágio justamente para o toolchain não vir junto. Se algum
-# -devel aparecer na imagem final, o COPY --from virou um dnf install.
+# -devel na imagem final é sinal de que o COPY --from virou um dnf install.
 check "toolchain de compilação ficou fora da imagem" \
     sh -c '! podman run --rm "'"$IMAGE"'" sh -c "rpm -q meson gcc-c++ wlroots-devel >/dev/null 2>&1"'
 
 check "wlroots de runtime presente" run rpm -q wlroots
 
-# O tmpfiles.d do upstream declara o diretório para o usuário 'greeter', que no
-# Fedora não existe. Se ele voltar para a imagem, o estado do greeter deixa de
-# ser criado e o login falha — a mesma classe de erro da conta errada no
-# config.toml.
+# O do upstream usa o usuário 'greeter', que não existe no Fedora: o estado do
+# greeter deixaria de ser criado e o login falharia.
 check "tmpfiles.d do upstream substituído pelo nosso" \
     run sh -c '
         test ! -e /usr/lib/tmpfiles.d/noctalia-greeter.conf \
@@ -386,10 +332,8 @@ check "greeter.toml entregue pelo tmpfiles" \
     run sh -c 'grep -q "^C /var/lib/noctalia-greeter/greeter.toml" /usr/lib/tmpfiles.d/arkmos.conf &&
                test -s /usr/share/arkmos/noctalia-greeter.toml'
 
-# A semente do sync.toml só vale com a paleta completa: faltando um papel, o
-# greeter a descarta inteira, em silêncio, e o login volta ao tema embutido. O
-# esquema do login tem de ser o que o greeter.toml escolhe, e o papel de parede
-# um arquivo que existe.
+# Faltando um papel da paleta, o greeter descarta a semente em silêncio e o
+# login volta ao tema embutido (§26.1).
 check "aparência inicial do login semeada e completa" \
     run python3 -c '
 import os, re, tomllib
@@ -405,8 +349,7 @@ assert not faltam, "paleta incompleta: " + ", ".join(faltam)
 assert os.path.isfile(a["wallpaper"]["path"]), "papel de parede do login não existe: " + a["wallpaper"]["path"]
 '
 
-# Valor inválido aqui não dá erro de sintaxe: o greeter sobe e ignora, ou falha
-# ao desenhar. O teclado é o que mais importa — é a única tela do sistema onde
+# Valor inválido aqui não dá erro. O teclado importa mais: na senha do login
 # não há retorno visual do que foi digitado.
 check "greeter.toml declara sessão e teclado do Arkmos" \
     run python3 -c '
@@ -417,8 +360,7 @@ assert c["keyboard"]["layout"] == "br", "teclado do login não é br"
 assert c["appearance"]["theme_mode"] == "dark", "login não está em tema escuro"
 '
 
-# A sessão apontada tem de existir como .desktop, senão o greeter mostra uma
-# opção que não abre nada.
+# Sessão sem .desktop vira opção que não abre nada.
 check "sessão padrão do greeter existe como .desktop" \
     run python3 -c '
 import tomllib, pathlib, re
@@ -431,8 +373,7 @@ for p in pathlib.Path("/usr/share/wayland-sessions").glob("*.desktop"):
 assert nome in nomes, f"sessao {nome!r} nao esta em {nomes}"
 '
 
-# O tuigreet continua instalado como caminho de recuperação: se o greeter
-# gráfico não subir, trocar uma linha no config do greetd devolve o login.
+# Recuperação: uma linha no config do greetd devolve o login pelo tuigreet.
 check "greeter de console mantido como recuperação" \
     run sh -c 'test -x /usr/libexec/arkmos-greeter && rpm -q tuigreet >/dev/null'
 
@@ -441,8 +382,7 @@ check "greeter de console mantido como recuperação" \
 check "tema padrão do Plymouth é o do Arkmos" \
     run sh -c 't=$(plymouth-set-default-theme); [ "$t" = arkmos ] || { echo "tema padrão é $t"; exit 1; }'
 
-# A arte é gerada no build. Se o render falhar pela metade, o two-step sobe sem
-# a imagem que falta e desenha só o fundo — nada quebra, e nada avisa.
+# Render pela metade não quebra nada: o two-step desenha só o fundo.
 check "tema do Plymouth completo" \
     run sh -c '
         d=/usr/share/plymouth/themes/arkmos
@@ -453,17 +393,9 @@ check "tema do Plymouth completo" \
         done
     '
 
-# O plymouthd arranca de dentro do initramfs e continua com o tema que carregou
-# lá, então o que vale é o conteúdo do initramfs, não o de /usr. Configurar o
-# tema e esquecer de regerar passa em qualquer verificação que olhe o sistema
-# de arquivos — e o boot segue com o logo do fabricante.
-#
-# Regerar também troca um arquivo que a base gerou, e o erro possível ali não
-# aparece em lint: aparece como máquina que não monta a raiz. O módulo ostree é
-# o que monta o deployment; sem ele não há boot.
-#
-# O /root do initramfs aponta para var/roothome, que no build só existe se o
-# Containerfile o criar para o dracut — ver o comentário lá.
+# O plymouthd usa o tema do initramfs, não o de /usr (§27.2). Regerar troca um
+# arquivo da base: sem o módulo ostree não há boot, e o /root precisa do
+# var/roothome que o Containerfile cria para o dracut.
 check "initramfs regerado com o tema, o ostree e o ABNT2" \
     run sh -c '
         img=$(ls /usr/lib/modules/*/initramfs.img)
@@ -482,8 +414,8 @@ check "initramfs regerado com o tema, o ostree e o ABNT2" \
 
 # --- Wallpaper ---------------------------------------------------------------
 
-# O Noctalia só lê configuração do home, então o padrão chega pelo /etc/skel.
-# Caminho errado ali não dá erro: o shell sobe com o fundo vazio.
+# O Noctalia só lê config do home, e caminho errado não dá erro: o fundo sobe
+# vazio.
 check "wallpaper padrão semeado para o Noctalia" \
     run python3 -c '
 import tomllib, os
@@ -492,10 +424,8 @@ p = c["wallpaper"]["default"]["path"]
 assert os.path.getsize(p) > 0, f"{p} vazio"
 assert c["shell"]["greeter_sync"]["auto_sync"] is True, "auto-sync do greeter desligado"
 
-# A pasta que a lista do Noctalia mostra, e ele entra nas subpastas. Caminho
-# errado aqui também não dá erro: a lista abre vazia. As três coleções são
-# conferidas pelo que o Noctalia lista, com as extensões dele
-# (directory_scanner.cpp) — o da versão do Fedora vem em .jxl.
+# A lista entra nas subpastas; extensões as do directory_scanner.cpp do
+# Noctalia (o papel do Fedora vem em .jxl).
 d = c["wallpaper"]["directory"].rstrip("/")
 assert os.path.isdir(d), f"{d} não existe"
 assert p.startswith(d + "/"), f"o padrão {p} está fora de {d}"
@@ -507,16 +437,13 @@ for sub, minimo in (("arkmos", 2), ("fedora-workstation", 2), (versao, 1)):
     n = len(imagens(sub))
     assert n >= minimo, f"só {n} imagem(ns) em {d}/{sub}"
 
-# O esquema de cores: o nome é validado contra a lista do próprio Noctalia,
-# porque o validador dele aceita qualquer string e um nome errado cai no
-# padrão em silêncio.
+# O validador do Noctalia aceita qualquer nome de esquema.
 t = c["theme"]
 assert t["source"] == "builtin", "fonte da paleta: " + str(t["source"])
 assert t["builtin"] == "Tokyo-Night", "esquema: " + str(t["builtin"])
 assert t["mode"] == "dark", "modo: " + str(t["mode"])
 
-# O arredondamento do shell, que o sync leva ao login. Zero ou ausente deixa a
-# interface quadrada e o login desalinhado do desktop.
+# Zero deixa a interface quadrada e o login desalinhado do desktop.
 assert c["shell"]["corner_radius_scale"] > 0, "arredondamento do shell zerado"
 
 # Notificações: os dois padrões do Noctalia que significam "sem limite".
@@ -526,9 +453,7 @@ assert n["history_retention_hours"] > 0, "histórico de notificações guardado 
 assert n["filter"]["spotify"]["show_toast"] is False, "o Spotify volta a notificar cada música"
 '
 
-# O Noctalia implementa o org.freedesktop.Notifications e é o daemon da sessão.
-# Com o mako instalado havia dois daemons para o mesmo barramento, um deles
-# desabilitado e nunca iniciado.
+# O Noctalia é o daemon de notificações; o mako seria um segundo, parado.
 check "um só daemon de notificações" \
     run sh -c '
         grep -q -a org.freedesktop.Notifications /usr/bin/noctalia \
@@ -536,15 +461,12 @@ check "um só daemon de notificações" \
         ! rpm -q mako >/dev/null 2>&1 || { echo "o mako voltou para a imagem"; exit 1; }
     '
 
-# O esquema declarado tem de existir na lista de embutidos do binário: o
-# validador do Noctalia aceita qualquer nome, e um nome que ele não conhece cai
-# no padrão sem avisar.
+# Nome de esquema desconhecido cai no padrão sem aviso.
 check "esquema Tokyo-Night existe no Noctalia" \
     run sh -c 'grep -q -a Tokyo-Night /usr/bin/noctalia'
 
-# A paleta chega ao Flatpak pelo gtk.css da conta, que o sandbox não vê sem
-# esta permissão. Sem ela nada falha: o aplicativo só fica com as cores do
-# runtime.
+# Sem a permissão o sandbox não vê o gtk.css da conta, e o Flatpak fica com as
+# cores do runtime.
 check "Flatpaks podem ler o tema da conta" \
     run sh -c '
         grep -q "^filesystems=.*xdg-config/gtk-3.0:ro" /usr/share/arkmos/flatpak-overrides/global \
@@ -556,15 +478,12 @@ check "Flatpaks podem ler o tema da conta" \
             || { echo "o tmpfiles não copia o override para /var"; exit 1; }
     '
 
-# A cor de destaque dos aplicativos libadwaita. Sem ela eles ficam no azul
-# padrão, no meio de um sistema roxo.
+# Sem ela os aplicativos libadwaita ficam no azul padrão.
 check "cor de destaque roxa no dconf" \
     run sh -c 'grep -q "purple" /etc/dconf/db/local && DCONF_PROFILE=user dconf read /org/gnome/desktop/interface/accent-color | grep -q purple'
 
-# Os templates fazem outros programas seguirem a paleta. Dois deles são
-# proibidos aqui: os de foot e de niri criam configuração na conta do usuário,
-# e esses programas leem a do usuário EM VEZ da do sistema — o de niri
-# apagaria na prática os atalhos e o prefer-no-csd desta imagem.
+# Os templates de foot e niri criam config na conta, que esses programas leem
+# NO LUGAR da do sistema — o de niri apagaria os atalhos desta imagem.
 check "templates de paleta: certos ligados, perigosos fora" \
     run python3 -c '
 import tomllib
@@ -576,8 +495,7 @@ proibidos = ids & {"foot", "niri"}
 assert not proibidos, "template que sobrescreve config do sistema: " + ", ".join(sorted(proibidos))
 '
 
-# O anel de foco é a cor que mais aparece na tela. O padrão do niri é um azul
-# claro que não pertence a esquema nenhum.
+# O padrão do niri é um azul claro de esquema nenhum.
 check "anel de foco do niri no roxo do Tokyo Night" \
     run sh -c '
         grep -q "^ *active-gradient .*to=\"#bb9af7\"" /etc/niri/config.kdl \
@@ -596,9 +514,8 @@ check "cantos arredondados com recorte" \
             || { echo "sem clip-to-geometry"; exit 1; }
     '
 
-# O validate sai com 0 mesmo quando encontra chave desconhecida — e chave com
-# nome errado é justamente o erro provável, porque o Noctalia a ignora e segue.
-# Por isso o que decide é a saída, não o código de retorno.
+# O validate sai com 0 mesmo com chave desconhecida, que o Noctalia ignora:
+# decide a saída, não o código de retorno.
 check "config semeada do Noctalia é válida e sem avisos" \
     run sh -c '
         saida=$(HOME=/tmp noctalia config validate /etc/skel/.config/noctalia/arkmos.toml 2>&1 | grep -v dconf)
@@ -609,10 +526,8 @@ check "config semeada do Noctalia é válida e sem avisos" \
         esac
     '
 
-# A tela de login recebe wallpaper e paleta pelo sync da sessão, gravado no
-# sync.toml. O greeter.toml vence o sync.toml, então wallpaper ou paleta
-# declarados lá impediriam para sempre que a escolha feita no desktop chegasse
-# ao login — sem erro, só com a tela de login parada no valor antigo.
+# O greeter.toml vence o sync.toml: wallpaper ou paleta declarados nele
+# congelariam o login no valor antigo, sem erro.
 check "greeter.toml não bloqueia o sync da aparência" \
     run python3 -c '
 import tomllib
@@ -620,8 +535,7 @@ a = tomllib.load(open("/usr/share/arkmos/noctalia-greeter.toml", "rb")).get("app
 bloqueiam = sorted(k for k in ("wallpaper", "wallpapers", "palette", "corner_radius_scale") if k in a)
 assert not bloqueiam, "declarado no greeter.toml: " + ", ".join(bloqueiam)
 
-# O que é do greeter e não vem do sync: sem o idle a tela de login fica acesa
-# até a bateria acabar, porque o padrão dele é nunca apagar.
+# Do greeter, e não do sync: sem idle a tela de login nunca apaga.
 g = tomllib.load(open("/usr/share/arkmos/noctalia-greeter.toml", "rb"))
 assert 0 < g["idle"]["timeout"] <= 86400, "apagamento de tela no login desligado"
 assert a.get("password_style") == "random", "máscara de senha não é a aleatória"
@@ -635,15 +549,9 @@ assert a.get("hide_logo") is True, "a logo do Noctalia continua na tela de login
 check "gerenciador de arquivos atende FileManager1" \
     run sh -c 'rpm -q nautilus gvfs >/dev/null && grep -rqx "Name=org.freedesktop.FileManager1" /usr/share/dbus-1/services/'
 
-# O indexador do Nautilus não subia: a unit do localsearch trazia
-# ConditionEnvironment=XDG_SESSION_CLASS=user e era PULADA, porque essa
-# variável não chega ao systemd --user numa sessão greetd + niri. Não é falha,
-# é condição não satisfeita — o único sinal é uma linha no journal e a busca
-# por conteúdo não funcionar. O drop-in zera a condição; ver o comentário nele.
-#
-# A segunda parte da verificação é contra o drop-in envelhecer em silêncio: se
-# o upstream mudar ou remover essa condição, zerar a lista poderia passar a
-# apagar uma condição legítima, e é melhor falhar aqui e revisar.
+# A condição de classe de sessão fazia o systemd PULAR o indexador, e o drop-in
+# a zera (§25.1). A segunda parte falha se o upstream mudar a condição, para o
+# drop-in não passar a apagar uma legítima.
 check "indexador do Nautilus livre da condição de classe" \
     run sh -c '
         f=/usr/lib/systemd/user/localsearch-3.service.d/50-arkmos-classe-de-sessao.conf
@@ -655,8 +563,8 @@ check "indexador do Nautilus livre da condição de classe" \
             || { echo "o upstream mudou a condição da unit: revisar o drop-in"; exit 1; }
     '
 
-# Habilitada pelo preset do Fedora, escreve no grubenv, e o /boot do bootc é
-# somente leitura: falhava em toda sessão. Ver o comentário no Containerfile.
+# Escreve no grubenv, e o /boot do bootc é somente leitura: falhava em toda
+# sessão.
 check "grub-boot-success mascarada" \
     run sh -c '
         for u in grub-boot-success.timer grub-boot-success.service; do
@@ -665,9 +573,7 @@ check "grub-boot-success mascarada" \
         done
     '
 
-# O Discos traz o montador que o Nautilus usa no clique duplo numa .iso, e o
-# gerenciador de compactação abre um arquivo compactado para navegar. Os dois
-# são integração com o sistema de arquivos, e faltavam sem nada reclamar.
+# Montar .iso no clique duplo e navegar dentro de um arquivo compactado.
 check "Discos e gerenciador de compactação" \
     run sh -c '
         for f in gnome-disk-image-mounter org.gnome.DiskUtility org.gnome.FileRoller; do
@@ -675,8 +581,7 @@ check "Discos e gerenciador de compactação" \
         done
     '
 
-# O assistente de impressão abre sem o cups-pk-helper, mas não consegue
-# cadastrar impressora sem root: a janela funciona e a operação falha.
+# Sem o cups-pk-helper o assistente abre, mas não cadastra impressora sem root.
 check "impressão: assistente, cups-pk-helper e CUPS" \
     run sh -c '
         rpm -q system-config-printer cups-pk-helper >/dev/null \
@@ -685,16 +590,14 @@ check "impressão: assistente, cups-pk-helper e CUPS" \
             || { echo "cups.socket não está habilitado"; exit 1; }
     '
 
-# O assistente de impressão puxa o dbus-daemon como dependência. O barramento
-# do sistema tem de continuar sendo o dbus-broker, que é o do Fedora — uma
-# troca aqui não dá erro, só muda o barramento de todo o sistema por tabela.
+# O assistente de impressão puxa o dbus-daemon, e a troca de barramento não
+# daria erro nenhum (§25.2).
 check "barramento D-Bus continua no dbus-broker" \
     run sh -c 'readlink -f /etc/systemd/system/dbus.service | grep -q "/dbus-broker.service$" \
         || { echo "dbus.service aponta para $(readlink -f /etc/systemd/system/dbus.service)"; exit 1; }'
 
-# Sem o xdg-user-dirs-update na sessão, o home nasce sem Documentos, Downloads,
-# Imagens… A unit de usuário do pacote cuida disso, mas só se estiver
-# habilitada — e os nomes só saem em português com o LANG certo.
+# Documentos, Downloads, Imagens… só nascem com a unit habilitada, e em
+# português só com o LANG certo.
 check "pastas do usuário criadas em português" \
     run sh -c '
         [ "$(systemctl --global is-enabled xdg-user-dirs.service 2>&1)" = enabled ] \
@@ -723,11 +626,9 @@ assert not faltando, "sem título: " + ", ".join(faltando)
 
 # --- Aplicativos -----------------------------------------------------------
 
-# O 'flatpak preinstall' ignora em silêncio um grupo que não entende, e não diz
-# de qual remoto instala: resolve pelos remotos ativos, e o único é o Flathub,
-# que a base configura. Se a base deixar de trazê-lo, nada é instalado e nada
-# reclama. Os padrões do mimeapps.list, por sua vez, só valem se apontarem para
-# um aplicativo que a lista de fato instala.
+# O preinstall ignora em silêncio grupo que não entende, e só instala do
+# Flathub que a base configura. Cada padrão do mimeapps.list tem de apontar
+# para um aplicativo que existe.
 check "Flatpaks declarados e padrões coerentes" \
     run python3 -c '
 import configparser, os
@@ -755,10 +656,7 @@ for tipo, valor in m["Default Applications"].items():
 assert not fora, "padrão que não está nem na lista nem na imagem: " + ", ".join(sorted(fora))
 '
 
-# Cada item fixado no dock é um id de .desktop, e o Noctalia não avisa quando
-# um deles não existe: o ícone aparece morto, ou não aparece. Foi o que a
-# renomeação da entrada do VS Code (code -> com.microsoft.VSCode, na 1.139.0)
-# teria causado em silêncio se só o mimeapps.list estivesse conferido.
+# O Noctalia não avisa quando um id fixado no dock não existe: o ícone some.
 check "dock fixa só apps que existem" \
     run python3 -c '
 import configparser, os, tomllib
@@ -778,9 +676,7 @@ assert not fora, "dock fixa app que não existe: " + ", ".join(fora)
 check "AppImage: libfuse.so.2 presente" \
     run sh -c 'test -e /usr/lib64/libfuse.so.2'
 
-# niri e Noctalia salvam capturas cada um por conta própria. O padrão do niri
-# é um caminho fixo em inglês, e o do Noctalia é a raiz de ~/Imagens: sem
-# alinhar os dois, as capturas se dividem em pastas conforme a tecla.
+# Com os padrões de cada um, as capturas se dividiriam em duas pastas.
 check "capturas de tela na mesma pasta, em português" \
     run sh -c '
         grep -q "^screenshot-path \"~/Imagens/Capturas de tela/" /etc/niri/config.kdl \
@@ -791,10 +687,8 @@ check "capturas de tela na mesma pasta, em português" \
             || { echo "sem atalho para captura com anotação"; exit 1; }
     '
 
-# O que o uso diário pede e a base não traz. Cada item falha em silêncio:
-# celular que não aparece no Nautilus, arquivo do celular que um Flatpak não
-# abre, PDF sem miniatura, programa de terminal que não abre pelo Nautilus,
-# documento do Word desalinhado.
+# O que o uso diário pede e a base não traz (§22, §25); cada falta passa em
+# silêncio.
 check "componentes de uso diário presentes" \
     run sh -c '
         rpm -q gvfs-mtp gvfs-smb gvfs-fuse sushi papers-thumbnailer tailscale \
@@ -807,9 +701,7 @@ check "componentes de uso diário presentes" \
         grep -qx foot.desktop /etc/xdg/xdg-terminals.list || { echo "foot não é o terminal padrão"; exit 1; }
     '
 
-# O lançador e o bloqueio têm de ser os do Noctalia: a configuração de exemplo
-# do niri apontava para fuzzel e swaylock, e o lançador do Noctalia ficava sem
-# atalho nenhum.
+# A config de exemplo do niri apontava para fuzzel e swaylock.
 check "lançador e bloqueio nos atalhos do Noctalia" \
     run sh -c '
         grep -q "^ *Mod+D .*spawn \"noctalia\" \"msg\" \"panel-toggle\" \"launcher\"" /etc/niri/config.kdl \
@@ -819,9 +711,7 @@ check "lançador e bloqueio nos atalhos do Noctalia" \
         ! grep -q "^ *[^/]*spawn \"fuzzel\"" /etc/niri/config.kdl || { echo "ainda há atalho para o fuzzel"; exit 1; }
     '
 
-# Entradas de menu que não servem para abrir: o modo servidor e o cliente do
-# foot, e a do Noctalia, que inicia um shell já iniciado pelo niri e, clicada,
-# não faz nada. As configurações do Noctalia entram no lugar dela.
+# Servidor e cliente do foot, e o Noctalia, que clicado não faz nada.
 check "menu sem entradas que não abrem nada" \
     run sh -c '
         for f in foot-server footclient dev.noctalia.Noctalia; do
@@ -832,10 +722,8 @@ check "menu sem entradas que não abrem nada" \
             || { echo "sem a entrada das configurações do Noctalia"; exit 1; }
     '
 
-# A sessão gráfica não passa pelo /etc/profile.d, então sem isto o niri e tudo
-# o que ele abre nascem sem as pastas do Flatpak no XDG_DATA_DIRS: o Nautilus
-# não encontra aplicativo para o tipo do arquivo e o clique duplo numa imagem,
-# num PDF ou num vídeo não faz nada, sem erro nenhum.
+# A sessão não lê o /etc/profile.d: sem isto o clique duplo num arquivo aberto
+# por Flatpak não faz nada (§25).
 check "sessão enxerga os Flatpaks (XDG_DATA_DIRS)" \
     run sh -c '
         v=$(sed -n "s/^XDG_DATA_DIRS=//p" /usr/lib/environment.d/20-arkmos-flatpak.conf)
@@ -849,11 +737,8 @@ check "sessão enxerga os Flatpaks (XDG_DATA_DIRS)" \
         esac
     '
 
-# O Noctalia vem com toda ação por inatividade desligada. E ele SUBSTITUI o
-# bloco de cada ação em vez de mesclar com o padrão: declarar só
-# "enabled = true" deixava a ação vazia e o tempo em zero — ligado e sem
-# efeito, sem erro nenhum. Por isso a verificação olha a configuração efetiva,
-# como o Noctalia a lê, e não o arquivo.
+# O Noctalia SUBSTITUI o bloco de cada ação em vez de mesclar: conferida a
+# config efetiva, e não o arquivo.
 check "bloqueio por inatividade ligado para conta nova" \
     run sh -c '
         mkdir -p /tmp/h/.config && cp -r /etc/skel/.config/noctalia /tmp/h/.config/
@@ -871,8 +756,7 @@ PY
 
 # --- tmpfiles --------------------------------------------------------------
 
-# O dry-run resolve usuários e grupos de verdade, então uma entrada apontando
-# para conta inexistente falha aqui em vez de falhar calada no boot.
+# O dry-run resolve usuários e grupos de verdade.
 check "tmpfiles.d do Arkmos resolve usuários e grupos" \
     run systemd-tmpfiles --dry-run --create /usr/lib/tmpfiles.d/arkmos.conf
 
@@ -881,17 +765,13 @@ check "tmpfiles.d do Arkmos resolve usuários e grupos" \
 check "pacotes essenciais instalados" \
     run rpm -q docker-ce docker-compose-plugin niri noctalia greetd tuigreet code zsh gh
 
-# Estes o Arkmos não instala: assume que vêm da base, e o Containerfile diz
-# isso em comentário. O ublue vem podando as imagens intermediárias, então a
-# suposição precisa ser afirmada em algum lugar — senão o dia em que a base
-# deixar de trazer o podman ou o portal, o sintoma aparece como sessão gráfica
-# quebrada na máquina, não como build vermelho.
+# Vêm da base, que o ublue vem podando: afirmar aqui faz a falta virar build
+# vermelho, e não sessão quebrada na máquina.
 check "componentes herdados da base presentes" \
     run rpm -q podman distrobox NetworkManager pipewire wireplumber bluez \
     flatpak plymouth wl-clipboard
 
-# podman-docker é um shim que faz 'docker' chamar o podman — a substituição
-# que o PROJECT.md proíbe, e conflito direto com docker-ce-cli.
+# Shim de 'docker' para o podman: proibido (§15).
 check "podman-docker ausente" \
     sh -c '! podman run --rm "'"$IMAGE"'" rpm -q podman-docker >/dev/null 2>&1'
 
@@ -905,14 +785,9 @@ check "serviços habilitados" \
         done
     '
 
-# O foot valida a própria configuração, e é ele que sabe o que está depreciado
-# nesta versão. Sem isto, um aviso novo do pacote passa a ser impresso em cima
-# do prompt a cada terminal aberto — foi o que aconteceu quando a 1.27
-# depreciou a seção [colors] em favor de [colors-dark].
-#
-# O --check-config sai com zero mesmo quando avisa, então o que reprova aqui é
-# a presença do aviso, não o código de saída. O 'warn' de locale é do container,
-# que não tem locale configurado, e não da imagem.
+# Um aviso de depreciação sai em cima do prompt de todo terminal, e o
+# --check-config sai com 0 mesmo avisando: reprova a saída. O de locale é do
+# container.
 check "configuração do foot sem avisos" \
     run sh -c '
         saida=$(foot --check-config -c /etc/xdg/foot/foot.ini 2>&1 | grep -v "is not a UTF-8 locale")
@@ -922,9 +797,8 @@ check "configuração do foot sem avisos" \
         fi
     '
 
-# O menu do ujust é a primeira coisa que alguém digita numa imagem derivada do
-# Universal Blue, e ele vem do pacote deles: uma receita que aponta para fora
-# desta imagem não dá erro de build, dá erro na mão de quem usa.
+# Receita que aponta para fora desta imagem não dá erro de build, dá erro na mão
+# de quem usa (§31.2).
 check "menu do ujust recortado e com as receitas do Arkmos" \
     run sh -c '
         menu=$(JUST_JUSTFILE=/usr/share/ublue-os/justfile just --list)
@@ -943,16 +817,8 @@ check "menu do ujust recortado e com as receitas do Arkmos" \
         done
     '
 
-# A atualização automática NÃO é nossa: vem da base do Universal Blue, e é por
-# isso que está aqui. O que a base liga hoje pode mudar numa reconstrução dela,
-# e o efeito seria silencioso nos dois sentidos — máquina que para de receber
-# imagem nova, ou máquina que passa a reiniciar em imagem que ninguém olhou.
-#
-#   rpm-ostreed-automatic   baixa e ENCENA a imagem nova (AutomaticUpdatePolicy
-#                           = stage): ela passa a valer no próximo reboot, e o
-#                           reboot continua sendo decisão de quem usa
-#   flatpak-system-update   atualiza os Flatpaks da instalação de sistema
-#   bootc-fetch-apply       este aplicaria e reiniciaria sozinho: fica desligado
+# Vem da base, não do Arkmos (§31.1): uma reconstrução dela poderia parar as
+# atualizações, ou passar a reiniciar sozinha (bootc-fetch-apply).
 check "atualização automática no modo encenado" \
     run sh -c '
         grep -qx "AutomaticUpdatePolicy=stage" /etc/rpm-ostreed.conf \
@@ -967,9 +833,8 @@ check "atualização automática no modo encenado" \
             || { echo "bootc-fetch-apply-updates.timer esta \"$state\": reiniciaria sozinho"; exit 1; }
     '
 
-# A política de assinatura é opcional (depende da chave pública existir), mas
-# as duas peças só funcionam juntas: chave sem entrada na política não verifica
-# nada, e entrada apontando para chave ausente faz TODO pull falhar.
+# Chave sem entrada na política não verifica nada; entrada sem chave faz TODO
+# pull falhar.
 check "política de assinatura coerente" \
     run sh -c '
         if [ -f /etc/pki/containers/arkmos.pub ]; then
@@ -986,17 +851,14 @@ check "política de assinatura coerente" \
         exit 0
     '
 
-# Desabilitar o sshd na imagem não basta: o primeiro boot reaplica os presets
-# (o /etc/machine-id nasce vazio), e o 90-default.preset do Fedora o
-# habilitaria. A coluna PRESET mostra o que o primeiro boot vai decidir.
+# O primeiro boot reaplica os presets: a coluna PRESET é o que vale (§22).
 check "servidor SSH desligado, também no preset" \
     run sh -c '
         estado=$(systemctl list-unit-files --no-legend sshd.service | awk "{print \$2, \$3}")
         [ "$estado" = "disabled disabled" ] || { echo "sshd.service: estado e preset = $estado"; exit 1; }
     '
 
-# A zona 'public' que vinha da base bloqueia o LocalSend e um servidor de dev
-# acessado pelo celular, e não avisa.
+# A 'public' da base bloqueia o LocalSend e servidor de dev, sem avisar.
 check "firewall na zona FedoraWorkstation" \
     run sh -c '[ "$(firewall-offline-cmd --get-default-zone 2>/dev/null)" = FedoraWorkstation ]'
 
@@ -1009,9 +871,7 @@ check "greetd é o display-manager" \
 
 # --- Variante --------------------------------------------------------------
 #
-# As duas variantes diferem só na imagem base, e é justamente por isso que vale
-# afirmar a diferença: um erro no build-arg produziria duas imagens iguais com
-# nomes diferentes, e nada mais no conjunto de verificações notaria.
+# Um build-arg errado daria duas imagens iguais, e nada mais aqui notaria.
 
 case "$VARIANT" in
 nvidia)
@@ -1028,8 +888,7 @@ base)
     check "sem pilha NVIDIA" \
         sh -c '! podman run --rm "'"$IMAGE"'" rpm -q kmod-nvidia >/dev/null 2>&1'
 
-    # O Containerfile remove estes na variante sem driver; se sobrarem, é
-    # sinal de que a limpeza condicional deixou de rodar.
+    # Se sobrarem, a limpeza condicional do Containerfile deixou de rodar.
     check "configuração do driver removida" \
         run sh -c '
                 for p in /usr/lib/systemd/system/nvidia-cdi-refresh.service.d /etc/nvidia; do
@@ -1046,19 +905,15 @@ esac
 
 # --- Terminal --------------------------------------------------------------
 
-# O 'mise' avisa no stderr que não conseguiu gravar em ~/.local/share quando
-# roda como root num container descartável. É ruído esperado aqui e não diz
-# nada sobre a imagem, daí o 2>/dev/null só nele.
+# O stderr do mise é aviso de home não gravável, do container.
 check "binários upstream instalados e executáveis" \
     run sh -c 'starship --version >/dev/null &&
                lazygit --version >/dev/null &&
                lazydocker --version >/dev/null &&
                mise --version >/dev/null 2>/dev/null'
 
-# O mise está em /usr, somente leitura, e é atualizado com a imagem, com a
-# versão fixada no build. Sem a configuração de sistema e o arquivo de
-# instruções, ele avisaria de versão nova que ninguém consegue instalar e
-# sugeriria 'mise self-update', que falharia ao tentar se substituir.
+# O mise atualiza com a imagem (§17.2): sem aviso de versão nova nem
+# self-update, que falharia em /usr.
 check "mise sem self-update nem aviso de versão nova" \
     run sh -c '
         export HOME=/tmp
@@ -1068,10 +923,8 @@ check "mise sem self-update nem aviso de versão nova" \
             || { echo "o self-update continua disponível"; exit 1; }
     '
 
-# A fonte da interface é declarada em cinco lugares — Noctalia, dconf, GTK 3 e
-# 4 e a tela de login. Um nome que não existe não dá erro: o fontconfig troca
-# por outra em silêncio, e é assim que barra, janelas e login acabavam cada um
-# com uma fonte.
+# Nome inexistente não dá erro: o fontconfig troca em silêncio, e cada parte
+# fica com uma fonte (§14).
 check "fonte da interface Adwaita Sans, instalada e declarada nos cinco lugares" \
     run sh -c 'f="Adwaita Sans"
                fc-match "$f" | grep -q "\"$f\"" || { echo "$f não está instalada"; exit 1; }
@@ -1100,13 +953,8 @@ assert \"JetBrainsMonoNL\" not in c[\"editor.fontFamily\"], \"a família NL não
 "
     '
 
-# --network=none é o ponto da verificação, não um detalhe: a configuração tem
-# de carregar inteira sem buscar nada. Plugin baixado na primeira abertura do
-# shell daria um shell quebrado em máquina recém-instalada e sem rede.
-#
-# 'zsh -i' aqui roda sem tty, então zle não existe e o syntax-highlighting não
-# instala os widgets — checar a variável dele, e não a função, é o que
-# distingue "não carregou" de "carregou sem terminal".
+# Sem rede de propósito (§13.2). Sem tty não há zle, e o syntax-highlighting é
+# conferido pela variável, não pelos widgets.
 check "config do zsh carrega inteira sem rede" \
     sh -c 'podman run --rm --network=none "'"$IMAGE"'" zsh -ic "
         (( \$+functions[_zsh_autosuggest_start] )) || { print -u2 \"zsh-autosuggestions não carregou\"; exit 1; }
@@ -1118,21 +966,15 @@ check "config do zsh carrega inteira sem rede" \
         [[ \$EDITOR == *nvim ]]                     || { print -u2 \"EDITOR é \$EDITOR, esperado nvim\"; exit 1; }
     " 2>&1'
 
-# A ativação do mise é o que troca o PATH ao entrar num projeto com
-# .mise.toml. Sem ela o binário está na imagem e não serve para nada — e é uma
-# linha só no tools.zsh, fácil de perder num refactor do shell.
-#
-# HOME=/tmp porque o /root da imagem é symlink para var/roothome, que só nasce
-# no boot: sem HOME gravável o mise apenas reclama, e a verificação passaria a
-# medir o container descartável em vez da imagem.
-# O Fedora põe ~/.local/bin no PATH pelo ~/.bashrc, mas no zsh só pelo
-# ~/.zprofile, que o foot não lê (não abre shell de login). Sem a linha do
-# tools.zsh, o que se instala na conta fica fora do PATH no terminal.
+# No zsh o Fedora só põe ~/.local/bin no PATH pelo ~/.zprofile, que o foot não
+# lê (§13.1).
 check "zsh põe ~/.local/bin no PATH" \
     sh -c 'podman run --rm --network=none -e HOME=/tmp "'"$IMAGE"'" zsh -ic "
         [[ \":\$PATH:\" == *:/tmp/.local/bin:* ]] || { print -u2 \"sem ~/.local/bin: \$PATH\"; exit 1; }
     " 2>&1'
 
+# Uma linha só no tools.zsh, fácil de perder. HOME=/tmp porque o /root da
+# imagem só nasce no boot.
 check "zsh ativa o mise" \
     sh -c 'podman run --rm --network=none -e HOME=/tmp "'"$IMAGE"'" zsh -ic "
         [[ \$MISE_SHELL == zsh ]]             || { print -u2 \"MISE_SHELL=\$MISE_SHELL, esperado zsh\"; exit 1; }
@@ -1141,17 +983,8 @@ check "zsh ativa o mise" \
         [[ \$PATH == *mise/shims* ]]          || { print -u2 \"shims do mise fora do PATH\"; exit 1; }
     " 2>&1'
 
-# O bash tem a ativação dele em /etc/profile.d/mise.sh, e esse diretório não é
-# exclusivo do bash: o /etc/zshrc do Fedora também o carrega. Por isso a
-# verificação do zsh acima exige MISE_SHELL=zsh — se a guarda do arquivo
-# quebrar, o zsh passa a receber a ativação em dialeto de bash e aquela linha
-# falha. Esta aqui é a outra ponta: o bash precisa de fato ativar.
-#
-# Com -l, porque no Fedora o bash interativo NÃO-login não lê /etc/bashrc por
-# conta própria: quem faz essa ponte é o ~/.bashrc do /etc/skel, e é ele que
-# acaba carregando o profile.d. Em shell de login o /etc/profile carrega o
-# diretório direto, o que prova o nosso arquivo sem depender de home nenhum; a
-# ponte do skel é afirmada na verificação seguinte.
+# A outra ponta do MISE_SHELL=zsh acima (§17.2). Com -l: o bash não-login só
+# chega ao profile.d pelo ~/.bashrc do skel, afirmado a seguir.
 check "bash ativa o mise" \
     sh -c 'podman run --rm --network=none -e HOME=/tmp "'"$IMAGE"'" bash -lic "
         [[ \$MISE_SHELL == bash ]] || { echo \"MISE_SHELL=\$MISE_SHELL, esperado bash\" >&2; exit 1; }
@@ -1160,20 +993,15 @@ check "bash ativa o mise" \
             || { echo \"hook do mise fora do PROMPT_COMMAND\" >&2; exit 1; }
     " 2>&1'
 
-# A ponte do caso não-login: sem esta linha no .bashrc que o assistente copia
-# do /etc/skel, um 'bash' aberto dentro do terminal não carrega profile.d, e o
-# mise fica sem ativação sem que nada reclame.
+# Sem esta linha, um bash aberto no terminal fica sem o mise.
 check "skel liga o bash ao profile.d" \
     run sh -c 'grep -q "\. /etc/bashrc" /etc/skel/.bashrc'
 
-# A conta criada pelo Anaconda não passa --shell, e cai neste padrão. Com o do
-# Fedora ela nascia no bash, e nada da config do zsh abaixo era usado.
+# A conta do Anaconda não passa --shell e cai neste padrão.
 check "useradd sem --shell cria a conta no zsh" \
     run sh -c 'useradd -D | grep -qx SHELL=/usr/bin/zsh'
 
-# A config da imagem entra pelo /etc/zshrc, e o ~/.zshrc da conta é lido depois
-# e vence. É o que faz as linhas que instaladores acrescentam ao ~/.zshrc
-# funcionarem — com o ZDOTDIR de antes, elas eram ignoradas em silêncio.
+# O ~/.zshrc da conta é lido depois da config da imagem, e vence (§13.1).
 zsh_zshrc_da_conta() {
     podman run --rm -i --network=none -e HOME=/tmp "$IMAGE" sh -s <<'SCRIPT'
 if grep -q ZDOTDIR /etc/zshenv; then echo "/etc/zshenv ainda define ZDOTDIR"; exit 1; fi
@@ -1188,12 +1016,8 @@ SCRIPT
 }
 check "zsh lê a config da imagem e depois o ~/.zshrc" zsh_zshrc_da_conta
 
-# 'print-config' imprime a configuração efetiva. Procurar por uma linha que só
-# existe no nosso arquivo prova as duas coisas de uma vez: que o starship achou
-# o arquivo e que o TOML é válido — com TOML inválido ele cai no default em
-# silêncio, e o prompt fica certo o suficiente para ninguém notar.
-#
-# (Não usar 'starship config': esse abre o $EDITOR e pendura o build.)
+# Prova que o starship achou o arquivo e que o TOML é válido: inválido, ele cai
+# no default em silêncio. ('starship config' abre o $EDITOR e pendura.)
 check "starship.toml da imagem é lido e parseado" \
     run sh -c "STARSHIP_CONFIG=/usr/share/arkmos/starship.toml starship print-config 2>/dev/null | grep -qF '\$directory\$git_branch\$git_state\$git_status'"
 

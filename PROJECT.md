@@ -250,6 +250,8 @@ Conteúdo:
 type = "btrfs"
 ```
 
+A raiz em Btrfs é declarada em dois lugares, porque cada caminho de instalação lê um deles: este arquivo vale para o `bootc install to-disk` e para o kickstart que o builder gera; com o kickstart próprio da ISO, o builder deixa de gerar o particionamento, e quem declara o Btrfs é o `autopart --nohome --type=btrfs` do `iso-config.toml` (seção 31). O `--nohome` é o certo num sistema ostree: `/home` é link para `/var/home`, e um volume separado para `/home` ficaria órfão.
+
 ## O que o Btrfs acrescenta aqui — e o que não acrescenta
 
 O snapshot, num sistema de pacotes como o Arch, é a única rede de segurança do sistema: uma atualização quebra e você **boota dentro de um snapshot** do subvolume raiz. É o que o Omarchy monta com o Snapper e o bootloader.
@@ -343,9 +345,11 @@ Personalizações em relação à configuração de exemplo:
 - anel de foco de 3 px, com gradiente do azul ao roxo de destaque do Tokyo Night, e cantos arredondados de 8 px em todas as janelas, com `clip-to-geometry` para o conteúdo ser recortado no mesmo raio — sem ele o arredondamento fica só na moldura e o conteúdo aparece quadrado nos cantos;
 - `prefer-no-csd` ligado.
 
-O terminal tem fundo levemente translúcido (`alpha=0.9` em `[colors-dark]`, declarado depois do include do tema para vencê-lo). A seção é `[colors-dark]`, e não `[colors]`: o foot 1.27 depreciou a segunda e abria imprimindo o aviso em cima do prompt; com `initial-color-theme=dark`, é a seção escura que vale. O niri não desfoca o que está atrás, então o que aparece é o papel de parede; o `alpha-mode` fica no padrão, que aplica a translucidez só às células com a cor de fundo padrão, deixando texto selecionado e blocos coloridos sólidos.
+O terminal tem fundo levemente translúcido (`alpha=0.9` em `[colors-dark]`, declarado depois do include do tema para vencê-lo). A seção é `[colors-dark]`, e não `[colors]`: o foot 1.27 depreciou a segunda e abria imprimindo o aviso em cima do prompt; com `initial-color-theme=dark`, é a seção escura que vale. O `foot --check-config` sai com zero mesmo quando avisa de algo depreciado, então o `just check` reprova pela presença do aviso, e não pelo código de saída. O niri não desfoca o que está atrás, então o que aparece é o papel de parede; o `alpha-mode` fica no padrão, que aplica a translucidez só às células com a cor de fundo padrão, deixando texto selecionado e blocos coloridos sólidos.
 
 O `prefer-no-csd` faz o niri anunciar decoração do lado do servidor e desenhar ele mesmo a borda e o anel de foco. Sem ele, cada aplicativo desenha a própria barra de título com o tema que conseguir adivinhar — ver seção 9.
+
+O agente polkit (`polkit-mate-authentication-agent-1`) sobe pelo `spawn-at-startup` do niri, e não pelo autostart XDG: a entrada de autostart dele tem `OnlyShowIn=MATE`, que `XDG_CURRENT_DESKTOP=niri` não satisfaz, e ele nunca subiria sozinho. Sem agente, toda autorização falha sem mostrar janela nem erro.
 
 Validação (roda no `just check` e no CI):
 
@@ -428,7 +432,7 @@ O Fedora já entrega um PAM dedicado ao greeter. Nada a fazer.
 
 ### Caminho de recuperação
 
-Se o greeter gráfico falhar, o `OnFailure` entrega um login de texto na vt1. O tuigreet permanece instalado, com os argumentos em `/usr/libexec/arkmos-greeter`: trocar uma linha no `config.toml` devolve um greeter que não depende de GPU nem de compositor.
+Se o greeter gráfico falhar, o `OnFailure` entrega um login de texto na vt1. O drop-in e a `arkmos-login-fallback.service` só servem juntos: um `OnFailure` apontando para unit inexistente é aceito em silêncio pelo systemd, e o `just check` confere as duas peças. O tuigreet permanece instalado, com os argumentos em `/usr/libexec/arkmos-greeter`: trocar uma linha no `config.toml` devolve um greeter que não depende de GPU nem de compositor.
 
 ---
 
@@ -475,6 +479,7 @@ xdg-desktop-portal
 xdg-desktop-portal-gtk
 xdg-desktop-portal-gnome
 gnome-keyring
+gnome-keyring-pam
 mate-polkit
 ```
 
@@ -494,6 +499,8 @@ Objetivos:
 - integração GTK/Wayland.
 
 Os portais seguem listados explicitamente no `Containerfile` mesmo vindo da base: o Niri depende deles, e o Universal Blue vem podando imagens intermediárias. Se a base parar de trazê-los, é melhor o build continuar correto do que a sessão quebrar de forma confusa.
+
+**Chaveiro destravado no login: `gnome-keyring-pam`.** É um pacote separado do `gnome-keyring` e entrega só o `pam_gnome_keyring.so`. O `/etc/pam.d/greetd` já o referencia, mas com `-` na frente, a sintaxe que manda ignorar em silêncio quando o módulo não existe. Sem o pacote nada falha e nada avisa: o chaveiro não é destravado com a senha do login, e a sessão abre pedindo a mesma senha de novo, num prompt sem tema e em inglês — foi o que apareceu no teste em VM. O `just check` confere o módulo instalado e referenciado.
 
 **Agente SSH: o do gcr.** O `gnome-keyring` deixou de ser agente SSH, e o papel passou para o `gcr-ssh-agent`, do pacote `gcr`. O socket é habilitado para todo usuário (`systemctl --global`) e define o `SSH_AUTH_SOCK` no `systemd --user`, de onde o niri e tudo o que ele abre herdam. A senha da chave fica no chaveiro, que o login já destrava. Sem agente nenhum, cada `git push` pedia a senha da chave, e o VS Code, que não tem onde perguntar, falhava.
 
@@ -879,6 +886,8 @@ receberia a ativação em dialeto de bash — antes da correta, ainda. É por is
 que a verificação do zsh exige `MISE_SHELL=zsh`: é ela que denuncia a guarda
 quebrada. A segunda é shell interativo, pelo mesmo motivo da seção acima.
 
+A verificação do bash usa `bash -l`, porque no Fedora o bash interativo que não é de login não lê o `/etc/bashrc` sozinho: quem faz essa ponte é o `~/.bashrc` do `/etc/skel`, e é ele que acaba carregando o `profile.d`. Em shell de login o `/etc/profile` carrega o diretório direto, o que prova o `mise.sh` sem depender de home; a ponte do skel é conferida à parte.
+
 O arquivo também não usa `return`: o zsh faz o source dele de dentro de uma
 função, e um `return` ali interromperia o laço, deixando os demais scripts de
 `profile.d` sem carregar.
@@ -1113,7 +1122,7 @@ Pelo `flatpak preinstall`, que existe desde o Flatpak 1.16 justamente para isto:
 
 É o que faz um aplicativo acrescentado aqui chegar à máquina depois do `bootc upgrade`, e um retirado sair dela, sem script de reconciliação próprio.
 
-O arquivo não diz de qual remoto instalar. O `preinstall` resolve pelos remotos ativos, e o único é o Flathub: a base o configura e deixa os repositórios do Fedora desativados. As atualizações também são da base, pelo `flatpak-system-update.timer`, uma vez por dia. O `just check` confere que o Flathub continua configurado, porque sem ele nada seria instalado e nada reclamaria.
+O arquivo não diz de qual remoto instalar. O `preinstall` resolve pelos remotos ativos, e o único é o Flathub: a base o configura e deixa os repositórios do Fedora desativados. As atualizações também são da base, pelo `flatpak-system-update.timer`, uma vez por dia. O `just check` confere que o Flathub continua configurado, porque sem ele nada seria instalado e nada reclamaria, e que todo grupo é `Flatpak Preinstall <id>` com `Branch`: um grupo que o `flatpak preinstall` não entende é ignorado em silêncio.
 
 O serviço é `Type=exec`, e não `oneshot`. Um oneshot seguraria o `multi-user.target` até o fim da instalação, que no primeiro boot são alguns GB. Assim o boot segue, e a instalação corre em segundo plano com prioridade baixa. Sem rede, ele tenta de novo a cada minuto, por até dez vezes; o que não der fica para o boot seguinte.
 
@@ -1323,7 +1332,7 @@ builtin = "Tokyo-Night"
 mode = "dark"
 ```
 
-O identificador é exatamente `Tokyo-Night`, como no código do Noctalia. O validador dele **não** confere nomes de esquema: um nome errado seria ignorado em silêncio e o shell abriria no esquema padrão. Por isso o `just check` compara o nome declarado com a lista de embutidos do próprio binário.
+O identificador é exatamente `Tokyo-Night`, como no código do Noctalia. O validador dele **não** confere nomes de esquema: um nome errado seria ignorado em silêncio e o shell abriria no esquema padrão. Por isso o `just check` compara o nome declarado com a lista de embutidos do próprio binário. Pelo mesmo motivo, o `noctalia config validate` é julgado pela saída, e não pelo código de retorno: ele sai com zero mesmo ao encontrar chave desconhecida — e chave com nome errado é justamente o erro provável, porque o Noctalia a ignora e segue.
 
 É do esquema que saem as cores do shell — barra, painéis, notificações, tela de bloqueio —, e o sync as leva para a tela de login (seção 8.3). As cores da arte do build (`#16161e` de fundo, `#bb9af7` de destaque) já eram as do Tokyo Night, então splash e login continuam como estão.
 
@@ -1381,7 +1390,7 @@ Vieram de uma sessão de testes na VM: mexer na interface do Noctalia e exportar
 
 O arredondamento da interface do shell está em `corner_radius_scale = 1.25`, escolhido olhando na VM para acompanhar os cantos das janelas. Ele viaja ao login pelo sync, e é por isso que não é declarado no `greeter.toml` (seção 8.3).
 
-A barra leva lançador, captura e papel de parede à esquerda, com espaçadores antes e depois dos workspaces e a janela ativa no fim; relógio e mídia no centro; e à direita o monitor de sistema, RAM, bandeja, notificações, área de transferência, rede, Bluetooth, volume, brilho, bateria, centro de controle, caffeine e sessão. Sem moldura arredondada nem margem nas pontas, com 60% de opacidade. O dock fica oculto e não reserva espaço, com VS Code, Spotify, AnyDesk, Bazaar e Thunderbird fixados.
+A barra leva lançador, captura e papel de parede à esquerda, com espaçadores antes e depois dos workspaces e a janela ativa no fim; relógio e mídia no centro; e à direita o monitor de sistema, RAM, bandeja, notificações, área de transferência, rede, Bluetooth, volume, brilho, bateria, centro de controle, caffeine e sessão. Sem moldura arredondada nem margem nas pontas, com 60% de opacidade. O dock fica oculto e não reserva espaço, com VS Code, Spotify, AnyDesk, Bazaar e Thunderbird fixados. Cada item fixado é um id de `.desktop`, e o Noctalia não avisa quando um não existe — o ícone aparece morto, ou não aparece. A renomeação da entrada do VS Code (`code` → `com.microsoft.VSCode`, na 1.139.0) teria causado isso em silêncio; o `just check` confere os fixados contra a lista de Flatpaks e os `.desktop` da imagem.
 
 Três coisas da exportação **não** entraram, e é a regra para as próximas:
 
@@ -1598,6 +1607,10 @@ Dois detalhes que a experiência impôs:
 
 - `/etc/hostname` é lido com `podman cp` de um container criado, não com `podman run`: o podman faz bind-mount desse arquivo com o id do container, então dentro de um `run` ele sempre existe e a verificação passaria com a imagem vazia.
 - A variante é lida do label `org.arkmos.variant`, e não do nome da imagem: o nome é convenção do Justfile e do CI, o label é o que a máquina instalada consegue consultar depois.
+- `zsh -i` no container roda sem tty, então o zle não existe e o zsh-syntax-highlighting não instala os widgets: a verificação confere a variável dele (`ZSH_HIGHLIGHT_HIGHLIGHTERS`), e não a função.
+- As verificações do zsh e do mise rodam com `HOME=/tmp`: o `/root` da imagem é link para `var/roothome`, que só nasce no boot, e sem home gravável a verificação mediria o container descartável em vez da imagem.
+- O starship é conferido com `starship print-config`, procurando uma linha que só existe no arquivo da imagem: prova que ele achou o arquivo e que o TOML é válido — inválido, ele cai no padrão em silêncio. Não usar `starship config`, que abre o `$EDITOR` e pendura o build.
+- O `bootc container lint` já roda como última camada do Containerfile; o `check-image.sh` o repete para a falha aparecer como passo próprio no log do CI.
 
 ## 28.2 CI
 
@@ -1632,6 +1645,10 @@ Detalhes do desenho:
 - **Um job de `lint` em paralelo**, com shellcheck, actionlint e a sintaxe do Justfile, pelas mesmas receitas que rodam na máquina. Job separado, e não um passo do build: responde em menos de um minuto e não segura a publicação, que leva meia hora.
 - **Rechunk antes de verificar e publicar** (seção 28.5).
 - **Ferramenta instalada depois da limpeza de disco.** O job de build apaga o `$AGENT_TOOLSDIRECTORY` para caber a imagem, e é justamente ali que a action do `just` guarda o binário. Instalado antes, o `PATH` apontava para um diretório que deixava de existir, e o passo do rechunk morria com `just: command not found` depois de nove minutos de build. Um `just --version` logo após a instalação transforma isso em falha de um segundo.
+- **O `just` tem versão fixada** (1.57.0), a mesma da máquina: o formatador muda de uma versão para outra, e o `just --fmt --check` passava na máquina e falhava no CI, que instalava a mais recente. A action é a que o image-template do Universal Blue usa (`extractions/setup-just`), fixada por commit.
+- **O lint roda com `ARKMOS_LINT_CONTAINER=1`**: o runner traz shellcheck 0.9.0, contra a 0.11.0 fixada no projeto, e versões diferentes acusam coisas diferentes (seção 29).
+- **Espaço em disco.** O runner vem com pouco espaço livre: a variante padrão passa de 8 GB por causa dos codecs da base, e a NVIDIA de 11 GB. O job apaga `/usr/share/dotnet`, `/usr/local/lib/android`, `/opt/ghc`, `/usr/local/share/boost` e o `$AGENT_TOOLSDIRECTORY` antes de construir.
+- **O número da versão não é a rede de segurança.** O esquema `44.AAAAMMDD.N` segue Fedora e Universal Blue; quem desfaz uma versão ruim é o `bootc rollback`.
 
 O digest assinado, o login do cosign e o formato da assinatura só apareceram ao publicar de verdade, porque é o único trecho que um push comum não executa.
 
@@ -1914,7 +1931,7 @@ sudo dnf install just podman qemu-kvm edk2-ovmf p7zip skopeo jq git gh
 
 Numa base atômica do Universal Blue, `podman`, `skopeo`, `jq`, `git` e `just` já vêm; o que falta (`qemu-kvm`, `edk2-ovmf`, `p7zip`) entra por `rpm-ostree install` ou, se preferir não empilhar pacote, pelo virt-manager em vez das receitas de QEMU.
 
-O `just lint` não exige shellcheck, shfmt nem actionlint instalados: com `ARKMOS_LINT_CONTAINER=1` ele usa as versões fixadas em container, que é como o CI roda.
+O `just lint` não exige shellcheck, shfmt nem actionlint instalados: cada receita usa o binário local quando existe e cai num container com versão fixada quando não existe — na imagem do Arkmos os binários existem. Com `ARKMOS_LINT_CONTAINER=1` ele força o container, que é como o CI roda, porque o runner traz shellcheck 0.9.0 e a versão fixada é a 0.11.0. Os mounts usam `--security-opt label=disable`, e não `:Z`: o `:Z` relabela o diretório inteiro e falha no que pertence a outro usuário — a ISO que o builder gera fica como `qemu`, e o lint parava com `lsetxattr ... operation not permitted`. As ferramentas só leem o repositório.
 
 ### Três fluxos, e o que cada um exige
 
@@ -1960,7 +1977,7 @@ just run-iso              # disco vazio de 60G + a ISO no cdrom
 just run-iso-instalado    # o mesmo disco depois, sem a mídia
 ```
 
-O Anaconda que roda aí é o mesmo que vai rodar no hardware, com as telas de disco, cifragem e conta — é o ensaio que responde se a conta nasce no instalador ou no assistente (seção 12.4) e que layout de subvolumes o Btrfs recebe (seção 6). Três diferenças em relação ao `run-vm`: o disco nasce vazio (criado pelo `qemu-img`, não pelo bootc-image-builder), a ISO entra com `bootindex=0` porque o firmware tentaria o disco vazio primeiro, e a VM sobe com 8 GB de RAM, porque o instalador roda a partir de um squashfs em memória. Depois de instalar, é preciso sair da mídia: com a ISO ainda no cdrom, o firmware volta para o instalador — daí a segunda receita.
+O Anaconda que roda aí é o mesmo que vai rodar no hardware, com as telas de disco, cifragem e conta — é o ensaio que responde se a conta nasce no instalador ou no assistente (seção 12.4) e que layout de subvolumes o Btrfs recebe (seção 6). Três diferenças em relação ao `run-vm`: o disco nasce vazio (criado pelo `qemu-img`, não pelo bootc-image-builder), o disco vem **primeiro** na ordem de boot (`bootindex=0`) e a ISO depois (`bootindex=1`), e a VM sobe com 8 GB de RAM, porque o instalador roda a partir de um squashfs em memória. Vazio, o disco não tem partição EFI e o firmware passa direto para a ISO; instalado, é ele que dá boot. Com a ISO na frente, o reboot do fim da instalação voltava para o instalador: o `reboot --eject` do kickstart não tem o que ejetar, porque a ISO entra como disco virtio, e não como cdrom. Depois de instalar, a VM reinicia sozinha no sistema instalado; o `run-iso-instalado` sobe o mesmo disco sem a ISO, para os boots seguintes.
 
 **A VM nasce seguindo a imagem local.** O disco é gerado a partir de `localhost/arkmos:dev`, e é isso que fica gravado na deployment: um `bootc upgrade` ali tenta buscar em `localhost/v2/` e falha. Para a VM passar a seguir a imagem publicada, uma vez:
 
@@ -1974,7 +1991,13 @@ Depois disso o `bootc upgrade` funciona, com a assinatura verificada, e o `/var`
 
 **A linha de boot da VM não é a da imagem.** O bootc-image-builder acrescenta `console=tty0 console=ttyS0` no qcow2; isso não vem do `kargs.d`. Com console serial o Plymouth alterna entre o splash e o modo texto de reserva (três pontos), e o que aparece muda de um boot para outro. Por isso o `config.toml` acrescenta `plymouth.ignore-serial-consoles` na mídia de teste: o Plymouth ignora o serial e desenha o splash na tela, como numa máquina real. É configuração da mídia, não da imagem publicada.
 
-O mesmo `config.toml` acrescenta `systemd.wants=sshd.service`, que liga o servidor SSH só na VM: a imagem o deixa desligado (seção 22), e é por ele que o ssh na porta 2222 do host funciona.
+O builder roda sem `--local`, que esta versão dele não aceita mais: ele já lê o storage de containers montado. O `config.toml` também não tem flag — é lido de `/config.toml` dentro do container.
+
+O mesmo `config.toml` acrescenta `systemd.wants=sshd.service`, que liga o servidor SSH só na VM: a imagem o deixa desligado (seção 22), e é por ele que o ssh na porta 2222 do host funciona. A porta escuta só em 127.0.0.1, e é o caminho para rodar um comando de fora e guardar a saída no host, já que a janela do QEMU não compartilha a área de transferência. Cada qcow2 novo tem chaves de host próprias, e o `known_hosts` acumula conflito nessa porta a ponto de o ssh bloquear até a senha:
+
+```bash
+ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null usuario@127.0.0.1 'comando'
+```
 
 O mesmo console serial é útil quando a tela congela: na janela do QEMU, **View → serial0** mostra o console do sistema, e um `arkmos login:` ali significa que o sistema subiu e o problema é só a exibição.
 
@@ -2013,7 +2036,7 @@ O builder gera um kickstart próprio, e o README descreve o tipo `anaconda-iso` 
 
 O segundo motivo é a assinatura. O `%post` dele aponta a deployment para o registry com `bootc switch --mutate-in-place --transport registry <imagem>`, **sem** `--enforce-container-sigpolicy` — e sem essa flag nenhum `bootc upgrade` posterior verifica assinatura (seção 28.3). Como o `--mutate-in-place` só grava a origin, a flag não custa download nenhum: é uma palavra no lugar certo.
 
-Daí o `iso-config.toml`, versionado, que passa o kickstart inteiro:
+Daí o `iso-config.toml`, versionado, que passa o kickstart inteiro. Ele não usa o `config.toml`, que descreve a mídia de **teste** (console serial, sshd ligado, disco de 40 GiB): numa instalação real quem particiona é o Anaconda, e ligar o sshd sem ninguém pedir seria o oposto do que a seção 22 decidiu. A imagem aparece como `@IMAGEM@`, que a receita `just iso` troca pela referência que está sendo instalada — é o que faz a variante NVIDIA gerar mídia que aponta para a imagem dela:
 
 ```text
 rootpw --lock / lang pt_BR.UTF-8 / keyboard br / timezone America/Sao_Paulo
@@ -2030,6 +2053,8 @@ Ao receber um kickstart próprio, o builder deixa de gerar particionamento e red
 Por isso a receita `just iso` termina extraindo os kickstarts da ISO pronta (com o `7z`), montando o conteúdo na ordem de execução e conferindo: que o `%include` do builder está no topo, que o **último** `bootc switch` exige a assinatura, o `--type=btrfs`, a correção do fstab e da compressão, a linha `ostreecontainer` e uma única linha de `autopart`. Procurar a flag em qualquer lugar não bastaria: com a ordem invertida, ela estaria no kickstart e a deployment nasceria sem ela. É a única parte da instalação que o `just check` não alcança, e um erro aqui só apareceria com o disco da máquina já apagado.
 
 O `autopart` fica, e o `clearpart` sai: sem ele o spoke de destino fica incompleto e o Anaconda para na tela de seleção de disco, que é onde essa decisão pertence — mantendo o esquema (Btrfs, sem `/home` separado) declarado por nós.
+
+O módulo de localização do Anaconda vem **desligado** no `anaconda-iso` do builder (ligados por padrão: Network, Payloads, Security, Services, Storage, Users). Sem ele, `lang` e `keyboard` não valem nem para o próprio instalador: ele abre em inglês, com teclado us, e o seletor de layout no topo não troca nada — por isso a instalação de 2026-09-23 não aplicou idioma, teclado e fuso. O `iso-config.toml` o liga em `[customizations.installer.modules]`, e o instalador abre em português e em ABNT2. O preço, que o `%post` corrige, está na seção 35.2.2.
 
 ### O que a instalação de 2026-09-23 mostrou
 

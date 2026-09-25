@@ -1,20 +1,8 @@
-# Arkmos — tarefas de build e teste.
-#   just            lista as tarefas
-#   just build      constrói a imagem local
-#   just check      roda as verificações sobre a imagem construída
-#   just vm         gera um qcow2 para testar em QEMU
-#   just run-vm     sobe o qcow2 no QEMU com aceleração 3D
-#   just iso        gera a ISO instalável, para pendrive
-#   just run-iso    ensaia a instalação da ISO numa VM
+# Arkmos — tarefas de build e teste. 'just' lista todas.
 #
-# Duas variantes do mesmo sistema. A padrão não tem a pilha NVIDIA e é a que
-# se testa em VM; a outra troca só a imagem base:
-#
+# 'variant' vale para qualquer tarefa, com diretório de saída próprio:
 #   just build                  →  localhost/arkmos:dev
 #   just variant=nvidia build   →  localhost/arkmos-nvidia:dev
-#
-# 'variant' vale para qualquer tarefa, e cada variante tem seu próprio
-# diretório de saída para que os dois qcow2 possam coexistir.
 
 variant := ""
 
@@ -27,8 +15,7 @@ outdir := "output" + suffix
 tag := "dev"
 builder := "quay.io/centos-bootc/bootc-image-builder:latest"
 
-# A imagem publicada, que é a origem da mídia de instalação — ver a receita
-# 'iso'. Não entra no build nem nas verificações, que trabalham na local.
+# Origem da mídia de instalação ('iso'); build e verificações usam a local.
 publicado := "ghcr.io/alexrogaleski/arkmos" + suffix + ":44"
 
 default:
@@ -43,15 +30,12 @@ build:
         --build-arg ARKMOS_COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)" \
         -t {{ image }}:{{ tag }} .
 
-# Exatamente as mesmas verificações que o CI roda — os dois chamam este
-# script, em vez de manter duas listas que divergem com o tempo.
+# As mesmas verificações do CI: os dois chamam este script.
 [doc("Roda as verificações sobre a imagem construída")]
 check:
     ./tests/check-image.sh {{ image }}:{{ tag }}
 
-# Constrói e verifica as duas variantes. É o que vale rodar antes de um commit
-# que mexa no Containerfile ou em files/: um erro que só aparece numa das duas
-# passa despercebido se você testar só a sua.
+# Antes de um commit que mexa no Containerfile ou em files/.
 [doc("Constrói e verifica as duas variantes")]
 check-all:
     just build
@@ -59,22 +43,9 @@ check-all:
     just variant=nvidia build
     just variant=nvidia check
 
-# Gera o qcow2. Substitui o antigo truncate + losetup + bootc install to-disk:
-# um comando só, particionamento declarativo e rotulagem SELinux correta.
-#
-# Pede senha de sudo duas vezes: o bootc-image-builder roda privilegiado e só
-# enxerga o storage do root, enquanto 'just build' constrói sem privilégio.
-# O 'image scp' transfere a imagem entre os dois storages sem reconstruir.
-#
-# Sem flag --local: esta versão do builder já lê o storage montado. O
-# config.toml também não tem flag — é lido de /config.toml dentro do container.
-#
-# --network=host, aqui e no 'iso': o builder resolve pacotes do Fedora durante
-# a geração, e na bridge do podman rootful o DNS não sai quando o Docker está
-# rodando — ele põe a chain FORWARD em DROP. O sintoma é "Could not resolve
-# host: mirrors.fedoraproject.org" com o pull da imagem funcionando, porque o
-# pull é do host. O Arkmos traz o Docker ligado, então é o caso de toda
-# máquina Arkmos. O container já é --privileged: a rede do host não abre nada.
+# O builder roda como root e só enxerga o storage dele: o 'image scp' leva a
+# imagem para lá. --network=host porque, com o Docker ligado, o DNS não sai
+# pela bridge do podman rootful (PROJECT.md §30).
 [doc("Gera um qcow2 para testar em QEMU")]
 vm: build
     mkdir -p {{ outdir }}
@@ -88,32 +59,13 @@ vm: build
         build --type qcow2 \
         --chown "$(id -u):$(id -g)" \
         {{ image }}:{{ tag }}
-    # As variáveis EFI guardam a entrada de boot que o bootc gravou no disco
-    # ANTERIOR. Reaproveitá-las com um disco novo faz o firmware tentar uma
-    # entrada que não existe mais, e o sintoma é a VM não dar boot — indistinguível
-    # de imagem quebrada. Descartadas aqui, o 'run-vm' recria limpas.
+    # Variáveis EFI do disco anterior não dão boot no novo (§30).
     rm -f {{ outdir }}/OVMF_VARS.fd
 
-# Gera a ISO instalável, para gravar num pendrive e instalar em máquina de
-# verdade: o Anaconda escolhe o disco, particiona e pede a conta. O qcow2 do
-# 'just vm' é mídia de teste; esta é mídia de instalação.
-#
-# A origem é a imagem PUBLICADA, não a local. O que fica gravado na deployment
-# é a referência usada aqui: instalada a partir de 'localhost/arkmos:dev', a
-# máquina nasce seguindo um registry que não existe e o 'bootc upgrade' falha
-# procurando em localhost/v2/ (seção 30). Por isso esta receita não depende do
-# 'build' — ela não usa a imagem local em momento nenhum.
-#
-# Sem o config.toml: aquele arquivo descreve a mídia de TESTE (console serial do
-# QEMU, sshd ligado, disco declarado em 40 GiB). Numa instalação real quem
-# particiona é o Anaconda, e ligar o sshd sem ninguém pedir seria o oposto do
-# que a seção 22 decidiu.
-#
-# Reserve espaço no host: o osbuild descomprime a imagem inteira em árvore
-# intermediária antes de montar a mídia, então conte uns 20 GB livres. A ISO em
-# si embute a imagem comprimida (3,46 GB na publicação de 2026-09-23) mais o
-# ambiente do Anaconda — as ISOs equivalentes do Universal Blue ficam entre 6 e
-# 7 GB.
+# Mídia de instalação para máquina de verdade (PROJECT.md §31). A origem é a
+# imagem PUBLICADA: a referência usada aqui é a que a deployment segue, e a
+# local não existe fora desta máquina. Sem o config.toml, que é da mídia de
+# teste. Precisa de uns 20 GB livres no host.
 [doc("Gera a ISO instalável a partir da imagem publicada")]
 iso origem=publicado:
     #!/usr/bin/env bash
@@ -121,14 +73,11 @@ iso origem=publicado:
     command -v 7z >/dev/null || { echo "precisa do 7z (p7zip) para conferir a ISO no fim"; exit 1; }
     mkdir -p {{ outdir }}
 
-    # O kickstart vive em iso-config.toml, versionado e comentado; só a
-    # referência da imagem é substituída aqui, para a variante NVIDIA gerar
-    # mídia que aponta para a imagem dela.
+    # Só a referência da imagem muda, para cada variante apontar para a sua.
     config={{ outdir }}/iso-config.gerado.toml
     sed 's|@IMAGEM@|{{ origem }}|g' iso-config.toml > "$config"
 
-    # O builder roda como root e só enxerga o storage do root; o pull explícito
-    # aqui deixa claro no terminal o que está sendo baixado, e de onde.
+    # Pull explícito, para o terminal mostrar o que é baixado e de onde.
     sudo podman pull {{ origem }}
     sudo podman run --rm -it --privileged --pull=newer --network=host \
         --security-opt label=type:unconfined_t \
@@ -140,19 +89,15 @@ iso origem=publicado:
         --chown "$(id -u):$(id -g)" \
         {{ origem }}
 
-    # O que a mídia carrega de verdade. O kickstart é a única parte da
-    # instalação que não passa pelo 'just check', e um erro aqui só apareceria
-    # com o disco da máquina já apagado.
+    # Confere o kickstart que a mídia carrega: é a única parte da instalação
+    # fora do 'just check', e um erro aqui só apareceria com o disco apagado.
     iso={{ outdir }}/bootiso/install.iso
     ks="$(mktemp -d)"
     trap 'rm -rf "$ks"' EXIT
     7z e -o"$ks" "$iso" 'osbuild*.ks' >/dev/null
 
-    # O builder não acrescenta só o ostreecontainer: o osbuild-base.ks dele traz
-    # um %post próprio com 'bootc switch' SEM a flag de assinatura, e o nosso
-    # osbuild.ks o inclui na primeira linha. O Anaconda roda os %post na ordem
-    # em que aparecem, então vale o último switch — que tem de ser o nosso.
-    # O conteúdo é montado nessa ordem de execução, e não pela ordem do glob.
+    # Montado na ordem de execução: o %post do builder (switch sem assinatura)
+    # roda antes, e o último switch, o que vale, tem de ser o nosso (§31).
     [[ "$(head -n1 "$ks/osbuild.ks")" == "%include /run/install/repo/osbuild-base.ks" ]] ||
         { echo "ERRO: o osbuild.ks não começa pelo %include do builder; reveja a ordem dos %post." >&2; exit 1; }
     conteudo="$(cat "$ks/osbuild-base.ks"; tail -n +2 "$ks/osbuild.ks")"
@@ -179,32 +124,12 @@ iso origem=publicado:
     echo "Para gravar: confira o device com 'lsblk' e use"
     echo "  sudo dd if=$iso of=/dev/sdX bs=4M status=progress oflag=direct"
 
-# Sobe o qcow2 no QEMU.
-#
-# virtio-vga-gl + gl=on são necessários para o Niri renderizar.
-#
-# xres/yres explícitos porque o padrão do virtio-vga-gl é 1280x800, e numa
-# janela desse tamanho o assistente do primeiro boot rola para fora da tela.
-#
-# grab-on-hover captura o teclado quando o ponteiro está sobre a janela. Sem
-# isso, atalhos com Super/Mod são interpretados pelo compositor do HOST e nunca
-# chegam na VM, o que torna impossível testar os binds do Niri. Ctrl+Alt+G
-# libera e recaptura o teclado a qualquer momento.
-#
-# A porta 2222 do host cai no ssh da VM (hostfwd). A janela do QEMU não tem
-# clipboard compartilhado, então copiar log de dentro dela é sofrido; com isto,
-# 'ssh -p 2222 usuario@127.0.0.1' roda o comando de fora e a saída fica no host,
-# em arquivo. O sshd já vem habilitado pela base. Só escuta em 127.0.0.1.
-#
-# Cada qcow2 novo tem chaves de host próprias, então o known_hosts do host
-# acumula conflito nessa porta e o ssh chega a bloquear até a senha. Usar:
+# virtio-vga-gl para o niri renderizar, 1920x1080 para o assistente caber,
+# grab-on-hover para os atalhos Super chegarem na VM e pflash para as variáveis
+# EFI serem graváveis (PROJECT.md §30). ssh na porta 2222 do host:
 #
 #   ssh -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
 #       usuario@127.0.0.1 'comando'
-#
-# UEFI via pflash, não '-bios': o firmware precisa de uma cópia GRAVÁVEL das
-# variáveis EFI para guardar a entrada de boot que o bootc instala. Com
-# '-bios' as variáveis são descartadas e o disco pode não dar boot.
 [doc("Sobe o qcow2 no QEMU com aceleração 3D")]
 run-vm:
     #!/usr/bin/env bash
@@ -225,26 +150,9 @@ run-vm:
         -device virtio-net,netdev=n0 -netdev user,id=n0,hostfwd=tcp:127.0.0.1:2222-:22 \
         -usb -device usb-tablet
 
-# Sobe a ISO instalável numa VM, com um disco vazio para instalar em cima.
-#
-# É o ensaio da instalação em hardware: o Anaconda que roda aqui é o mesmo que
-# vai rodar lá, com as mesmas telas de disco, cifragem e conta. O que se
-# aprende aqui — se ele pede usuário, que layout de subvolumes ele cria — é o
-# que decide as duas pendências da seção 12.4 e da seção 6.
-#
-# Diferenças em relação ao 'run-vm', que sobe um disco já instalado:
-#
-#   - o disco nasce vazio, criado aqui e não pelo bootc-image-builder;
-#   - o disco vem primeiro na ordem de boot e a ISO depois. Vazio, o disco não
-#     tem partição EFI, e o firmware passa direto para a ISO; instalado, é ele
-#     que dá boot. Com a ISO na frente, o reboot do fim da instalação voltava
-#     para o instalador: o 'reboot --eject' do kickstart não tem o que ejetar,
-#     porque a ISO entra como disco virtio, e não como cdrom;
-#   - 8 GB de RAM, e não 4: o instalador roda a partir de um squashfs em
-#     memória e o Anaconda gráfico é pesado.
-#
-# Depois de instalar, a VM reinicia sozinha no sistema instalado. O
-# 'run-iso-instalado' sobe o mesmo disco sem a ISO, para os boots seguintes.
+# Ensaio da instalação em hardware, num disco vazio (PROJECT.md §30). O disco
+# vem antes da ISO na ordem de boot: vazio, o firmware passa para a ISO, e
+# depois de instalado é ele que sobe. 8 GB porque o instalador roda da memória.
 [doc("Sobe a ISO instalável numa VM, para ensaiar a instalação")]
 run-iso tamanho="60G":
     #!/usr/bin/env bash
@@ -299,9 +207,7 @@ run-iso-instalado:
         -device virtio-net,netdev=n0 -netdev user,id=n0,hostfwd=tcp:127.0.0.1:2222-:22 \
         -usb -device usb-tablet
 
-# A logo do README sai do mesmo script que desenha o splash de boot — mesma
-# fonte, mesmas cores —, para o repositório não divergir do que a máquina mostra
-# ao ligar. Precisa de uma imagem construída: a fonte vem de dentro dela.
+# Mesmo script do splash de boot (§26.1). Precisa da imagem construída.
 [doc("Gera a logo do README a partir da arte do boot")]
 logo:
     mkdir -p .github/assets
@@ -315,35 +221,17 @@ logo:
 clean:
     rm -rf output output-nvidia
 
-# Lint e formatação seguem as convenções do image-template do Universal Blue:
-# 'lint' com shellcheck, 'format' com shfmt, e a sintaxe do Justfile conferida
-# pelo próprio just. O actionlint no workflow vem do finpilot.
-#
-# Uma diferença de nome, de propósito: no template deles 'check' é a sintaxe do
-# Justfile, e aqui 'check' já significa as verificações da imagem, que é o nome
-# que o CI e o PROJECT.md usam desde o começo. A sintaxe do Justfile entrou no
-# 'lint'.
-#
-# As ferramentas não estão no host de desenvolvimento (Aurora é imutável), então
-# cada receita usa o binário local quando existe e cai num container com versão
-# fixada quando não existe. Na imagem do Arkmos os binários existem, e é o
-# caminho local que roda.
-#
-# ARKMOS_LINT_CONTAINER=1 ignora o binário local e força o container. É o que o
-# CI usa: o runner do GitHub traz shellcheck 0.9.0, e a nossa imagem fixada é a
-# 0.11.0 — versões diferentes acusam coisas diferentes, e o lint passava aqui e
-# falhava lá. Com o container, o CI e a máquina rodam a mesma versão.
-# O 'label=disable' em lugar do ':Z' nos mounts: o ':Z' relabela o diretório
-# inteiro para o container, e falha no que pertence a outro usuário — a ISO que
-# o bootc-image-builder gera fica como 'qemu', e o lint parava com
-# "lsetxattr ... operation not permitted". As ferramentas só leem o repositório.
+# Lint e formatação nas convenções do Universal Blue (PROJECT.md §29). Binário
+# local quando existe, senão container com versão fixada; o CI força o
+# container com ARKMOS_LINT_CONTAINER=1, para rodar a mesma versão da máquina.
+# 'label=disable', e não ':Z': o relabel falha em arquivo de outro usuário,
+# como a ISO gerada.
 shellcheck_image := "docker.io/koalaman/shellcheck:v0.11.0"
 shfmt_image := "docker.io/mvdan/shfmt:v3.12.0"
 actionlint_image := "docker.io/rhysd/actionlint:1.7.7"
 
-# O git é a fonte da verdade do escopo, como no finpilot. O critério é o
-# shebang, e não a extensão: os scripts de /usr/libexec e /usr/bin não têm '.sh'.
-# Os arquivos .zsh ficam fora porque o shellcheck não analisa zsh.
+# Escopo pelo git e pelo shebang (há scripts sem '.sh'); .zsh fica fora,
+# porque o shellcheck não analisa zsh.
 [doc("Lista os scripts de shell versionados")]
 shell-sources:
     #!/usr/bin/env bash
@@ -397,35 +285,15 @@ format:
     fi
     just --unstable --fmt -f Justfile
 
-# Rechunk: reorganiza as camadas da imagem antes de publicar.
-#
-# É o passo que Bluefin, Aurora e Bazzite dão, e que o image-template do
-# Universal Blue traz como 'ostree-rechunk'. O 'rpm-ostree compose
-# build-chunked-oci' recebe o sistema de arquivos pronto e o reescreve em até
-# 127 camadas decididas por conteúdo, e não pela ordem dos comandos do
-# Containerfile.
-#
-# O que isso muda na prática: hoje, um 'dnf install' no começo do Containerfile
-# invalida todas as camadas seguintes, e cada publicação obriga quem atualiza a
-# baixar gigabytes. Com as camadas por conteúdo, duas publicações seguidas
-# compartilham quase tudo, e o 'bootc upgrade' baixa só o que mudou de fato.
-#
-# Roda com o rpm-ostree de DENTRO da própria imagem (ela é derivada do ublue, que
-# o traz), então não há ferramenta extra para instalar. Precisa de --privileged e
-# do storage do podman montado, porque a saída é gravada direto lá.
+# Reescreve a imagem em até 127 camadas por conteúdo, para o 'bootc upgrade'
+# baixar só o que mudou (PROJECT.md §28.5). Usa o rpm-ostree da própria imagem.
 [doc("Reorganiza as camadas da imagem para o upgrade baixar menos")]
 ostree-rechunk alvo=(image + ":" + tag) anterior="":
     #!/usr/bin/env bash
     set -euo pipefail
 
-    # O nome da imagem é qualificado antes de qualquer outra coisa.
-    #
-    # 'podman build --tag arkmos:latest' cria 'localhost/arkmos:latest', e o
-    # transporte containers-storage normaliza o MESMO nome curto para
-    # 'docker.io/library/arkmos:latest'. Com o nome curto, o rechunk gravava
-    # numa imagem nova sob o Docker Hub, a tag do build continuava apontando
-    # para a imagem antiga, e o CI verificava e publicaria a imagem NÃO
-    # reorganizada — dizendo no log que tinha reorganizado.
+    # Nome qualificado: curto, o containers-storage o lê como docker.io/library
+    # e o resultado vai para outra imagem (§28.5).
     alvo="{{ alvo }}"
     case "${alvo%%:*}" in
         */*) ;;
@@ -434,17 +302,10 @@ ostree-rechunk alvo=(image + ":" + tag) anterior="":
 
     graphroot="$(podman info --format '{{ '{{.Store.GraphRoot}}' }}')"
 
-    # O driver vem do podman em vez de fixo em 'overlay': a referência de
-    # storage carrega o nome do driver, e escrever com um driver diferente do
-    # que o storage usa põe a imagem onde o podman não vai procurar.
+    # Driver lido do podman: com outro, a imagem vai para onde ele não procura.
     driver="$(podman info --format '{{ '{{.Store.GraphDriverName}}' }}')"
 
-    # Os labels são repassados um a um, lidos da imagem de origem. O
-    # build-chunked-oci monta uma imagem NOVA a partir do sistema de arquivos e
-    # não herda a configuração: sem isto, a variante, a versão e o commit
-    # desapareceriam — o 'bootc status' mostra a versão a partir desse label, e
-    # o 'just check' usa o da variante. Não há como repassar ENV e CMD, que só
-    # afetam 'podman run' nesta imagem, e ficam perdidos.
+    # O build-chunked-oci não herda os labels; são repassados um a um.
     mapfile -t rotulos < <(podman inspect \
         --format '{{ '{{ range $k, $v := .Config.Labels }}{{ $k }}={{ $v }}{{ "\n" }}{{ end }}' }}' "$alvo")
     anterior="{{ anterior }}"
@@ -477,14 +338,8 @@ ostree-rechunk alvo=(image + ":" + tag) anterior="":
     depois="$(camadas)"
     echo "depois: ${depois} camadas"
 
-    # O rpm-ostree imprime "Pushed digest" e sai com zero mesmo quando a
-    # imagem foi para um nome que o podman não resolve de volta. Sem esta
-    # conferência o passo fica verde e o que segue para a verificação e para o
-    # registry é a imagem antiga, intacta.
-    #
-    # O limite é 128 porque é onde a imagem reorganizada cabe: 127 camadas de
-    # conteúdo mais a final. Rodar de novo sobre uma imagem já reorganizada
-    # continua passando, que é o que se espera de uma receita idempotente.
+    # O rpm-ostree sai com zero mesmo gravando no lugar errado. Reorganizada, a
+    # imagem tem no máximo 128 camadas (127 de conteúdo mais a final).
     if ((depois > 128)); then
         echo "ERRO: a tag ${alvo} não recebeu a imagem reorganizada." >&2
         echo "      ${antes} camadas antes, ${depois} depois." >&2

@@ -1,83 +1,22 @@
 # Configuração do bootc-image-builder para a MÍDIA DE INSTALAÇÃO (just iso).
+# A de teste, com console serial e sshd, é o config.toml.
 #
-# Diferente do config.toml, que descreve o qcow2 de teste: aqui não há kargs de
-# console serial nem sshd ligado — isto vira a instalação de uma máquina real.
+# O kickstart é declarado por inteiro, e o motivo de cada linha está no
+# PROJECT.md §31 ("O kickstart é nosso"). O essencial para quem for editar:
 #
-# O kickstart é declarado por inteiro de propósito. Ao receber um kickstart
-# próprio, o builder deixa de gerar particionamento e rede, mas não se ausenta:
-# ele grava um osbuild-base.ks com o 'ostreecontainer' (a linha que instala a
-# imagem) e um %post próprio, com 'bootc switch' SEM a flag de assinatura, e o
-# inclui na primeira linha do nosso. O Anaconda roda os %post na ordem em que
-# aparecem, então o dele roda primeiro e o deste arquivo vence — conferido na
-# ISO de 2026-09-24, e verificado pela receita 'iso' a cada geração. O que se
-# ganha é o que falta no padrão dele: a exigência de assinatura na deployment.
+#   - sem clearpart/zerombr: com eles a mídia apaga o primeiro disco que
+#     encontrar, sem perguntar. Sem eles, o Anaconda para na tela de disco.
+#   - o builder inclui um osbuild-base.ks com um %post próprio, e o 'bootc
+#     switch' deste arquivo tem de ser o último, porque é ele que exige a
+#     assinatura. A receita 'iso' confere isso na ISO pronta.
+#   - @IMAGEM@ é trocado pela receita 'iso' pela imagem instalada (padrão ou
+#     NVIDIA).
 #
-# O padrão do builder, para comparação, era:
+# O %post devolve o /etc que o módulo de localização reescreve (§35.2.2) e leva
+# a compressão do fstab para o rootflags (§6).
 #
-#   rootpw --lock / lang en_US.UTF-8 / keyboard us / timezone UTC
-#   clearpart --all
-#   autopart --nohome --type=btrfs        (o tipo vem da imagem)
-#   network --device=link --bootproto=dhcp --onboot=on --activate
-#   %post: bootc switch --mutate-in-place --transport registry <imagem>
-#
-# As diferenças, e o motivo de cada uma:
-#
-#   --enforce-container-sigpolicy   o padrão grava a deployment SEM exigir
-#                                   assinatura, e aí nenhum 'bootc upgrade'
-#                                   posterior verifica nada. Com --mutate-in-place
-#                                   a flag não custa download: ela só grava a
-#                                   origin (seção 28.3).
-#   lang/keyboard/timezone do       na instalação de 2026-09-23 esses valores
-#   Arkmos                          não foram aplicados, e o motivo era o
-#                                   módulo de localização desligado (abaixo).
-#                                   Com ele ligado, valem para o instalador e
-#                                   são os mesmos que a imagem já declara.
-#   sem clearpart e sem zerombr     O README do builder descreve o anaconda-iso
-#                                   como "unattended installer that installs to
-#                                   the first disk found", e com 'clearpart
-#                                   --all' é isso mesmo: a mídia apaga o
-#                                   primeiro disco que encontrar, sem perguntar.
-#                                   Serve para VM, e é inaceitável numa máquina
-#                                   com mais de um disco — ou com um disco só,
-#                                   cheio de coisa. Sem essas duas linhas o
-#                                   spoke de destino fica incompleto e o
-#                                   Anaconda para na tela de seleção de disco,
-#                                   que é onde essa decisão pertence.
-#
-# O @IMAGEM@ é substituído pela receita 'iso' do Justfile pela referência que
-# está sendo instalada — é o que faz a variante NVIDIA gerar mídia que aponta
-# para a imagem dela, e não para a padrão.
-#
-# O 'autopart --nohome' é o certo num sistema ostree: /home é link para
-# /var/home, e um volume separado para /home ficaria órfão. A raiz em Btrfs vem
-# daqui e do /usr/lib/bootc/install/00-arkmos.toml — declarada nos dois lugares
-# porque cada caminho de instalação lê um deles (seção 31).
-# O módulo de localização do Anaconda vem DESLIGADO no anaconda-iso do builder
-# (ligados por padrão: Network, Payloads, Security, Services, Storage, Users).
-# Sem ele, 'lang' e 'keyboard' abaixo não valem nem para o próprio instalador:
-# ele abre em inglês, com teclado us, e o seletor de layout no topo da tela não
-# troca nada. Ligado, o instalador já abre em português e em ABNT2.
-#
-# O preço: o módulo grava a localização no sistema instalado pelo
-# systemd-localed, que reescreve o locale.conf e o vconsole.conf com aspas e
-# move o XKBLAYOUT e o XKBMODEL do vconsole.conf para um
-# /etc/X11/xorg.conf.d/00-keyboard.conf novo. Mesmos valores, formato dele —
-# e os três ficam marcados como alterados localmente, congelados contra as
-# atualizações da imagem (seção 11), com o teclado passando a ter uma terceira
-# fonte (seção 12.3). Visto na instalação de 2026-09-24 com
-# 'ostree admin config-diff'. O %post devolve os arquivos da imagem, que estão
-# intactos em /usr/etc, e apaga o do X11.
-#
-# O fstab que o Anaconda grava tem uma linha para '/' com as opções do Btrfs
-# (subvol, compress=zstd:1, ro). Num sistema bootc o '/' é o overlay do
-# composefs, que recusa ser remontado: o systemd-remount-fs falha em todo boot
-# ("overlay: No changes allowed in reconfigure"), e a compressão, que só
-# existia nessa linha, nunca é aplicada. Visto na primeira instalação em
-# hardware, em 2026-09-24. O %post apaga a linha — o 'bootc install to-disk'
-# também não grava '/' no fstab — e leva o compress=zstd:1 para o rootflags da
-# entrada de boot, que é com o que o initramfs monta o /sysroot. No Btrfs a
-# opção vale para o sistema de arquivos inteiro, /var incluído, e o ostree
-# carrega os argumentos de kernel de uma deployment para a seguinte.
+# O módulo de localização vem desligado no anaconda-iso do builder, e sem ele o
+# instalador ignora 'lang' e 'keyboard' e abre em inglês, com teclado us.
 [customizations.installer.modules]
 enable = ["org.fedoraproject.Anaconda.Modules.Localization"]
 

@@ -1,31 +1,10 @@
 name: build
 
-# Duas funções distintas, e elas entram em momentos diferentes do projeto.
-#
-# VERIFICAR vale agora: cada push constrói as duas variantes e roda o mesmo
-# tests/check-image.sh do 'just check'. É o que pega regressão enquanto o
-# projeto muda rápido, sem depender de alguém lembrar de rodar a verificação
-# na máquina.
-#
-# PUBLICAR acontece de duas formas, e nunca num push: os pushes são muitos,
-# e boa parte é documentação.
-#
-#   - toda semana, pelo 'schedule', para a máquina instalada acompanhar a
-#     base do Universal Blue — correções do Fedora, kernel, driver — mesmo
-#     numa semana sem commit;
-#   - à mão, pelo 'workflow_dispatch' com a caixa marcada, quando uma mudança
-#     daqui precisa chegar antes do sábado.
-#
-# Semanal, e não diário: as tags da base expiram em 4 semanas, a retenção
-# abaixo guarda ~6 publicações (6 semanas de histórico, contra 6 dias num
-# cron diário), e cada publicação é um download na máquina. Os Flatpaks, que
-# têm o navegador, se atualizam por conta própria todo dia.
-#
-# Sábado às 06:00 UTC (03:00 em Brasília): a meia hora de build termina antes
-# das 04:00, quando o rpm-ostreed-automatic da máquina baixa e prepara a
-# versão para o próximo boot. O GitHub pode atrasar um cron em horário de
-# pico, e desliga os agendados depois de 60 dias sem atividade no
-# repositório — nesse caso, um aviso por e-mail e um clique para religar.
+# Todo push e pull request constrói as duas variantes e roda o
+# tests/check-image.sh do 'just check'. Publicar é só no agendamento semanal
+# (sábado 06:00 UTC, antes da atualização automática das 04:00 em Brasília)
+# ou à mão, com a caixa 'publish' marcada — nunca num push. Ver PROJECT.md
+# §28.2.
 on:
   schedule:
     - cron: "0 6 * * 6"
@@ -43,18 +22,14 @@ on:
 env:
   FEDORA_MAJOR: "44"
 
-# O evento entra no grupo, e só push e pull request se cancelam: um push
-# durante uma publicação não pode interrompê-la no meio, entre o push da
-# imagem e a assinatura. Duas publicações seguidas esperam uma pela outra.
+# Só push e pull request se cancelam: uma publicação interrompida entre o
+# push e a assinatura deixaria no registry uma imagem sem assinatura.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
 
 jobs:
-  # shellcheck nos scripts, actionlint neste arquivo e a sintaxe do Justfile,
-  # pelas mesmas receitas que rodam na máquina ('just lint'). Job separado, e
-  # não um passo do build: dá retorno em menos de um minuto e não segura a
-  # publicação, que leva vinte.
+  # O mesmo 'just lint' da máquina, em job próprio para responder em um minuto.
   lint:
     name: lint
     runs-on: ubuntu-24.04
@@ -65,19 +40,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # A mesma action que o image-template do Universal Blue usa, fixada por
-      # commit e não por tag.
-      #
-      # A versão do just é fixada na mesma que roda na máquina: o formatador
-      # dele muda de uma versão para outra, e o 'just --fmt --check' passava
-      # aqui e falhava no CI, que instalava a mais recente.
+      # Mesma versão do just da máquina: o formatador muda entre versões.
       - name: Instalar o just
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4.0.0
         with:
           just-version: 1.57.0
 
-      # ARKMOS_LINT_CONTAINER força as ferramentas fixadas no Justfile em vez
-      # das do runner, que traz shellcheck 0.9.0 contra a 0.11.0 que usamos.
+      # Ferramentas fixadas no Justfile, não as do runner (shellcheck 0.9.0).
       - name: just lint
         env:
           ARKMOS_LINT_CONTAINER: "1"
@@ -91,9 +60,7 @@ jobs:
       packages: write
       id-token: write
 
-    # Uma variante por job, não as duas num job só: o runner do GitHub já
-    # precisa de limpeza para caber UMA imagem de ~11 GB, e as duas juntas
-    # estouram o disco. Em jobs separados elas também constroem em paralelo.
+    # Uma variante por job: as duas juntas não cabem no disco do runner.
     strategy:
       fail-fast: false
       matrix:
@@ -104,17 +71,7 @@ jobs:
             base_image: ghcr.io/ublue-os/base-main:44
             publishable: true
 
-          # A variante NVIDIA também publica, desde que o ciclo de publicar
-          # e atualizar foi validado na padrão (seção 35.2). São ~5 GB por
-          # versão, e em repositório público não há cota de registry.
-          #
-          # Publicar esta variante redistribui o driver NVIDIA, que é
-          # proprietário — a licença dele permite, e as condições que ela
-          # impõe são cumpridas aqui. Ver PROJECT.md 28.4.
-          #
-          # Ela compartilha a árvore files/ inteira com a padrão: o que pode
-          # quebrar só nela é algo vindo da base — a imagem sair do ar, mudar
-          # de nome, deixar de trazer um pacote.
+          # Publicar esta redistribui o driver NVIDIA: ver PROJECT.md §28.4.
           - variant: nvidia
             suffix: "-nvidia"
             base_image: ghcr.io/ublue-os/base-nvidia:44
@@ -126,9 +83,7 @@ jobs:
       HAS_SIGNING_KEY: ${{ secrets.SIGNING_SECRET != '' }}
       IMAGE: arkmos${{ matrix.suffix }}
 
-      # Publica no agendamento semanal, ou no acionamento manual com a caixa
-      # marcada — e só se esta variante é publicável. Em push e em pull
-      # request o job constrói e verifica, e para aí.
+      # Agendamento semanal, ou manual com a caixa marcada.
       PUBLICAR: ${{ (github.event_name == 'schedule'
                      || (github.event_name == 'workflow_dispatch' && inputs.publish))
                     && matrix.publishable }}
@@ -137,32 +92,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # O runner do GitHub vem com pouco espaço livre: a variante padrão passa
-      # de 8 GB por causa dos codecs que vêm da base, e a NVIDIA de 11 GB.
+      # A imagem passa de 8 GB (11 GB a NVIDIA), mais do que o runner tem livre.
       - name: Liberar espaço em disco
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
                       /usr/local/share/boost "$AGENT_TOOLSDIRECTORY"
           df -h /
 
-      # O rechunk é chamado pela receita do Justfile, a mesma que roda na
-      # máquina — e para isso o just precisa existir também neste job, não só
-      # no de lint. Fixado na versão que roda aqui.
-      #
-      # DEPOIS da limpeza de disco, não antes: a action guarda o binário no
-      # cache de ferramentas do runner (tc.cacheDir), que é o
-      # $AGENT_TOOLSDIRECTORY apagado ali acima. Instalado antes, o PATH
-      # apontava para um diretório que deixava de existir, e o passo do rechunk
-      # morria com "just: command not found" depois de nove minutos de build.
+      # Para a receita do rechunk. DEPOIS da limpeza, que apaga o
+      # $AGENT_TOOLSDIRECTORY onde a action guarda o binário (PROJECT.md §28.2).
       - name: Instalar o just
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4.0.0
         with:
           just-version: 1.57.0
 
-      # A action diz "Successfully setup just" mesmo quando o binário sai do
-      # disco depois, então quem confirma é o próprio just. Um segundo aqui
-      # vale os nove minutos de build que se perdem quando a falha só aparece
-      # no passo do rechunk.
+      # Falha em um segundo, e não no rechunk, nove minutos depois.
       - name: Conferir o just
         run: just --version
 
@@ -170,7 +114,6 @@ jobs:
         id: tags
         run: |
           # Esquema por data, como Fedora e ublue: 44.AAAAMMDD.N
-          # O número da versão não é a rede de segurança — 'bootc rollback' é.
           DATE="$(date -u +%Y%m%d)"
           BUILD="${GITHUB_RUN_NUMBER}"
           VERSION="${FEDORA_MAJOR}.${DATE}.${BUILD}"
@@ -179,11 +122,7 @@ jobs:
             echo "commit=${GITHUB_SHA}"
           } >> "$GITHUB_OUTPUT"
 
-          # O nome do repositório no registry tem de ser minúsculo, e o dono
-          # desta conta é "AlexRogaleski". github.repository_owner vem com as
-          # maiúsculas e as expressões do Actions não têm lower(): montado
-          # direto, o podman recusa o nome ("repository name must be
-          # lowercase") e a publicação quebra no push.
+          # Minúsculo: o dono é "AlexRogaleski", e o podman recusa maiúsculas.
           echo "IMAGE_REGISTRY=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
 
       - name: Construir imagem
@@ -199,28 +138,11 @@ jobs:
             --tag "${IMAGE}:latest" \
             .
 
-      # Rechunk: reorganiza as camadas por conteúdo antes de verificar e
-      # publicar. É o passo que Bluefin, Aurora e Bazzite dão, e que o
-      # image-template do Universal Blue traz como 'ostree-rechunk'.
-      #
-      # Medido nesta imagem: 289 camadas e 9,88 GB viraram 128 camadas e
-      # 8,02 GB, porque o rpm-ostree unifica os objetos duplicados. O ganho
-      # maior é no 'bootc upgrade' de quem usa: camadas decididas por conteúdo
-      # são estáveis entre publicações, então o download passa a ser só do que
-      # mudou. O custo é o tempo deste passo: medido neste runner, seis minutos
-      # e meio por variante — com execuções chegando a 19min quando o I/O do
-      # runner está disputado.
-      #
-      # A verificação vem DEPOIS, de propósito: o que o just check examina é
-      # exatamente a imagem que vai ao registry.
-      #
-      # O --previous-build mantém o plano de camadas da publicação anterior, e
-      # só entra quando a imagem publicada já é reorganizada. Quem diz isso é a
-      # CONTAGEM de camadas, não o label 'ostree.final-diffid': esse label vem
-      # da base do Universal Blue e é herdado por toda imagem derivada, então
-      # ele está presente mesmo numa publicação de 288 camadas — foi assim que o
-      # CI anunciou "plano herdado" para uma imagem que não tinha plano nenhum.
-      # O rechunk cabe em 127 camadas por definição.
+      # Camadas por conteúdo, para o 'bootc upgrade' baixar só o que mudou.
+      # Antes da verificação, que examina a imagem que vai ao registry. O plano
+      # anterior só é herdado se a publicada já é reorganizada, e quem diz isso
+      # é a contagem de camadas, não o label ostree.final-diffid, que vem da
+      # base. Ver PROJECT.md §28.5.
       - name: Reorganizar camadas (rechunk)
         run: |
           anterior=""
@@ -242,9 +164,7 @@ jobs:
             "${IMAGE}:${{ steps.tags.outputs.version }}" \
             "${IMAGE}:${FEDORA_MAJOR}"
 
-      # Mesmo script que o 'just check' local roda. O lint já roda como
-      # última camada do Containerfile; o script o repete para que a falha
-      # apareça como passo próprio no log do CI.
+      # O mesmo script do 'just check'.
       - name: Verificar imagem
         run: ./tests/check-image.sh "${IMAGE}:latest"
 
@@ -258,14 +178,8 @@ jobs:
         if: env.PUBLICAR == 'true'
         id: push
         run: |
-          # O digest a assinar é o que o registry recebeu, não o da imagem
-          # local. O push recomprime as camadas e o manifesto publicado ganha
-          # outro digest, e o 'podman inspect' continua mostrando o local
-          # mesmo depois do push: assinar esse seria assinar algo que não
-          # existe no registry. O --digestfile devolve o publicado.
-          #
-          # Cada tag é um push próprio. Se os digests divergirem, a assinatura
-          # cobriria só uma das tags — então a publicação para aqui.
+          # Assina-se o digest publicado (--digestfile), não o local: o push
+          # recomprime as camadas. Tags com digests diferentes param aqui.
           for tag in "${{ steps.tags.outputs.version }}" "${FEDORA_MAJOR}" latest; do
             podman push --digestfile "${RUNNER_TEMP}/digest-${tag}" \
               "${IMAGE}:${tag}" "docker://${IMAGE_REGISTRY}/${IMAGE}:${tag}"
@@ -281,71 +195,41 @@ jobs:
         if: env.PUBLICAR == 'true' && env.HAS_SIGNING_KEY == 'true'
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
-      # A política de assinatura da imagem (/etc/containers/policy.json) só
-      # passa a valer depois que a chave pública correspondente estiver em
-      # /etc/pki/containers/arkmos.pub. Ver README.
+      # Ver PROJECT.md §28.3.
       - name: Assinar
         if: env.PUBLICAR == 'true' && env.HAS_SIGNING_KEY == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
-          # Sem esta variável o cosign tenta PEDIR a senha da chave, e num
-          # runner sem terminal isso trava o job até o timeout. Vazia quando o
-          # secret não existe, que é o caso de uma chave gerada sem senha.
+          # Sem ela o cosign pede a senha e trava o job; vazia serve.
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
           DIGEST: ${{ steps.push.outputs.digest }}
         run: |
-          # O cosign precisa do próprio login: ele não lê o arquivo de
-          # autenticação do podman, e sim a configuração do Docker. Sem isto
-          # ele tenta anônimo e o GHCR responde UNAUTHORIZED — foi o que
-          # quebrou a primeira publicação, já depois de o push ter dado certo.
+          # O cosign não lê o login do podman: sem isto, UNAUTHORIZED.
           echo "${GH_TOKEN}" \
             | cosign login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-          # --new-bundle-format=false não é detalhe: no cosign 3 essa opção
-          # vem LIGADA, e a assinatura vira um bundle Sigstore anexado pela
-          # API de referrers. O GHCR não suporta essa API, então o cosign cai
-          # numa tag de índice 'sha256-<digest>' — e o podman e o bootc não
-          # procuram ali. Eles leem a sigstore attachment clássica, a tag
-          # 'sha256-<digest>.sig', que no formato novo nem existe: o resultado
-          # é uma imagem que o cosign valida e a máquina recusa no upgrade.
-          # --use-signing-config=false acompanha: no cosign 3 ela vem LIGADA e
-          # exige o formato novo, então sozinha a opção acima é recusada antes
-          # de assinar ("must provide --new-bundle-format ... with
-          # --use-signing-config"). As duas juntas voltam ao fluxo clássico.
+          # Formato clássico (tag sha256-<digest>.sig), o único que o podman e
+          # o bootc leem; as duas opções vêm ligadas no cosign 3 (§28.2).
           cosign sign --yes --new-bundle-format=false \
             --use-signing-config=false \
             --key env://COSIGN_PRIVATE_KEY \
             "${IMAGE_REGISTRY}/${IMAGE}@${DIGEST}"
 
-      # A assinatura é o que a máquina instalada vai exigir para atualizar.
-      # Conferir aqui, com a mesma chave pública que vai dentro da imagem, é
-      # mais barato do que descobrir no 'bootc upgrade' que ela não confere.
+      # Com a mesma chave que vai na imagem, como o 'bootc upgrade' fará.
       - name: Verificar a assinatura publicada
         if: env.PUBLICAR == 'true' && env.HAS_SIGNING_KEY == 'true'
         env:
           DIGEST: ${{ steps.push.outputs.digest }}
         run: |
-          # A mesma opção aqui, e pelo mesmo motivo: o verify também espera o
-          # bundle por padrão. Sem ela, esta verificação passaria a cobrar o
-          # formato que a máquina não usa.
+          # O verify também espera o formato novo por padrão.
           cosign verify --new-bundle-format=false \
             --key files/etc/pki/containers/arkmos.pub \
             "${IMAGE_REGISTRY}/${IMAGE}@${DIGEST}"
 
-      # --- Retenção -------------------------------------------------------
-      #
-      # Cada publicação cria UMA versão (um digest) carregando três tags:
-      # 44.AAAAMMDD.N, 44 e latest. Nada remove as anteriores, e cada uma
-      # ocupa ~4 GB. Em repositório público isso não custa cota, mas uma
-      # listagem de pacote com centenas de versões deixa de ser navegável — e
-      # com o schedule ligado ela cresce sozinha.
-      #
-      # Dois passos, porque as duas limpezas têm critérios diferentes.
+      # --- Retenção (PROJECT.md §28.2) ------------------------------------
 
-      # Mover as tags 44 e latest para a versão nova deixa a anterior sem
-      # nenhuma tag apontando para ela. Essas não servem para nada: não dá
-      # para referenciá-las por nome, e não são alvo de rollback.
+      # Versões que ficaram sem tag quando 44 e latest foram movidas.
       - name: Remover versões sem tag
         if: env.PUBLICAR == 'true'
         uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5.0.0
@@ -355,16 +239,7 @@ jobs:
           delete-only-untagged-versions: true
           min-versions-to-keep: 0
 
-      # Histórico de imagem para reinstalar do zero uma versão que se sabe
-      # boa, quando a mais recente não presta. O rollback do dia a dia é
-      # outra coisa, e é local: 'bootc rollback' usa o deployment anterior,
-      # que já está no disco e não depende do registry.
-      #
-      # A conta não é uma versão por publicação: cada publicação cria DUAS
-      # versões no GHCR, a imagem e a assinatura do cosign, que é um artefato
-      # próprio. Então 12 versões são cerca de 6 publicações. Com o valor
-      # anterior (5) sobravam duas, e durante os testes da 0.8.0 as versões
-      # usadas como teste negativo foram apagadas no meio do caminho.
+      # 12 versões = ~6 publicações: imagem e assinatura contam uma cada.
       - name: Manter apenas as últimas versões
         if: env.PUBLICAR == 'true'
         uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5.0.0
