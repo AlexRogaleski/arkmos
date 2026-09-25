@@ -66,11 +66,13 @@ wallpaper_scheme = "m3-tonal-spot"
 [theme.templates]
 builtin_ids = [ "gtk3", "gtk4", "btop", "kcolorscheme" ]
 
-# A pasta que a lista de papéis de parede do Noctalia mostra. São os do próprio
-# Arkmos, gerados por IA pelo autor do projeto, mais o arkmos.webp que o
-# build_files/render-artwork.sh desenha com o nome do sistema.
+# A pasta que a lista de papéis de parede do Noctalia mostra. O painel entra nas
+# subpastas, então aqui vão todos: os do Arkmos em arkmos/ — gerados por IA
+# pelo autor do projeto, mais o arkmos.webp que o build_files/render-artwork.sh
+# desenha com o nome do sistema —, o da versão do Fedora em f44/ e o conjunto
+# complementar dele em fedora-workstation/.
 [wallpaper]
-directory = "/usr/share/backgrounds/arkmos"
+directory = "/usr/share/backgrounds"
 
 # O papel de parede que a conta nova recebe. A tela de bloqueio usa o do
 # desktop enquanto [lockscreen] wallpaper estiver vazio, que é o padrão — por

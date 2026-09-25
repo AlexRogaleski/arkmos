@@ -492,13 +492,20 @@ p = c["wallpaper"]["default"]["path"]
 assert os.path.getsize(p) > 0, f"{p} vazio"
 assert c["shell"]["greeter_sync"]["auto_sync"] is True, "auto-sync do greeter desligado"
 
-# A pasta que a lista do Noctalia mostra. Caminho errado aqui também não dá
-# erro: a lista abre vazia.
-d = c["wallpaper"]["directory"]
+# A pasta que a lista do Noctalia mostra, e ele entra nas subpastas. Caminho
+# errado aqui também não dá erro: a lista abre vazia. As três coleções são
+# conferidas pelo que o Noctalia lista, com as extensões dele
+# (directory_scanner.cpp) — o da versão do Fedora vem em .jxl.
+d = c["wallpaper"]["directory"].rstrip("/")
 assert os.path.isdir(d), f"{d} não existe"
-assert os.path.dirname(p) == d.rstrip("/"), f"o padrão {p} está fora de {d}"
-imagens = [f for f in os.listdir(d) if not f.startswith(".")]
-assert len(imagens) >= 2, f"só {len(imagens)} imagem(ns) em {d}"
+assert p.startswith(d + "/"), f"o padrão {p} está fora de {d}"
+ext = (".jpg", ".jpeg", ".png", ".webp", ".jxl", ".bmp", ".gif")
+def imagens(sub):
+    return [f for _, _, fs in os.walk(os.path.join(d, sub)) for f in fs if f.lower().endswith(ext)]
+versao = "f" + open("/etc/os-release").read().split("VERSION_ID=")[1].split()[0].strip("\"")
+for sub, minimo in (("arkmos", 2), ("fedora-workstation", 2), (versao, 1)):
+    n = len(imagens(sub))
+    assert n >= minimo, f"só {n} imagem(ns) em {d}/{sub}"
 
 # O esquema de cores: o nome é validado contra a lista do próprio Noctalia,
 # porque o validador dele aceita qualquer string e um nome errado cai no

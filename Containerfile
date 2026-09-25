@@ -119,6 +119,15 @@ COPY files/etc/yum.repos.d/ /etc/yum.repos.d/
 # 'gh' é o cliente do GitHub: 'gh pr', 'gh run', 'gh auth'. O repositório deste
 # projeto vive lá, e o CI é acompanhado por ele.
 #
+# Papéis de parede do Fedora, ao lado dos do Arkmos, na lista do Noctalia (que
+# aponta para /usr/share/backgrounds inteiro e entra nas subpastas). O da
+# versão — dia e noite, em JPEG XL, que o Noctalia lê — tem o número do Fedora
+# no nome do pacote, e por isso o nome sai do 'rpm -E %fedora': na troca para
+# o 45 ele acompanha sozinho. O fedora-workstation-backgrounds, o conjunto
+# complementar, já vem da base, mas nada o exige lá: declarado aqui, não some.
+# De fora, o desktop-backgrounds-gnome: são texturas de ladrilho dos anos 2000,
+# e ele traz overrides de gsettings para o GNOME.
+#
 # Sem 'mako': quem implementa o org.freedesktop.Notifications aqui é o próprio
 # Noctalia, com daemon ligado por padrão. O mako ficava instalado, desabilitado
 # e nunca iniciado — dois daemons para o mesmo barramento, e um deles peso
@@ -165,6 +174,8 @@ RUN dnf -y --setopt=install_weak_deps=False install \
         ripgrep \
         zoxide \
         btop \
+        fedora-workstation-backgrounds \
+        "f$(rpm -E %fedora)-backgrounds-base" \
     && dnf -y remove htop \
     && dnf clean all
 

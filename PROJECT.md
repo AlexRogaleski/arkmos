@@ -1247,7 +1247,7 @@ prefer-no-csd no niri            decoração desenhada pelo compositor
 /usr/share/plymouth/themes/      splash de boot com o nome do sistema
   arkmos
 /usr/share/backgrounds/arkmos    papéis de parede do projeto, mais o gerado
-                                 no build
+                                 no build; os do Fedora ficam ao lado
 /etc/skel/.config/noctalia/      esquema Tokyo Night, papel de parede padrão,
   arkmos.toml                    sync do login, bloqueio por inatividade
 ```
@@ -1413,7 +1413,13 @@ Nove imagens geradas por IA pelo autor do projeto, em WebP 1920x1081 de ~250 KB 
 files/usr/share/backgrounds/arkmos/
 ```
 
-O padrão é o `arkmos-default.webp`, e a pasta é declarada no `arkmos.toml` para a lista do Noctalia mostrar todas. O `just check` confere que o padrão existe, que está dentro da pasta declarada e que a pasta não ficou vazia — caminho errado ali não dá erro, o shell só abre com o fundo vazio.
+O padrão é o `arkmos-default.webp`.
+
+Os do Fedora entram ao lado, para a escolha não se limitar aos do projeto: o da versão, dia e noite em JPEG XL (`f44-backgrounds-base`, em `f44/`), e o conjunto complementar do Workstation, doze imagens em versão clara e escura (`fedora-workstation-backgrounds`, em `fedora-workstation/`). O nome do primeiro sai do `rpm -E %fedora` no Containerfile, e acompanha a troca de versão sozinho. O `desktop-backgrounds-gnome` fica de fora: são texturas de ladrilho antigas, e ele traz overrides de gsettings para o GNOME.
+
+Por isso a pasta declarada no `arkmos.toml` é `/usr/share/backgrounds` inteira: o painel do Noctalia entra nas subpastas, e mostra as três coleções. O `just check` confere que o padrão existe e está dentro da pasta declarada, e que cada coleção tem imagem num formato que o Noctalia lista — caminho errado ali não dá erro, o shell só abre com o fundo vazio.
+
+Conta que já existia antes disso continua com a pasta antiga, porque o `arkmos.toml` é copiado do `/etc/skel` só na criação. A troca é pela interface (configurações do Noctalia → papel de parede → pasta) ou copiando o arquivo da imagem por cima, se ele não foi editado: `cp /etc/skel/.config/noctalia/arkmos.toml ~/.config/noctalia/`.
 
 São arte própria, e é isso que as deixa entrar num repositório público: arte de terceiro sem licença clara fica fora do repo e da imagem (seção 28.4).
 
