@@ -418,6 +418,11 @@ binds {
     // porque ele pode já estar rodando como serviço D-Bus, e aí sem a flag só
     // traria para a frente uma janela que talvez nem exista.
     Mod+E hotkey-overlay-title="Abrir o gerenciador de arquivos: Nautilus" { spawn "nautilus" "--new-window"; }
+    // Arkmos: o Chrome é Flatpak, e o 'flatpak run' funciona sem depender de o
+    // diretório de exports estar no PATH da sessão.
+    Mod+B hotkey-overlay-title="Abrir o navegador: Chrome" { spawn "flatpak" "run" "com.google.Chrome"; }
+    // Arkmos: notificações, Wi-Fi, Bluetooth e som, no painel do Noctalia.
+    Mod+N hotkey-overlay-title="Abrir a central de controle" { spawn "noctalia" "msg" "panel-toggle" "control-center"; }
     // Arkmos: o lançador e o bloqueio são os do Noctalia. A configuração de
     // exemplo do niri apontava para o fuzzel e o swaylock, dois programas à
     // parte, com outra aparência, e o lançador do Noctalia ficava sem atalho.
@@ -686,9 +691,12 @@ binds {
     // which ensures niri always processes them, even when an inhibitor is active.
     Mod+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
 
-    // The quit action will show a confirmation dialog to avoid accidental exits.
-    Mod+Shift+E hotkey-overlay-title="Sair do niri" { quit; }
-    Ctrl+Alt+Delete { quit; }
+    // Arkmos: Mod+Shift+E abre o menu de sessão do Noctalia — desligar,
+    // reiniciar, suspender, sair —, no lugar do 'quit' do niri, que só sabe
+    // sair. O 'quit' continua no Ctrl+Alt+Delete, com o título que o overlay
+    // mostra e a confirmação do niri antes de sair.
+    Mod+Shift+E hotkey-overlay-title="Menu de sessão: desligar, reiniciar, sair" { spawn "noctalia" "msg" "panel-toggle" "session"; }
+    Ctrl+Alt+Delete hotkey-overlay-title="Sair do niri" { quit; }
 
     // Powers off the monitors. To turn them back on, do any input like
     // moving the mouse or pressing any other key.

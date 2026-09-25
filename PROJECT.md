@@ -336,6 +336,8 @@ Personalizações em relação à configuração de exemplo:
 
 - `spawn-at-startup "noctalia"` no lugar da Waybar;
 - `Mod+T` abre o Foot, e `Mod+E` o Nautilus — o `E` de *explorer*, o mesmo atalho do Windows e de boa parte dos desktops Linux;
+- `Mod+B` abre o Chrome e `Mod+N` a central de controle do Noctalia (notificações, Wi-Fi, Bluetooth, som);
+- `Mod+Shift+E` abre o menu de sessão do Noctalia (desligar, reiniciar, suspender, sair), no lugar do `quit` do niri, que continua no `Ctrl+Alt+Delete`;
 - `Mod+D` e `Mod+Space` abrem o lançador do Noctalia, e `Super+Alt+L` bloqueia a tela pelo Noctalia. A configuração de exemplo apontava para o fuzzel e o swaylock, dois programas à parte, e o lançador do Noctalia ficava sem atalho;
 - `Shift+Print` faz captura com anotação (seção 25);
 - anel de foco de 3 px, com gradiente do azul ao roxo de destaque do Tokyo Night, e cantos arredondados de 8 px em todas as janelas, com `clip-to-geometry` para o conteúdo ser recortado no mesmo raio — sem ele o arredondamento fica só na moldura e o conteúdo aparece quadrado nos cantos;
