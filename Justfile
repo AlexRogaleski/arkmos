@@ -43,6 +43,27 @@ check-all:
     just variant=nvidia build
     just variant=nvidia check
 
+# Precisa de rede, por isso fora do 'check': um id que o Flathub pôs em fim de
+# vida é trocado pelo flatpak sem aviso (PROJECT.md §25).
+[doc("Confere no Flathub que nenhum Flatpak da lista está em fim de vida")]
+check-flatpaks:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    lista=files/usr/share/flatpak/preinstall.d/arkmos.preinstall
+    falhou=0
+    while read -r id; do
+        bloco="$(grep -A2 -F "[Flatpak Preinstall $id]" "$lista")"
+        branch="$(grep -oP 'Branch=\K.*' <<<"$bloco")"
+        tipo=app; grep -q '^IsRuntime=true' <<<"$bloco" && tipo=runtime
+        if ! info="$(LC_ALL=C.UTF-8 flatpak remote-info --system flathub "$tipo/$id/x86_64/$branch" 2>&1)"; then
+            echo "não encontrado: $id"; falhou=1
+        elif grep -q '^ *End-of-life' <<<"$info"; then
+            echo "fim de vida: $id"; grep '^ *End-of-life' <<<"$info" | sed 's/^ */    /'; falhou=1
+        fi
+    done < <(grep -oP '^\[Flatpak Preinstall \K[^]]+' "$lista")
+    [[ $falhou == 0 ]] && echo "todos os Flatpaks da lista estão ativos no Flathub"
+    exit "$falhou"
+
 # O builder roda como root e só enxerga o storage dele: o 'image scp' leva a
 # imagem para lá. --network=host porque, com o Docker ligado, o DNS não sai
 # pela bridge do podman rootful (PROJECT.md §30).

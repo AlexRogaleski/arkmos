@@ -1115,6 +1115,8 @@ Onde fica cada aplicativo em uso:
 | VS Code | imagem: precisa do docker do host (seção 17.1) |
 | Nautilus, Discos, compactação, assistente de impressão | imagem: integração com o sistema (25.1, 25.2) |
 | Chrome, Thunderbird, Spotify, Discord, OnlyOffice, Inkscape, Switcheroo, AnyDesk | Flatpak |
+
+**Thunderbird: `org.mozilla.thunderbird`, a versão mensal.** A lista declarava o `org.mozilla.Thunderbird`, com T maiúsculo, que o Flathub pôs em fim de vida apontando para o `org.mozilla.thunderbird_esr` — e o flatpak segue esse redirecionamento sozinho, sem aviso além de uma linha no journal ("está em fim de vida, em favor de ..."). Toda instalação recebia o ESR sem que ninguém o tivesse escolhido, e o dock padrão, que fixava o id antigo, mostrava um ícone morto. Hoje há dois ids atuais, ambos da MZLA e verificados: `org.mozilla.thunderbird`, mensal, e `org.mozilla.thunderbird_esr`, uma versão grande por ano. Escolhido o mensal em 2026-09-28. Cada id guarda os dados em `~/.var/app/<id>`, então trocar de um para o outro é copiar o `.thunderbird` e marcar o perfil como padrão no `profiles.ini` (sem a seção `[Install...]`, que prende o perfil à instalação antiga); a versão nova o assume e atualiza, e o caminho não tem volta, porque o ESR não abre um perfil de versão mais nova. Um id em fim de vida não é detectável sem rede, então o `just check` não o pega; quem confere é o `just check-flatpaks`, que consulta o Flathub para cada id da lista.
 | Editor de Texto do GNOME, Papers (PDF), Loupe (imagens), Showtime (vídeo), Calculadora | Flatpak |
 | Fedora Media Writer, LocalSend, Galaxy Buds Client, Mecalin | Flatpak |
 | Monitor de sistema: btop, no lugar do htop da base | imagem |
@@ -1417,7 +1419,7 @@ Três coisas da exportação **não** entraram, e é a regra para as próximas:
 - **estado de máquina**: último papel de parede usado e o papel por monitor;
 - **posição dos widgets da tela de bloqueio**, que grava nome de monitor (`Virtual-1`, da VM) e coordenadas em pixels — no notebook o monitor é outro, e isso viraria lixo.
 
-Os ids dos fixados no dock são de `.desktop`: um id que não esteja instalado vira ícone morto. A exportação vinha com `org.mozilla.thunderbird_esr`, que não é o que a lista instala, e foi corrigido para `org.mozilla.Thunderbird`.
+Os ids dos fixados no dock são de `.desktop`: um id que não esteja instalado vira ícone morto. O Thunderbird é o `org.mozilla.thunderbird` (seção 25). A exportação da VM vinha com `org.mozilla.thunderbird_esr`, e aquilo não era erro: era o fim de vida do id antigo agindo — ver abaixo.
 
 ### Notificações
 
