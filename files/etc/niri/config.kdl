@@ -78,6 +78,9 @@ cursor {
     xcursor-size 24
 }
 
+// Cursor escolhido pela conta ('ujust arkmos-cursor'), por cima do acima.
+include optional=true "~/.config/niri/cursor.kdl"
+
 // You can configure outputs by their name, which you can find
 // by running `niri msg outputs` while inside a niri instance.
 // The built-in laptop monitor is usually called "eDP-1".
@@ -702,3 +705,8 @@ binds {
     // moving the mouse or pressing any other key.
     Mod+Shift+P { power-off-monitors; }
 }
+
+// Ajustes da conta, por último para vencer o resto. Opcional: sem o arquivo
+// vale só esta configuração. Um ~/.config/niri/config.kdl, ao contrário,
+// substituiria este arquivo inteiro (PROJECT.md §8.1).
+include optional=true "~/.config/niri/local.kdl"

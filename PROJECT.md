@@ -343,7 +343,8 @@ Personalizações em relação à configuração de exemplo:
 - `Mod+D` e `Mod+Space` abrem o lançador do Noctalia, e `Super+Alt+L` bloqueia a tela pelo Noctalia. A configuração de exemplo apontava para o fuzzel e o swaylock, dois programas à parte, e o lançador do Noctalia ficava sem atalho;
 - `Shift+Print` faz captura com anotação (seção 25);
 - anel de foco de 3 px, com gradiente do azul ao roxo de destaque do Tokyo Night, e cantos arredondados de 8 px em todas as janelas, com `clip-to-geometry` para o conteúdo ser recortado no mesmo raio — sem ele o arredondamento fica só na moldura e o conteúdo aparece quadrado nos cantos;
-- `prefer-no-csd` ligado.
+- `prefer-no-csd` ligado;
+- dois `include optional=true` para a conta: `~/.config/niri/cursor.kdl`, que o `ujust arkmos-cursor` escreve, logo depois do bloco `cursor`, e `~/.config/niri/local.kdl` no fim, para ajustes próprios (atalhos, monitores) que vencem o resto. Um `~/.config/niri/config.kdl`, ao contrário, **substitui** a configuração da imagem inteira, e a conta deixaria de receber as atualizações dela.
 
 O terminal tem fundo levemente translúcido (`alpha=0.9` em `[colors-dark]`, declarado depois do include do tema para vencê-lo). A seção é `[colors-dark]`, e não `[colors]`: o foot 1.27 depreciou a segunda e abria imprimindo o aviso em cima do prompt; com `initial-color-theme=dark`, é a seção escura que vale. O `foot --check-config` sai com zero mesmo quando avisa de algo depreciado, então o `just check` reprova pela presença do aviso, e não pelo código de saída. O niri não desfoca o que está atrás, então o que aparece é o papel de parede; o `alpha-mode` fica no padrão, que aplica a translucidez só às células com a cor de fundo padrão, deixando texto selecionado e blocos coloridos sólidos.
 
@@ -1099,7 +1100,7 @@ Onde fica cada aplicativo em uso:
 | Editor de Texto do GNOME, Papers (PDF), Loupe (imagens), Showtime (vídeo), Calculadora | Flatpak |
 | Fedora Media Writer, LocalSend, Galaxy Buds Client, Mecalin | Flatpak |
 | Monitor de sistema: btop, no lugar do htop da base | imagem |
-| Flatseal, Bazaar (loja), Embellish (Nerd Fonts), DistroShelf (Distrobox) | Flatpak |
+| Flatseal, Ignition (aplicativos no login), Bazaar (loja), Embellish (Nerd Fonts), DistroShelf (Distrobox) | Flatpak |
 | Insync, Android Studio com emulador, MySQL Workbench | Distrobox, declarado num repositório privado (seção 16) |
 | Tolaria, Tabularis | AppImage, pelo AppManager |
 | Captura de tela com anotação | Noctalia, no `Shift+Print` |
@@ -1390,7 +1391,7 @@ Vieram de uma sessão de testes na VM: mexer na interface do Noctalia e exportar
 
 O arredondamento da interface do shell está em `corner_radius_scale = 1.25`, escolhido olhando na VM para acompanhar os cantos das janelas. Ele viaja ao login pelo sync, e é por isso que não é declarado no `greeter.toml` (seção 8.3).
 
-A barra leva lançador, captura e papel de parede à esquerda, com espaçadores antes e depois dos workspaces e a janela ativa no fim; relógio e mídia no centro; e à direita o monitor de sistema, RAM, bandeja, notificações, área de transferência, rede, Bluetooth, volume, brilho, bateria, centro de controle, caffeine e sessão. Sem moldura arredondada nem margem nas pontas, com 60% de opacidade. O dock fica oculto e não reserva espaço, com VS Code, Spotify, AnyDesk, Bazaar e Thunderbird fixados. Cada item fixado é um id de `.desktop`, e o Noctalia não avisa quando um não existe — o ícone aparece morto, ou não aparece. A renomeação da entrada do VS Code (`code` → `com.microsoft.VSCode`, na 1.139.0) teria causado isso em silêncio; o `just check` confere os fixados contra a lista de Flatpaks e os `.desktop` da imagem.
+A barra leva lançador, captura e papel de parede à esquerda, com espaçadores antes e depois dos workspaces e a janela ativa no fim; data e hora numa cápsula e a mídia (só quando toca algo) no centro; e à direita o monitor de sistema, RAM, bandeja, notificações, área de transferência, caffeine, rede, Bluetooth, volume, brilho, bateria e sessão. A central de controle saiu da barra em 2026-09-28 e abre pelo `Super+N`. Sem moldura arredondada nem margem nas pontas, com 60% de opacidade, 36 px de altura e escala 1,05 — ajustes feitos no notebook e trazidos para o skel. O dock fica oculto e não reserva espaço, com VS Code, Spotify, AnyDesk, Bazaar e Thunderbird fixados. Cada item fixado é um id de `.desktop`, e o Noctalia não avisa quando um não existe — o ícone aparece morto, ou não aparece. A renomeação da entrada do VS Code (`code` → `com.microsoft.VSCode`, na 1.139.0) teria causado isso em silêncio; o `just check` confere os fixados contra a lista de Flatpaks e os `.desktop` da imagem.
 
 Três coisas da exportação **não** entraram, e é a regra para as próximas:
 
@@ -1446,6 +1447,8 @@ A escolha saiu de uma comparação lado a lado com Adwaita, Yaru, Breeze, Numix,
 Escolhido em 2026-09-24, no lugar do Adwaita. A variante Ice é a branca, de pontas arredondadas: é a que mais aparece contra o fundo escuro do Tokyo Night.
 
 O Fedora não empacota o Bibata — os temas de cursor do repositório são Adwaita, Breeze, Oxygen e Bluecurve —, então ele vem do release upstream, como a Nerd Font: `build_files/install-cursor.sh`, versão 2.0.7 fixada, 1,7 MB. O release não publica checksum, e o SHA256 fixado foi calculado no download de 2026-09-24; dali em diante, qualquer mudança no arquivo servido falha o build. A licença é GPL-3.0, redistribuível.
+
+**O preto também vem na imagem.** O Bibata Modern Classic, a variante preta, é instalado pelo mesmo script (checksum calculado em 2026-09-28), e a conta troca com `ujust arkmos-cursor preto` — ou `branco` para voltar. Não há aplicativo gráfico para isso: o `nwg-look`, o configurador de tema e cursor mais usado fora do GNOME, não está no Fedora, e nenhum deles escreveria a configuração do niri. A receita mexe nos dois lugares que a conta controla: o `cursor-theme` do dconf da conta, que vence o do sistema, e o `~/.config/niri/cursor.kdl`, que a configuração do niri inclui. A tela de login continua com o branco.
 
 O nome do tema é declarado em cinco lugares, e cada um alcança uma classe de programa:
 
@@ -2211,7 +2214,7 @@ arkmos/
 ├── build_files/                   rodam no build e NÃO ficam na imagem
 │   ├── install-upstream-bins.sh   starship, lazygit, lazydocker (sha256)
 │   ├── install-nerd-font.sh       JetBrains Mono patched (sha256)
-│   ├── install-cursor.sh          cursor Bibata Modern Ice (sha256)
+│   ├── install-cursor.sh          cursores Bibata Modern Ice e Classic (sha256)
 │   ├── papirus-folders.sh         pastas do Papirus em violeta
 │   ├── patch-niri-session.sh      lista de variáveis no import-environment
 │   ├── trim-ujust.sh              recorta o menu do ujust

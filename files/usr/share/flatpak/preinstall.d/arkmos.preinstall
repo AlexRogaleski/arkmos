@@ -74,6 +74,10 @@ Branch=stable
 [Flatpak Preinstall org.localsend.localsend_app]
 Branch=stable
 
+# Aplicativos que abrem no login (~/.config/autostart)
+[Flatpak Preinstall io.github.flattool.Ignition]
+Branch=stable
+
 # Permissões dos Flatpaks
 [Flatpak Preinstall com.github.tchx84.Flatseal]
 Branch=stable

@@ -265,6 +265,12 @@ check "cursor Bibata-Modern-Ice instalado e declarado nos cinco lugares" \
                grep -qx "    xcursor-theme \"$c\"" /etc/niri/config.kdl || { echo "niri"; exit 1; }
                grep -qx "theme = \"$c\"" /usr/share/arkmos/noctalia-greeter.toml || { echo "greeter"; exit 1; }'
 
+# O preto do 'ujust arkmos-cursor', e o gancho do niri por onde ele entra.
+check "cursor preto e include do niri para a troca por conta" \
+    run sh -c 'test -e /usr/share/icons/Bibata-Modern-Classic/cursors/left_ptr &&
+               grep -q "^include optional=true \"~/.config/niri/cursor.kdl\"" /etc/niri/config.kdl &&
+               grep -q "^arkmos-cursor " /usr/share/ublue-os/just/60-custom.just'
+
 # O parser do greetd recusa o que o tomllib aceita (string multilinha com barra
 # no fim, por exemplo), então quem valida é o greetd. Sem VT ele falha ao abrir
 # o terminal, e chegar até ali prova que o config foi lido.

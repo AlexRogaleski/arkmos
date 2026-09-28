@@ -33,6 +33,34 @@ arkmos-apply-defaults:
     echo "O que você já tinha editado ficou como estava."
     echo "Saia da sessão e entre de novo para o shell reler a configuração."
 
+# Troca o cursor desta conta: branco (Ice, o padrão) ou preto (Classic)
+arkmos-cursor COR="prompt":
+    #!/usr/bin/bash
+    set -euo pipefail
+    case "{{ COR }}" in
+        branco) tema=Bibata-Modern-Ice ;;
+        preto) tema=Bibata-Modern-Classic ;;
+        prompt | "")
+            echo "Cursor atual: $(gsettings get org.gnome.desktop.interface cursor-theme)"
+            echo
+            echo "  ujust arkmos-cursor branco   → Bibata Modern Ice (padrão)"
+            echo "  ujust arkmos-cursor preto    → Bibata Modern Classic"
+            exit 0
+            ;;
+        *)
+            echo "Cor desconhecida: {{ COR }} (use 'branco' ou 'preto')" >&2
+            exit 1
+            ;;
+    esac
+    # Dois lugares: o dconf, que os aplicativos GTK e Flatpak seguem, e o
+    # niri, que desenha o cursor no desktop e o exporta ao resto (§26.1).
+    gsettings set org.gnome.desktop.interface cursor-theme "$tema"
+    mkdir -p "$HOME/.config/niri"
+    printf 'cursor {\n    xcursor-theme "%s"\n    xcursor-size 24\n}\n' "$tema" \
+        > "$HOME/.config/niri/cursor.kdl"
+    echo "Cursor trocado para $tema."
+    echo "Aplicativos já abertos podem manter o anterior até serem reabertos."
+
 # Troca entre a variante padrão e a NVIDIA (pede reinício depois)
 arkmos-variant ALVO="prompt":
     #!/usr/bin/bash

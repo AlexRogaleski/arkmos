@@ -86,28 +86,54 @@ path = "/usr/share/backgrounds/arkmos/arkmos-default.webp"
 # aparece.
 [bar.default]
 start = [ "launcher", "screenshot", "wallpaper", "spacer_2", "workspaces", "spacer_4", "active_window" ]
-center = [ "clock", "media" ]
+center = [ "group:g1", "media" ]
 end = [
     "sysmon",
     "ram",
     "tray",
     "notifications",
     "clipboard",
+    "caffeine",
     "network",
     "bluetooth",
     "volume",
     "brightness",
     "battery",
-    "control-center",
-    "caffeine",
+    "spacer_3",
     "session"
 ]
 background_opacity = 0.6
 margin_ends = 0
 radius = 0
+padding = 16
+scale = 1.05
+thickness = 36
+widget_spacing = 8
+
+# Data e hora juntas numa cápsula, no centro. A central de controle saiu da
+# barra: abre pelo Super+N.
+[[bar.default.capsule_group]]
+id = "g1"
+members = [ "date", "clock" ]
+enabled = true
+accordion = false
+accordion_direction = "end"
+fill = "surface_variant"
+opacity = 0.0
+padding = 6.0
+
+[widget.date]
+format = "{:%a %d %b %y}"
+
+[widget.media]
+hide_when_no_media = true
 
 [widget.spacer_2]
 type = "spacer"
+
+[widget.spacer_3]
+type = "spacer"
+length = 10
 
 [widget.spacer_4]
 type = "spacer"
