@@ -979,6 +979,15 @@ check "zsh põe ~/.local/bin no PATH" \
         [[ \":\$PATH:\" == *:/tmp/.local/bin:* ]] || { print -u2 \"sem ~/.local/bin: \$PATH\"; exit 1; }
     " 2>&1'
 
+# O Neovim da imagem: tema, plugins e atalhos sem rede, e fora do caminho
+# quando a conta tem configuração própria (§9.1).
+check "nvim: config da imagem, e nada dela com ~/.config/nvim" \
+    sh -c 'podman run --rm --network=none -e HOME=/tmp "'"$IMAGE"'" sh -c "
+        nvim --headless -c \"lua if vim.g.colors_name ~= [[tokyonight-night]] or not MiniFiles or not MiniClue then vim.cmd.cquit() end\" -c qa || { echo sem-config-da-imagem; exit 1; }
+        mkdir -p /tmp/.config/nvim && touch /tmp/.config/nvim/init.lua
+        nvim --headless -c \"lua if MiniFiles or vim.g.colors_name then vim.cmd.cquit() end\" -c qa || { echo nao-saiu-do-caminho; exit 1; }
+    " 2>&1'
+
 # Uma linha só no tools.zsh, fácil de perder. HOME=/tmp porque o /root da
 # imagem só nasce no boot.
 check "zsh ativa o mise" \

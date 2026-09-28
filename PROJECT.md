@@ -469,6 +469,24 @@ Sem isso, o foot desenha a própria barra de título usando a cor de foreground 
 
 A paleta é a `tokyonight-night`, um tema que o próprio pacote foot entrega, incluída pelo `foot.ini` — o Tokyo Night escolhido como identidade (seção 26.1). As cores do Zsh e do prompt são as cores nomeadas do terminal, então seguem o mesmo esquema sem configuração própria. Um `~/.config/foot/foot.ini` do usuário substitui este arquivo por inteiro; o foot não mescla os dois.
 
+
+## 9.1 Neovim para uso geral
+
+O Neovim da imagem vem configurado para editar de tudo sem montar nada: números de linha, mouse, a área de transferência do sistema, desfazer que sobrevive a fechar o arquivo, busca sem diferenciar maiúsculas, `:q` que pergunta se salva em vez de dar erro, o tema Tokyo Night do terminal, e o `mini.nvim` para o resto — explorador de arquivos, busca de arquivo e de texto, barra de status, autocompletar, pares de parênteses, e um painel que mostra as teclas possíveis depois de `Espaço`, `g`, `z` ou `Ctrl+W`. Os atalhos ficam na tecla `Espaço`: `e` explora, `f` busca arquivo, `/` busca texto, `r` abre os recentes, `w` salva; `Ctrl+S` salva em qualquer modo.
+
+```text
+files/etc/xdg/nvim/sysinit.vim           lido sempre, antes da conta
+files/usr/share/nvim/site/lua/arkmos.lua a configuração em si
+build_files/install-nvim-plugins.sh      tokyonight.nvim (Apache-2.0) e
+                                         mini.nvim (MIT), fixados por commit
+```
+
+Mesmo modelo do zsh (seção 13.1): a imagem entrega o padrão e a conta tem a última palavra. O `sysinit.vim` de `/etc/xdg` é lido sempre, antes do `~/.config/nvim`; como o Neovim só lê o primeiro `sysinit.vim` que acha, o nosso carrega antes o do pacote do Fedora (que define o Python do Neovim), para não escondê-lo. As opções valem sempre; **plugins, tema e atalhos só entram quando a conta não tem `~/.config/nvim/init.lua`** (ou `init.vim`). Uma configuração própria — o LazyVim, por exemplo (`git clone https://github.com/LazyVim/starter ~/.config/nvim`) — assume sozinha, sem os plugins da imagem brigando com os dela. Por isso eles ficam em `pack/arkmos/opt`, e não em `start`: só carregam pelo `packadd` da configuração.
+
+Plugins na imagem, e não baixados na primeira abertura, pela mesma regra dos plugins do zsh (seção 13.2): versão fixada, atualização junto com o sistema, e nada que dependa de rede para o editor abrir certo numa máquina recém-instalada. O `just check` confere, sem rede, a configuração carregada e a saída de cena com um `init.lua` na conta.
+
+Escolhido em 2026-09-28 no lugar de uma configuração estilo IDE (LazyVim, AstroNvim): o editor de programação do projeto é o VS Code (seção 17.1), e para uso geral essas configurações pesam — dezenas de plugins baixados, atalhos próprios a aprender, mudanças a cada atualização. O Neovim continua modal: não substitui o Editor de Texto do GNOME para quem não usa os movimentos do Vim, e os dois ficam.
+
 ---
 
 # 10. Portais e Secret Service
@@ -2215,6 +2233,7 @@ arkmos/
 │   ├── install-upstream-bins.sh   starship, lazygit, lazydocker (sha256)
 │   ├── install-nerd-font.sh       JetBrains Mono patched (sha256)
 │   ├── install-cursor.sh          cursores Bibata Modern Ice e Classic (sha256)
+│   ├── install-nvim-plugins.sh    tokyonight.nvim e mini.nvim (commit)
 │   ├── papirus-folders.sh         pastas do Papirus em violeta
 │   ├── patch-niri-session.sh      lista de variáveis no import-environment
 │   ├── trim-ujust.sh              recorta o menu do ujust

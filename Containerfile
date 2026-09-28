@@ -123,12 +123,13 @@ RUN dnf -y --setopt=install_weak_deps=False install \
     && dnf clean all
 
 # Ambiente de terminal: só o que o Fedora não empacota (starship, lazygit,
-# lazydocker, Nerd Font, cursor), com versão e checksum fixados. Os scripts são
-# removidos na mesma camada.
+# lazydocker, Nerd Font, cursores, plugins do Neovim), com versão e checksum
+# ou commit fixados. Os scripts são removidos na mesma camada.
 COPY build_files/ /tmp/build_files/
 RUN /tmp/build_files/install-upstream-bins.sh \
     && /tmp/build_files/install-nerd-font.sh \
     && /tmp/build_files/install-cursor.sh \
+    && /tmp/build_files/install-nvim-plugins.sh \
     && rm -rf /tmp/build_files
 
 # Ícones Papirus-Dark com pastas em violeta (§26.1). O script falha o build
