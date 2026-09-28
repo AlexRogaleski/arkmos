@@ -842,14 +842,11 @@ Os ambientes em uso hoje servem de referência do que a imagem precisa suportar:
 | Container | Para |
 | --- | --- |
 | `fedora-app` | Insync |
-| `fedora-mobile` | Android Studio com emulador, SDK, Flutter, Dart, FVM, JDK, Gradle |
 | `ubuntu-db` | MySQL Workbench |
 
-E o que eles precisam do sistema, verificado na imagem:
+O que eles precisam do sistema, verificado na imagem: `distrobox-export --app` põe o aplicativo do container no lançador do Noctalia — com o caminho do `.desktop` quando o nome do container coincide com o do aplicativo, senão o export pega a entrada errada (visto com o Insync em 2026-09-25, e o motivo do nome `fedora-app`).
 
-- **Emulador Android:** o `/dev/kvm` é liberado para todos (`MODE="0666"`, na regra padrão do udev do systemd).
-- **Celular por USB para o `adb`:** o `70-uaccess.rules` do systemd libera dispositivos ADB e fastboot ao usuário logado. O `adb` de dentro do container enxerga o celular sem regra extra no host.
-- **Atalhos no menu:** `distrobox-export --app` põe o aplicativo do container no lançador do Noctalia.
+O Android Studio estava previsto aqui, num container `fedora-mobile`, e saiu em 2026-09-28: vai direto no `$HOME` (seção 17.4).
 
 ---
 
@@ -952,6 +949,32 @@ Laravel Sail
 PostgreSQL
 Redis
 ```
+
+
+## 17.4 Android e Flutter: no `$HOME`, sem container
+
+Decidido em 2026-09-28, no lugar do container `fedora-mobile` que a seção 16 previa. Tudo fica na conta, sem root e sem nada na imagem:
+
+```text
+Android Studio   .tar.gz oficial em ~/.local/share/android-studio; traz o
+                 próprio Java (JBR) e se atualiza sozinho, já que a pasta é
+                 da conta. Tools → Create Desktop Entry põe o atalho no menu.
+Android SDK      ~/Android/Sdk, pelo SDK Manager do Android Studio
+FVM              mise use -g github:leoafarias/fvm  (release binário do GitHub;
+                 testado com a 4.3.1)
+Flutter          fvm install / fvm use, por projeto (.fvmrc)
+```
+
+**Por que sem container.** O Android Studio não depende de nada do sistema que a imagem não traga: o Java vem com ele, o Gradle se baixa sozinho, e o código nativo é compilado pelo NDK, com o clang dele — o compilador do sistema não entra (seção 17). Direto na conta, o Android Studio e o VS Code enxergam o mesmo Flutter, o emulador abre como qualquer janela, e não há exportação de aplicativo nem diferença de caminho entre container e host. O FVM entra pelos shims do mise, e por isso está no `PATH` do terminal, do VS Code e do Android Studio.
+
+**Não o Flatpak do Android Studio**: o sandbox atrapalha o acesso ao SDK, ao emulador e ao Flutter da conta.
+
+**O que o sistema garante**, verificado na imagem:
+
+- **Emulador:** o `/dev/kvm` é liberado para todos (`MODE="0666"`, na regra padrão do udev do systemd).
+- **Celular por USB para o `adb`:** o `70-uaccess.rules` do systemd libera dispositivos ADB e fastboot ao usuário logado, sem regra extra.
+
+**Onde um container ainda cabe:** o Flutter para **desktop Linux** exige `clang`, `cmake`, `ninja-build` e `gtk3-devel`, que a imagem não traz. Para Android e web não é preciso; se esse alvo aparecer, o lugar desses pacotes é um Distrobox, e não a imagem.
 
 ---
 
@@ -1121,7 +1144,8 @@ Onde fica cada aplicativo em uso:
 | Fedora Media Writer, LocalSend, Galaxy Buds Client, Mecalin | Flatpak |
 | Monitor de sistema: btop, no lugar do htop da base | imagem |
 | Flatseal, Ignition (aplicativos no login), Bazaar (loja), Embellish (Nerd Fonts), DistroShelf (Distrobox) | Flatpak |
-| Insync, Android Studio com emulador, MySQL Workbench | Distrobox, declarado num repositório privado (seção 16) |
+| Insync, MySQL Workbench | Distrobox, declarado num repositório privado (seção 16) |
+| Android Studio, Flutter via FVM | `$HOME`, sem container (seção 17.4) |
 | Tolaria, Tabularis | AppImage, pelo AppManager |
 | Captura de tela com anotação | Noctalia, no `Shift+Print` |
 
