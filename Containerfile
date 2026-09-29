@@ -345,5 +345,21 @@ LABEL org.opencontainers.image.version="${ARKMOS_VERSION}"
 LABEL org.opencontainers.image.revision="${ARKMOS_COMMIT}"
 LABEL org.arkmos.variant="${ARKMOS_VARIANT}"
 
+# Nome do sistema: é do PRETTY_NAME que saem o título da entrada de boot e o
+# que hostnamectl e fastfetch mostram. O ID continua 'fedora' — dnf, distrobox
+# e os scripts do Universal Blue o usam para saber onde estão (§27.5).
+RUN sufixo=""; [ "$ARKMOS_VARIANT" = nvidia ] && sufixo=" NVIDIA"; \
+    sed -i \
+        -e 's|^NAME=.*|NAME="Arkmos"|' \
+        -e "s|^VERSION=.*|VERSION=\"${ARKMOS_VERSION}\"|" \
+        -e "s|^PRETTY_NAME=.*|PRETTY_NAME=\"Arkmos${sufixo} ${ARKMOS_VERSION}\"|" \
+        -e "s|^OSTREE_VERSION=.*|OSTREE_VERSION='${ARKMOS_VERSION}'|" \
+        -e 's|^DEFAULT_HOSTNAME=.*|DEFAULT_HOSTNAME="arkmos"|' \
+        -e 's|^HOME_URL=.*|HOME_URL="https://github.com/AlexRogaleski/arkmos"|' \
+        -e 's|^BUG_REPORT_URL=.*|BUG_REPORT_URL="https://github.com/AlexRogaleski/arkmos/issues"|' \
+        /usr/lib/os-release \
+    && grep -qx "PRETTY_NAME=\"Arkmos${sufixo} ${ARKMOS_VERSION}\"" /usr/lib/os-release \
+    && grep -qx 'ID=fedora' /usr/lib/os-release
+
 # Pega erros de /var, /opt e layout de kernel em tempo de build.
 RUN ["bootc", "container", "lint"]

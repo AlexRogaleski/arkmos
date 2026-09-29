@@ -1634,6 +1634,20 @@ A lista pede só as variáveis que existem, com `${VAR+VAR}`: a primeira versão
 
 É **remendo temporário**, e o problema é conhecido no upstream: a issue [niri-wm/niri#3572](https://github.com/niri-wm/niri/issues/3572) acompanha o aviso, a [#4624](https://github.com/niri-wm/niri/issues/4624) descreve exatamente este sintoma num setup greetd + noctalia-greeter (fechada como duplicata) e a [#3776](https://github.com/niri-wm/niri/pull/3776) é a correção em andamento — ela registra que o import sem lista sobrescreve o que o gerenciador já tem do `environment.d`, e é por isso que `LANG` e `XDG_DATA_DIRS` ficam fora da nossa lista. O `sed` confere a linha original antes de alterá-la: quando o pacote vier corrigido, o build falha de propósito e o remendo sai.
 
+
+## 27.5 Nome no menu de boot
+
+O título de cada entrada de boot sai do `PRETTY_NAME` do `/usr/lib/os-release` da deployment, e até 2026-09-29 era o do Fedora, com a data da base do Universal Blue — "Fedora Linux 44.20260928.0 (Forty Four)", nem a versão da imagem era. O Containerfile reescreve o arquivo no fim do build, onde a versão é conhecida, como o Aurora e o Bluefin fazem:
+
+```text
+NAME="Arkmos"
+PRETTY_NAME="Arkmos 44.AAAAMMDD.N"          (variante NVIDIA: "Arkmos NVIDIA ...")
+VERSION / OSTREE_VERSION                    a versão da imagem
+DEFAULT_HOSTNAME, HOME_URL, BUG_REPORT_URL  do Arkmos
+ID=fedora, VERSION_ID=44                    mantidos
+```
+
+O `ID` fica `fedora` de propósito: dnf, distrobox e os scripts do Universal Blue o consultam para saber em que sistema estão, e trocá-lo seria quebrar em silêncio o que depende dele. É o nome que aparece — no boot, no `hostnamectl`, no fastfetch —, não a identidade do sistema. As entradas de boot são escritas quando a deployment é criada: a atual continua com o título antigo até sair da lista, e a próxima atualização já nasce como Arkmos. Em build local a versão é `dev`.
 ---
 
 # 28. Verificação e CI
@@ -2431,6 +2445,24 @@ Noctalia configurado e o ferramental alinhado ao Universal Blue:
 
 **O layout da tela de bloqueio ficou fora da imagem, por decisão.** O identificador de cada widget carrega o nome do monitor (`lockscreen-login-box@eDP-1`), e a posição é em pixels: declarar isso na imagem produziria configuração morta em qualquer máquina com outro monitor. É estado de máquina, posicionado uma vez em cada instalação.
 
+
+## 0.11.0 — em andamento
+
+Instalação em hardware real, e o que o uso diário mostrou depois dela:
+
+- mídia de instalação: `just iso` a partir da imagem publicada, com kickstart próprio que não apaga disco sem perguntar, exige a assinatura e abre o instalador em português; `just run-iso` para ensaiar em VM (seção 31);
+- instalada no notebook em 2026-09-24; da instalação saíram a compressão do Btrfs no `rootflags` e a linha de `/` fora do fstab (seção 6);
+- login em Tokyo Night desde o primeiro boot, cursor Bibata, Adwaita Sans como fonte única, e o cursor preto por conta com `ujust arkmos-cursor` (seções 8.3, 14 e 26.1);
+- zsh como shell de toda conta, carregado pelo `/etc/zshrc` com o `~/.zshrc` da conta por último, `~/.local/bin` no PATH, e o terminal abrindo em `~` (seção 13.1);
+- Neovim agradável para uso geral, com tokyonight e mini.nvim fixados, que sai do caminho diante de uma configuração própria (seção 9.1);
+- atalhos: `Super+E` (Nautilus), `Super+B` (Chrome), `Super+N` (central de controle), `Super+Shift+E` (menu de sessão) e `Super+P`/`Fn+F7` (modo dos monitores); `include` opcionais do niri para a conta (seção 8.1);
+- monitores: escolha de modo como o `Win+P` — duplicar, estender, só um — com `wl-mirror`, e o `wdisplays` (seção 8.4, issue #3);
+- rede: o editor de conexões no menu, para o MAC por rede, e o `nmtui` (seção 22, issue #4);
+- assistentes pequenos flutuando no centro (seção 8.1);
+- aplicativos: Editor de Texto do GNOME, Ignition, papéis de parede do Fedora, Thunderbird na versão mensal no lugar do id em fim de vida, Warehouse fora; `just check-flatpaks` (seção 25);
+- publicação semanal no sábado e tentativas repetidas no push para o GHCR; comentários do código enxutos, com o raciocínio no PROJECT.md (seções 28.2 e 29).
+
+Fecha com o teste na sala de aula: projetor pelo `Fn+F7` e a rede com o MAC cadastrado.
 ---
 
 # 35. Estado Atual

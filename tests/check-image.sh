@@ -277,6 +277,13 @@ check "rede e monitores: ferramentas e atalhos no menu" \
                done
                grep -q "spawn \"arkmos-display\"" /etc/niri/config.kdl || { echo "sem tecla no niri"; exit 1; }'
 
+# O nome vai para o título da entrada de boot; o ID fica 'fedora', que dnf,
+# distrobox e os scripts do Universal Blue consultam (§27.5).
+check "os-release: nome Arkmos, ID e versão do Fedora" \
+    run sh -c '. /usr/lib/os-release
+               case "$PRETTY_NAME" in Arkmos*) ;; *) echo "PRETTY_NAME=$PRETTY_NAME"; exit 1 ;; esac
+               [ "$ID" = fedora ] && [ "$VERSION_ID" = 44 ] || { echo "ID=$ID VERSION_ID=$VERSION_ID"; exit 1; }'
+
 # O preto do 'ujust arkmos-cursor', e o gancho do niri por onde ele entra.
 check "cursor preto e include do niri para a troca por conta" \
     run sh -c 'test -e /usr/share/icons/Bibata-Modern-Classic/cursors/left_ptr &&
