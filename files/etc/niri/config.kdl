@@ -374,6 +374,17 @@ window-rule {
     open-floating true
 }
 
+// Arkmos: assistentes pequenos abrem flutuando no centro, e não como coluna
+// de meia tela. Ids conferidos com 'niri msg windows' (PROJECT.md §8.1).
+window-rule {
+    match app-id=r#"^nm-connection-editor$"#
+    match app-id=r#"^wdisplays$"#
+    match app-id=r#"^zenity$"#
+    match app-id=r#"^system-config-printer"#
+    match app-id=r#"^org\.gnome\.Calculator$"#
+    open-floating true
+}
+
 // Arkmos: cantos arredondados em todas as janelas.
 //
 // Sem 'match', a regra vale para todas. O clip-to-geometry recorta o conteúdo
