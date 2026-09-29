@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+#
+# Modo dos monitores, como o Win+P: duplicar, estender, só o externo ou só o
+# notebook. Aberto pelo Fn+F7 (XF86Display ou Super+P) e pelo menu.
+#
+#   arkmos-display            abre a janela de escolha
+#   arkmos-display <modo>     duplicar | estender | externo | notebook
+#
+# Vale até o próximo login: 'niri msg output' não grava nada. O niri não
+# espelha sozinho, e o duplicar é o wl-mirror em tela cheia no externo, como a
+# wiki do niri recomenda (PROJECT.md §8.4).
+
+set -euo pipefail
+
+avisar() { notify-send -a Monitores "$1" || echo "$1" >&2; }
+
+saidas="$(niri msg --json outputs)"
+interno="$(jq -r 'keys[] | select(test("^(eDP|LVDS|DSI)"))' <<<"$saidas" | head -n1)"
+externo="$(jq -r 'keys[] | select(test("^(eDP|LVDS|DSI)") | not)' <<<"$saidas" | head -n1)"
+
+if [[ -z "$externo" ]]; then
+    avisar "Nenhum monitor externo conectado"
+    exit 0
+fi
+if [[ -z "$interno" ]]; then
+    avisar "Tela do notebook não encontrada"
+    exit 1
+fi
+
+modo="${1:-}"
+if [[ -z "$modo" ]]; then
+    modo="$(zenity --list --title="Monitores" --text="Monitor externo: $externo" \
+        --hide-header --column=id --column=Modo --hide-column=1 --print-column=1 \
+        --width=320 --height=300 \
+        duplicar "Duplicar" \
+        estender "Estender" \
+        externo "Só o monitor externo" \
+        notebook "Só o notebook")" || exit 0
+fi
+
+case "$modo" in
+    duplicar | estender | externo | notebook) ;;
+    *)
+        echo "Modo desconhecido: $modo (use duplicar, estender, externo ou notebook)" >&2
+        exit 1
+        ;;
+esac
+
+# Liga antes de desligar: em nenhum momento a sessão fica sem tela.
+pkill -x wl-mirror || true
+case "$modo" in
+    duplicar)
+        niri msg output "$interno" on
+        niri msg output "$externo" on
+        setsid -f wl-mirror --fullscreen-output "$externo" "$interno" >/dev/null 2>&1
+        ;;
+    estender)
+        niri msg output "$interno" on
+        niri msg output "$externo" on
+        ;;
+    externo)
+        niri msg output "$externo" on
+        niri msg output "$interno" off
+        ;;
+    notebook)
+        niri msg output "$interno" on
+        niri msg output "$externo" off
+        ;;
+esac

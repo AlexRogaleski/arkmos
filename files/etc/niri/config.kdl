@@ -426,6 +426,10 @@ binds {
     Mod+B hotkey-overlay-title="Abrir o navegador: Chrome" { spawn "flatpak" "run" "com.google.Chrome"; }
     // Arkmos: notificações, Wi-Fi, Bluetooth e som, no painel do Noctalia.
     Mod+N hotkey-overlay-title="Abrir a central de controle" { spawn "noctalia" "msg" "panel-toggle" "control-center"; }
+    // Arkmos: modo dos monitores (duplicar, estender, só um). O Fn+F7 emite
+    // XF86Display ou Super+P, conforme o notebook; os dois abrem a mesma janela.
+    Mod+P hotkey-overlay-title="Modo dos monitores" { spawn "arkmos-display"; }
+    XF86Display hotkey-overlay-title=null { spawn "arkmos-display"; }
     // Arkmos: o lançador e o bloqueio são os do Noctalia. A configuração de
     // exemplo do niri apontava para o fuzzel e o swaylock, dois programas à
     // parte, com outra aparência, e o lançador do Noctalia ficava sem atalho.

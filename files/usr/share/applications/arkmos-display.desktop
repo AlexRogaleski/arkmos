@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Modo dos monitores
+Comment=Duplicar, estender, só o monitor externo ou só o notebook
+Keywords=monitor;projetor;espelhar;duplicar;estender;tela;display;
+Icon=preferences-desktop-display
+Exec=arkmos-display
+Terminal=false
+Categories=Settings;HardwareSettings;

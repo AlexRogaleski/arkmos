@@ -178,14 +178,20 @@ RUN dnf -y --setopt=install_weak_deps=False install \
     && python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' \
         /usr/share/system-config-printer/system-config-printer.py
 
-# Rede e sessão (§10, §22): tailscale, nm-connection-editor (o que o painel
-# do Noctalia não configura), gcr (agente SSH) e xdg-terminal-exec (sem ele o
-# GLib não acha o foot para abrir programas de terminal).
+# Rede e sessão (§10, §22, §8.4): tailscale, nm-connection-editor e nmtui (o
+# que o painel do Noctalia não configura, como o MAC por rede), gcr (agente
+# SSH), xdg-terminal-exec (sem ele o GLib não acha o foot para abrir programas
+# de terminal), e para monitores wl-mirror, wdisplays e zenity (a janela do
+# arkmos-display).
 RUN dnf -y --setopt=install_weak_deps=False install \
         tailscale \
         nm-connection-editor \
+        NetworkManager-tui \
         gcr \
         xdg-terminal-exec \
+        wl-mirror \
+        wdisplays \
+        zenity \
     && dnf clean all
 
 # Lista de variáveis no import-environment do niri-session (§27.4). O script
@@ -250,7 +256,10 @@ RUN for f in foot-server footclient dev.noctalia.Noctalia; do \
         && grep -qx 'NoDisplay=true' "/usr/share/applications/$f.desktop" \
         || exit 1; \
     done \
-    && desktop-file-validate /usr/share/applications/arkmos-noctalia-settings.desktop
+    && desktop-file-validate /usr/share/applications/arkmos-noctalia-settings.desktop \
+        /usr/share/applications/arkmos-network-connections.desktop \
+        /usr/share/applications/arkmos-wifi-tui.desktop \
+        /usr/share/applications/arkmos-display.desktop
 
 # Menu do ujust sem as receitas que não se aplicam aqui (§31.2).
 COPY build_files/trim-ujust.sh /tmp/trim-ujust.sh
@@ -280,7 +289,7 @@ json.dump(d, open(p, "w"), indent=4)' "$ARKMOS_REGISTRY" \
 # agente SSH do gcr para todo usuário, e grub-boot-success mascarada — ela
 # escreveria no /boot, que aqui é somente leitura.
 RUN chmod 0755 /usr/libexec/arkmos-firstboot /usr/libexec/arkmos-greeter \
-                /usr/bin/arkmos-diag \
+                /usr/bin/arkmos-diag /usr/bin/arkmos-display \
     && systemctl enable arkmos-firstboot.service \
     && systemctl enable arkmos-flatpak-preinstall.service \
     && systemctl enable tailscaled.service \
