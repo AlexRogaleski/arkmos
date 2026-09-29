@@ -1,9 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Wi-Fi (terminal)
-Comment=Conectar em redes Wi-Fi pelo wlctl
-Keywords=wifi;rede;wlctl;network;
-Icon=nm-device-wireless
-Exec=wlctl
-Terminal=true
-Categories=Settings;

@@ -268,12 +268,11 @@ check "cursor Bibata-Modern-Ice instalado e declarado nos cinco lugares" \
 # O Fedora 44 não traz .desktop do nm-connection-editor: sem o nosso, o editor
 # de MAC por rede fica invisível no menu (§22). Monitores: §8.4.
 check "rede e monitores: ferramentas e atalhos no menu" \
-    run sh -c 'for c in nmtui nm-connection-editor wlctl wl-mirror wdisplays zenity; do
+    run sh -c 'for c in nmtui nm-connection-editor wl-mirror wdisplays zenity; do
                    command -v $c >/dev/null || { echo "falta $c"; exit 1; }
                done
-               wlctl --version >/dev/null || { echo "wlctl não roda"; exit 1; }
                test -x /usr/bin/arkmos-display || { echo "arkmos-display não executável"; exit 1; }
-               for d in arkmos-network-connections arkmos-wifi-tui arkmos-display; do
+               for d in arkmos-network-connections arkmos-display; do
                    test -f /usr/share/applications/$d.desktop || { echo "falta $d.desktop"; exit 1; }
                done
                grep -q "spawn \"arkmos-display\"" /etc/niri/config.kdl || { echo "sem tecla no niri"; exit 1; }'

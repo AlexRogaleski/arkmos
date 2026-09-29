@@ -258,7 +258,6 @@ RUN for f in foot-server footclient dev.noctalia.Noctalia; do \
     done \
     && desktop-file-validate /usr/share/applications/arkmos-noctalia-settings.desktop \
         /usr/share/applications/arkmos-network-connections.desktop \
-        /usr/share/applications/arkmos-wifi-tui.desktop \
         /usr/share/applications/arkmos-display.desktop
 
 # Menu do ujust sem as receitas que não se aplicam aqui (§31.2).

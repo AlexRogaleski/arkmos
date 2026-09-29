@@ -1058,10 +1058,11 @@ firewalld, zona FedoraWorkstation
 
 Objetivos: Ethernet, Wi-Fi, VPN, integração com desktop.
 
-O painel do Noctalia conecta em Wi-Fi e cabo. O que ele não cobre (IP fixo, hotspot, VPN, Wi-Fi corporativo, MAC por rede) fica no `nm-connection-editor`, que aparece no menu como **Conexões de rede**. O pacote do Fedora 44 não traz `.desktop` nenhum, e o editor ficava instalado e invisível: a imagem entrega o `arkmos-network-connections.desktop`. Para o terminal, dois caminhos, ambos falando com o mesmo NetworkManager:
+O painel do Noctalia conecta em Wi-Fi e cabo. O que ele não cobre (IP fixo, hotspot, VPN, Wi-Fi corporativo, MAC por rede) fica no `nm-connection-editor`, que aparece no menu como **Conexões de rede**. O pacote do Fedora 44 não traz `.desktop` nenhum, e o editor ficava instalado e invisível: a imagem entrega o `arkmos-network-connections.desktop`. Para o terminal:
 
-- **wlctl** (menu: *Wi-Fi (terminal)*) — o equivalente do Impala, o TUI de Wi-Fi do Omarchy. O Impala só fala com o `iwd`, que o Omarchy adotou no lugar do NetworkManager; o wlctl é o fork dele para NetworkManager. Conecta, escaneia, rede oculta, 802.1X, VPN. Binário do release com checksum fixado, GPL-3.0 (`install-upstream-bins.sh`).
-- **nmtui** (`NetworkManager-tui`) — o TUI oficial, que também **edita** a conexão, inclusive o MAC. O wlctl não edita.
+- **nmtui** (`NetworkManager-tui`) — o TUI oficial do NetworkManager, que também **edita** a conexão, inclusive o MAC.
+
+O TUI de Wi-Fi do Omarchy, o Impala, só fala com o `iwd`, que o Omarchy adotou no lugar do NetworkManager. O fork dele para NetworkManager, o wlctl, chegou a entrar e saiu em 2026-09-29: conectar já é o painel do Noctalia, o MAC é o Conexões de rede, e ele não edita o MAC.
 
 **MAC por rede: o padrão do Fedora, mantido.** O Fedora gera um MAC próprio para cada rede Wi-Fi (`wifi.cloned-mac-address=stable-ssid`, em `/usr/lib/NetworkManager/conf.d/22-wifi-mac-addr.conf`): o mesmo sempre naquela rede, outro em cada rede diferente, e nunca o da placa. É privacidade em Wi-Fi público, e é o que faz uma rede que libera por **MAC cadastrado** — a de uma faculdade, por exemplo — recusar o notebook: foi o que aconteceu na sala de aula em 2026-09-28 (issue #4). Decidido manter o padrão e trocar por rede, quando preciso, para `permanent` (o MAC da placa) ou um MAC digitado. Quatro caminhos para a mesma configuração:
 
@@ -1164,7 +1165,7 @@ Onde fica cada aplicativo em uso:
 | VS Code | imagem: precisa do docker do host (seção 17.1) |
 | Nautilus, Discos, compactação, assistente de impressão | imagem: integração com o sistema (25.1, 25.2) |
 | Chrome, Thunderbird, Spotify, Discord, OnlyOffice, Inkscape, Switcheroo, AnyDesk | Flatpak |
-| Conexões de rede (nm-connection-editor), nmtui, wlctl, wdisplays, modo dos monitores | imagem: integração com o sistema (seções 22 e 8.4) |
+| Conexões de rede (nm-connection-editor), nmtui, wdisplays, modo dos monitores | imagem: integração com o sistema (seções 22 e 8.4) |
 
 **Thunderbird: `org.mozilla.thunderbird`, a versão mensal.** A lista declarava o `org.mozilla.Thunderbird`, com T maiúsculo, que o Flathub pôs em fim de vida apontando para o `org.mozilla.thunderbird_esr` — e o flatpak segue esse redirecionamento sozinho, sem aviso além de uma linha no journal ("está em fim de vida, em favor de ..."). Toda instalação recebia o ESR sem que ninguém o tivesse escolhido, e o dock padrão, que fixava o id antigo, mostrava um ícone morto. Hoje há dois ids atuais, ambos da MZLA e verificados: `org.mozilla.thunderbird`, mensal, e `org.mozilla.thunderbird_esr`, uma versão grande por ano. Escolhido o mensal em 2026-09-28. Cada id guarda os dados em `~/.var/app/<id>`, então trocar de um para o outro é copiar o `.thunderbird` e marcar o perfil como padrão no `profiles.ini` (sem a seção `[Install...]`, que prende o perfil à instalação antiga); a versão nova o assume e atualiza, e o caminho não tem volta, porque o ESR não abre um perfil de versão mais nova. Um id em fim de vida não é detectável sem rede, então o `just check` não o pega; quem confere é o `just check-flatpaks`, que consulta o Flathub para cada id da lista.
 | Editor de Texto do GNOME, Papers (PDF), Loupe (imagens), Showtime (vídeo), Calculadora | Flatpak |

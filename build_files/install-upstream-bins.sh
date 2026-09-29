@@ -14,7 +14,6 @@
 #   lazygit      <tag>/checksums.txt
 #   lazydocker   <tag>/checksums.txt
 #   mise         <tag>/SHASUMS256.txt
-#   wlctl        <tag>/wlctl-x86_64-unknown-linux-musl.sha256
 
 set -euo pipefail
 
@@ -29,9 +28,6 @@ LAZYDOCKER_SHA256="0d9dbfc26068b218e7ed84b104748cadc6e3cf733c0afd35465306fb39b95
 
 MISE_VERSION="2026.9.10"
 MISE_SHA256="cf6c0d4713932cf47da67f4f753348bc1ccf9a22d4d1e3c76d3c23a6187a853c"
-
-WLCTL_VERSION="0.1.10"
-WLCTL_SHA256="d980e56367f40a507463c645e690e052ff7a1a72bd7b945efc1a8fbd7c7c9927"
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
@@ -97,13 +93,7 @@ fetch "https://github.com/jdx/mise/releases/download/v${MISE_VERSION}/mise-v${MI
     "$WORK/mise.tar.gz" "$MISE_SHA256"
 tar -xzf "$WORK/mise.tar.gz" -C /usr/bin --strip-components=2 mise/bin/mise
 
-# wlctl — o Impala (TUI de Wi-Fi do Omarchy) para NetworkManager (§22).
-# Binário estático, sem tarball.
-echo "==> wlctl ${WLCTL_VERSION}"
-fetch "https://github.com/aashish-thapa/wlctl/releases/download/v${WLCTL_VERSION}/wlctl-x86_64-unknown-linux-musl" \
-    /usr/bin/wlctl "$WLCTL_SHA256"
-
-chmod 0755 /usr/bin/starship /usr/bin/lazygit /usr/bin/lazydocker /usr/bin/mise /usr/bin/wlctl
+chmod 0755 /usr/bin/starship /usr/bin/lazygit /usr/bin/lazydocker /usr/bin/mise
 
 # Executar cada um fecha o que o checksum não cobre: um tarball da arquitetura
 # errada extrai sem erro nenhum e só falha na máquina de quem instalou.
@@ -112,4 +102,3 @@ echo "==> verificando"
 /usr/bin/lazygit --version | head -1
 /usr/bin/lazydocker --version | head -1
 /usr/bin/mise --version | head -1
-/usr/bin/wlctl --version | head -1
