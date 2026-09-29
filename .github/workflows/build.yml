@@ -180,9 +180,16 @@ jobs:
         run: |
           # Assina-se o digest publicado (--digestfile), não o local: o push
           # recomprime as camadas. Tags com digests diferentes param aqui.
+          # Três tentativas por tag: o GHCR às vezes recusa uma camada com 400
+          # ("uploading layer chunked"), e a segunda passa (2026-09-29).
           for tag in "${{ steps.tags.outputs.version }}" "${FEDORA_MAJOR}" latest; do
-            podman push --digestfile "${RUNNER_TEMP}/digest-${tag}" \
-              "${IMAGE}:${tag}" "docker://${IMAGE_REGISTRY}/${IMAGE}:${tag}"
+            for tentativa in 1 2 3; do
+              podman push --digestfile "${RUNNER_TEMP}/digest-${tag}" \
+                "${IMAGE}:${tag}" "docker://${IMAGE_REGISTRY}/${IMAGE}:${tag}" && break
+              [ "$tentativa" = 3 ] && exit 1
+              echo "::warning::push de ${tag} falhou (tentativa ${tentativa}); nova tentativa em 60s"
+              sleep 60
+            done
           done
           DIGEST="$(cat "${RUNNER_TEMP}/digest-latest")"
           for tag in "${{ steps.tags.outputs.version }}" "${FEDORA_MAJOR}"; do
