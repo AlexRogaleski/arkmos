@@ -722,10 +722,10 @@ check "capturas de tela na mesma pasta, em português" \
 # silêncio.
 check "componentes de uso diário presentes" \
     run sh -c '
-        rpm -q gvfs-mtp gvfs-smb gvfs-fuse sushi papers-thumbnailer tailscale \
+        rpm -q gvfs-mtp gvfs-smb gvfs-fuse sushi papers-thumbnailer \
                nm-connection-editor gcr xdg-terminal-exec btop \
                google-carlito-fonts google-crosextra-caladea-fonts >/dev/null \
-            || { rpm -q gvfs-mtp gvfs-smb gvfs-fuse sushi papers-thumbnailer tailscale \
+            || { rpm -q gvfs-mtp gvfs-smb gvfs-fuse sushi papers-thumbnailer \
                         nm-connection-editor gcr xdg-terminal-exec btop \
                         google-carlito-fonts google-crosextra-caladea-fonts | grep "not installed"; exit 1; }
         ! rpm -q htop >/dev/null 2>&1 || { echo "o htop deveria ter saído"; exit 1; }
@@ -810,7 +810,7 @@ check "podman-docker ausente" \
 
 check "serviços habilitados" \
     run sh -c '
-        for u in arkmos-firstboot.service arkmos-flatpak-preinstall.service tailscaled.service docker.service greetd.service; do
+        for u in arkmos-firstboot.service arkmos-flatpak-preinstall.service docker.service greetd.service; do
             state=$(systemctl is-enabled "$u" 2>&1)
             [ "$state" = enabled ] || { echo "$u esta \"$state\""; exit 1; }
         done

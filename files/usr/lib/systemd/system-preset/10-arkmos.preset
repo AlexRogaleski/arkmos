@@ -9,5 +9,4 @@
 # de boot (config.toml).
 disable sshd.service
 
-enable tailscaled.service
 enable arkmos-flatpak-preinstall.service

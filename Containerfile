@@ -178,13 +178,12 @@ RUN dnf -y --setopt=install_weak_deps=False install \
     && python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' \
         /usr/share/system-config-printer/system-config-printer.py
 
-# Rede e sessão (§10, §22, §8.4): tailscale, nm-connection-editor e nmtui (o
+# Rede e sessão (§10, §22, §8.4): nm-connection-editor e nmtui (o
 # que o painel do Noctalia não configura, como o MAC por rede), gcr (agente
 # SSH), xdg-terminal-exec (sem ele o GLib não acha o foot para abrir programas
 # de terminal), e para monitores wl-mirror, wdisplays e zenity (a janela do
 # arkmos-display).
 RUN dnf -y --setopt=install_weak_deps=False install \
-        tailscale \
         nm-connection-editor \
         NetworkManager-tui \
         gcr \
@@ -297,7 +296,6 @@ RUN chmod 0755 /usr/libexec/arkmos-firstboot /usr/libexec/arkmos-greeter \
                 /usr/bin/arkmos-diag /usr/bin/arkmos-display \
     && systemctl enable arkmos-firstboot.service \
     && systemctl enable arkmos-flatpak-preinstall.service \
-    && systemctl enable tailscaled.service \
     && systemctl disable sshd.service \
     && systemctl --global enable gcr-ssh-agent.socket \
     && firewall-offline-cmd --set-default-zone=FedoraWorkstation \

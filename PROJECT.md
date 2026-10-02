@@ -1055,7 +1055,6 @@ BlueZ 5.87
 
 ```text
 NetworkManager 1.56
-tailscale
 firewalld, zona FedoraWorkstation
 ```
 
@@ -1079,7 +1078,7 @@ arquivo            /etc/NetworkManager/system-connections/<rede>.nmconnection,
 
 O MAC da placa aparece em `ethtool -P <interface>`; o que está em uso, em `ip link`.
 
-**Tailscale** vem do Fedora, com o `tailscaled` habilitado. A máquina entra na rede com `sudo tailscale up`, uma vez.
+**Sem Tailscale.** Esteve na imagem até 2026-10-02, com o `tailscaled` habilitado, e nunca chegou a ser usado: saiu. Quem precisar instala com `rpm-ostree install tailscale`, ou o volta para a lista do Containerfile.
 
 **Firewall na zona FedoraWorkstation**, a mesma do Fedora Workstation: portas altas liberadas na rede local. A `public`, que vinha da base, bloqueava sem avisar o LocalSend (porta 53317) e um servidor de desenvolvimento acessado pelo celular.
 
@@ -2331,7 +2330,7 @@ arkmos/
         │   ├── environment.d/     locale e XDG_DATA_DIRS do systemd --user
         │   ├── bootc/kargs.d/     argumentos de kernel
         │   ├── systemd/system/    firstboot, preinstall de Flatpaks, drop-ins
-        │   ├── systemd/system-preset/  sshd desligado, tailscaled ligado
+        │   ├── systemd/system-preset/  sshd desligado
         │   ├── sysusers.d/        grupo docker
         │   └── tmpfiles.d/        conteúdo de /var
         ├── libexec/
@@ -2658,7 +2657,6 @@ ISO com a correção do fstab e da compressão no %post (seção 6): o kickstart
   foi conferido fora do Anaconda, mas a instalação não foi ensaiada
 a variante NVIDIA no hardware, com a dGPU ligada
 cadastro de uma impressora de verdade
-tailscale up
 travamento antes do assistente no primeiro boot em VM — visto uma vez em
   2026-09-15, com a janela GTK/GL; não reproduzido no boot seguinte
 ```
