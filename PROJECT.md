@@ -2646,6 +2646,7 @@ bootc upgrade: o primeiro depois da ISO baixou 1,1 GB (23 camadas), como a
   (4 a 5 de 128 camadas), o mesmo que os 559 MB medidos no registry (28.5)
 desktop inteiro (niri, Noctalia, Xwayland, portais, áudio) em ~280 MB de RAM
 issues #3 (monitores) e #4 (MAC) fechadas depois do teste na sala de aula
+celular por USB no Nautilus (MTP) e LocalSend recebendo arquivos
 ```
 
 Remoção de Flatpak retirado da lista: não precisa de ensaio. O `flatpak preinstall` registra em `/var/lib/flatpak/repo/config` (`xa.preinstalled`) o que **ele** instalou, e só remove o que está ali e saiu da lista da imagem. O que a pessoa instala por conta própria nunca entra nesse registro e nunca é removido; e o que ela desinstala da lista não volta.
@@ -2657,7 +2658,7 @@ ISO com a correção do fstab e da compressão no %post (seção 6): o kickstart
   foi conferido fora do Anaconda, mas a instalação não foi ensaiada
 a variante NVIDIA no hardware, com a dGPU ligada
 cadastro de uma impressora de verdade
-celular por USB no Nautilus, tailscale up, LocalSend recebendo
+tailscale up
 travamento antes do assistente no primeiro boot em VM — visto uma vez em
   2026-09-15, com a janela GTK/GL; não reproduzido no boot seguinte
 ```
