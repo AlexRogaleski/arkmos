@@ -2022,6 +2022,15 @@ sudo dnf install just podman qemu-kvm edk2-ovmf p7zip skopeo jq git gh
 
 Numa base atômica do Universal Blue, `podman`, `skopeo`, `jq`, `git` e `just` já vêm; o que falta (`qemu-kvm`, `edk2-ovmf`, `p7zip`) entra por `rpm-ostree install` ou, se preferir não empilhar pacote, pelo virt-manager em vez das receitas de QEMU.
 
+No próprio Arkmos o `7z` já vem, e o QEMU fica num Distrobox, sem empilhar pacote no sistema — é como o notebook roda as receitas de VM desde 2026-10-02. O container enxerga o `/dev/kvm` e abre a janela do QEMU na sessão:
+
+```bash
+distrobox create -n vm -i registry.fedoraproject.org/fedora:44 \
+    --additional-packages "qemu-kvm edk2-ovmf just mesa-dri-drivers"
+just iso                              # no sistema: o builder roda com sudo podman
+distrobox enter vm -- just run-iso    # no container: QEMU com KVM
+```
+
 O `just lint` não exige shellcheck, shfmt nem actionlint instalados: cada receita usa o binário local quando existe e cai num container com versão fixada quando não existe — na imagem do Arkmos os binários existem. Com `ARKMOS_LINT_CONTAINER=1` ele força o container, que é como o CI roda, porque o runner traz shellcheck 0.9.0 e a versão fixada é a 0.11.0. Os mounts usam `--security-opt label=disable`, e não `:Z`: o `:Z` relabela o diretório inteiro e falha no que pertence a outro usuário — a ISO que o builder gera fica como `qemu`, e o lint parava com `lsetxattr ... operation not permitted`. As ferramentas só leem o repositório.
 
 ### Três fluxos, e o que cada um exige
