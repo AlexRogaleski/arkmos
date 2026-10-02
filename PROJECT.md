@@ -437,6 +437,8 @@ O Fedora já entrega um PAM dedicado ao greeter. Nada a fazer.
 Se o greeter gráfico falhar, o `OnFailure` entrega um login de texto na vt1. O drop-in e a `arkmos-login-fallback.service` só servem juntos: um `OnFailure` apontando para unit inexistente é aceito em silêncio pelo systemd, e o `just check` confere as duas peças. O tuigreet permanece instalado, com os argumentos em `/usr/libexec/arkmos-greeter`: trocar uma linha no `config.toml` devolve um greeter que não depende de GPU nem de compositor.
 
 
+**O estado do greeter tem o rótulo SELinux do greetd.** O `/var/lib/noctalia-greeter` é criado pelo nosso `tmpfiles.d`, e a política do Fedora só conhece o `/var/lib/greetd` (`xdm_var_lib_t`): sem regra, o diretório ficava com o genérico `var_lib_t`. O greeter roda em `xdm_t` e grava o `sync.toml` escrevendo um temporário e renomeando por cima — e renomear por cima exige apagar o destino, o que a política nega em `var_lib_t`. Visto no journal do notebook em 2026-10-02 (`avc: denied { unlink } ... sync.toml`): a aparência do desktop parava de chegar ao login (seção 26.1). O Containerfile acrescenta a equivalência (`semanage fcontext -a -e /var/lib/greetd /var/lib/noctalia-greeter`), e um `Z` no `tmpfiles.d` reaplica o rótulo a cada boot, o que conserta também o diretório de uma máquina já instalada.
+
 ## 8.4 Monitores
 
 O niri não espelha uma tela na outra por conta própria; a wiki dele recomenda o `wl-mirror`, que mostra uma saída numa janela, posta em tela cheia na outra. Até 2026-09-28 a imagem não tinha nem isso nem um aplicativo de monitores, e o `Fn+F7` não fazia nada — o projetor da sala de aula ficou sem imagem (issue #3).
@@ -2634,20 +2636,28 @@ E o que o hardware mostrou que a VM não tinha mostrado — ou que ninguém tinh
 - **`rhgb quiet` duas vezes na linha do kernel**, uma dos `kargs.d` da imagem e outra do Anaconda. Só estética;
 - no journal, só ruído que não é do Arkmos: o grupo `plugdev` das regras de U2F, o `docker-forwarding` já existente no firewalld e o HID de um dispositivo Bluetooth.
 
+## 35.2.4 Validado em uso real, no notebook (até 2026-10-02)
+
+```text
+Laravel Sail rodando um projeto, com o Docker CE da imagem
+git push por SSH com o agente do gcr, e o gh autenticado
+bootc upgrade: o primeiro depois da ISO baixou 1,1 GB (23 camadas), como a
+  conversão OCI da mídia fazia prever (seção 31); os seguintes, 551 a 562 MB
+  (4 a 5 de 128 camadas), o mesmo que os 559 MB medidos no registry (28.5)
+desktop inteiro (niri, Noctalia, Xwayland, portais, áudio) em ~280 MB de RAM
+issues #3 (monitores) e #4 (MAC) fechadas depois do teste na sala de aula
+```
+
+Remoção de Flatpak retirado da lista: não precisa de ensaio. O `flatpak preinstall` registra em `/var/lib/flatpak/repo/config` (`xa.preinstalled`) o que **ele** instalou, e só remove o que está ali e saiu da lista da imagem. O que a pessoa instala por conta própria nunca entra nesse registro e nunca é removido; e o que ela desinstala da lista não volta.
+
 ## 35.3 Não validado ainda
 
 ```text
-Laravel Sail em uso real
 ISO com a correção do fstab e da compressão no %post (seção 6): o kickstart
   foi conferido fora do Anaconda, mas a instalação não foi ensaiada
 a variante NVIDIA no hardware, com a dGPU ligada
-o primeiro 'bootc upgrade' de uma máquina instalada pela ISO — o digest local é
-  o da conversão OCI da mídia, então o download pode ser maior que o delta
-  medido entre publicações (seções 28.5 e 31)
 cadastro de uma impressora de verdade
-remoção de um Flatpak retirado da lista depois de um bootc upgrade
-celular por USB no Nautilus, agente SSH num git push, tailscale up,
-  LocalSend recebendo
+celular por USB no Nautilus, tailscale up, LocalSend recebendo
 travamento antes do assistente no primeiro boot em VM — visto uma vez em
   2026-09-15, com a janela GTK/GL; não reproduzido no boot seguinte
 ```
@@ -2663,15 +2673,14 @@ travamento antes do assistente no primeiro boot em VM — visto uma vez em
 
 ## Médio prazo
 
-3. Registrar em uso real, agora no hardware, quanto o `bootc upgrade` baixa de fato, para comparar com os 559 MB medidos no registry (seção 28.5).
-4. Validar a variante NVIDIA no hardware: `ujust arkmos-variant nvidia` com a dGPU ligada na BIOS.
+3. Validar a variante NVIDIA no hardware: `ujust arkmos-variant nvidia` com a dGPU ligada na BIOS.
 
 ## Longo prazo
 
-5. Snapshots do `/var/home` e backup para fora da máquina — o rollback do sistema já vem do bootc (seção 6).
-6. Documentar recuperação.
-7. Revisar a política de atualização depois de um mês de uso real — hoje é o encenado automático herdado da base, documentado e verificado (seção 31.1).
-8. Estabilizar a versão 1.0.0.
+4. Snapshots do `/var/home` e backup para fora da máquina — o rollback do sistema já vem do bootc (seção 6).
+5. Documentar recuperação.
+6. Revisar a política de atualização depois de um mês de uso real — hoje é o encenado automático herdado da base, documentado e verificado (seção 31.1).
+7. Estabilizar a versão 1.0.0.
 
 ---
 

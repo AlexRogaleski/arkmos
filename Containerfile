@@ -219,6 +219,12 @@ RUN dnf -y --setopt=install_weak_deps=False install \
 COPY --from=greeter-builder /tmp/greeter-root/ /
 RUN rm -f /usr/lib/tmpfiles.d/noctalia-greeter.conf
 
+# O estado do greeter com o rótulo SELinux do /var/lib/greetd. Sem regra, ele
+# fica var_lib_t, e o greeter (xdm_t) não consegue regravar o sync.toml — a
+# aparência do desktop deixa de chegar ao login (§8.3).
+RUN semanage fcontext -a -e /var/lib/greetd /var/lib/noctalia-greeter \
+    && matchpathcon -n /var/lib/noctalia-greeter/sync.toml | grep -qx 'system_u:object_r:xdm_var_lib_t:s0'
+
 # Docker CE de verdade, não podman-docker (§15). O grupo docker vem de
 # /usr/lib/sysusers.d/arkmos-docker.conf, com GID dinâmico.
 RUN dnf -y --setopt=install_weak_deps=False --enablerepo=docker-ce-stable install \

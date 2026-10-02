@@ -284,6 +284,12 @@ check "os-release: nome Arkmos, ID e versão do Fedora" \
                case "$PRETTY_NAME" in Arkmos*) ;; *) echo "PRETTY_NAME=$PRETTY_NAME"; exit 1 ;; esac
                [ "$ID" = fedora ] && [ "$VERSION_ID" = 44 ] || { echo "ID=$ID VERSION_ID=$VERSION_ID"; exit 1; }'
 
+# Com o rótulo genérico, o SELinux impede o greeter de regravar o sync.toml, e
+# a aparência do desktop não chega ao login, sem erro visível (§8.3).
+check "estado do greeter com o rótulo SELinux do greetd" \
+    run sh -c 'matchpathcon -n /var/lib/noctalia-greeter/sync.toml | grep -qx "system_u:object_r:xdm_var_lib_t:s0" &&
+               grep -qx "Z /var/lib/noctalia-greeter - - - -" /usr/lib/tmpfiles.d/arkmos.conf'
+
 # O preto do 'ujust arkmos-cursor', e o gancho do niri por onde ele entra.
 check "cursor preto e include do niri para a troca por conta" \
     run sh -c 'test -e /usr/share/icons/Bibata-Modern-Classic/cursors/left_ptr &&
