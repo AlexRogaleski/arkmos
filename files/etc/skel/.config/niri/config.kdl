@@ -1,0 +1,5 @@
+// A configuração do Arkmos vem da imagem (/etc/niri/config.kdl); este arquivo
+// só acrescenta por cima. Sem o include, o niri ignoraria a da imagem inteira:
+// é o que o tema do niri no Noctalia fazia ao criar este arquivo (PROJECT.md
+// §26.1). Ajustes próprios vão no ~/.config/niri/local.kdl.
+include "/etc/niri/config.kdl"

@@ -445,6 +445,30 @@ check "initramfs regerado com o tema, o ostree e o ABNT2" \
 
 # --- Wallpaper ---------------------------------------------------------------
 
+# Ligar o tema do niri ou do foot no Noctalia criava configuração na conta que
+# substituía a da imagem: login sem barra e sem atalhos (§26.1). Com os
+# arquivos do skel, o template só acrescenta o include dele.
+noctalia_templates_skel() {
+    podman run --rm -i --network=none "$IMAGE" sh -s <<'SCRIPT'
+set -e
+export HOME=/tmp/h XDG_CONFIG_HOME=/tmp/h/.config
+mkdir -p /tmp/h && cp -r /etc/skel/.config /tmp/h/
+t=/usr/share/noctalia/assets/templates
+bash $t/niri/apply.sh apply
+bash $t/foot/apply.sh
+grep -qx 'include "/etc/niri/config.kdl"' $HOME/.config/niri/config.kdl
+grep -q 'noctalia.kdl' $HOME/.config/niri/config.kdl
+: > $HOME/.config/niri/noctalia.kdl   # o real é gerado pelo Noctalia em sessão
+niri validate -c $HOME/.config/niri/config.kdl >/dev/null 2>&1 || { echo "niri não valida"; exit 1; }
+grep -qx 'include=/etc/xdg/foot/foot.ini' $HOME/.config/foot/foot.ini
+bash $t/niri/undo.sh
+bash $t/foot/undo.sh
+grep -qx 'include "/etc/niri/config.kdl"' $HOME/.config/niri/config.kdl
+grep -qx 'include=/etc/xdg/foot/foot.ini' $HOME/.config/foot/foot.ini
+SCRIPT
+}
+check "temas de niri e foot do Noctalia mantêm a config da imagem" noctalia_templates_skel
+
 # O Noctalia só lê config do home, e caminho errado não dá erro: o fundo sobe
 # vazio.
 check "wallpaper padrão semeado para o Noctalia" \

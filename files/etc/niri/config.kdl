@@ -722,6 +722,6 @@ binds {
 }
 
 // Ajustes da conta, por último para vencer o resto. Opcional: sem o arquivo
-// vale só esta configuração. Um ~/.config/niri/config.kdl, ao contrário,
-// substituiria este arquivo inteiro (PROJECT.md §8.1).
+// vale só esta configuração. O ~/.config/niri/config.kdl do skel inclui este
+// arquivo; um sem o include o substituiria inteiro (PROJECT.md §26.1).
 include optional=true "~/.config/niri/local.kdl"

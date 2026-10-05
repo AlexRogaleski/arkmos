@@ -57,12 +57,10 @@ wallpaper_scheme = "m3-tonal-spot"
 #                  sistema, inclusive em Flatpak (o Fedora Media Writer, da
 #                  nossa lista, pede justamente o kdeglobals da conta)
 #
-# Só entram os que escrevem em arquivo que o Arkmos não entrega. Os templates
-# de foot e de niri ficam de fora de propósito: os dois criam configuração na
-# conta do usuário, e esses programas leem a do usuário EM VEZ da do sistema —
-# o de niri apagaria na prática todos os atalhos e o prefer-no-csd desta
-# imagem. O terminal já é Tokyo Night pelo tema do próprio foot, e o anel de
-# foco do niri usa as cores do esquema, fixos (seção 26.1 do PROJECT.md).
+# Os de foot e de niri ficam desligados: o terminal e o anel de foco já seguem
+# o Tokyo Night. Ligá-los pela interface é seguro numa conta com o
+# ~/.config/niri/config.kdl e o ~/.config/foot/foot.ini do skel, que incluem
+# os da imagem (seção 26.1 do PROJECT.md).
 [theme.templates]
 builtin_ids = [ "gtk3", "gtk4", "btop", "kcolorscheme" ]
 
