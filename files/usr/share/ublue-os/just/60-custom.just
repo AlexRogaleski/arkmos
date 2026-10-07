@@ -33,6 +33,11 @@ arkmos-apply-defaults:
     echo "O que você já tinha editado ficou como estava."
     echo "Saia da sessão e entre de novo para o shell reler a configuração."
 
+# Cria, lista ou remove sites como aplicativos, sem barras (add NOME URL [ICONE] | remove NOME | list)
+[positional-arguments]
+arkmos-webapp *ARGS:
+    @arkmos-webapp "$@"
+
 # Troca o cursor desta conta: branco (Ice, o padrão) ou preto (Classic)
 arkmos-cursor COR="prompt":
     #!/usr/bin/bash

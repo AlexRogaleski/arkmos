@@ -139,7 +139,7 @@ type = "spacer"
 # Dock com ocultação automática e sem reservar espaço: a janela ocupa a tela
 # inteira e o dock aparece ao aproximar o ponteiro.
 #
-# Os fixados são ids de .desktop. O do VS Code é da imagem; os outros quatro
+# Os fixados são ids de .desktop. O do VS Code é da imagem; os outros três
 # são Flatpaks da lista de preinstall — um id que não esteja instalado viraria
 # ícone morto no dock.
 #
@@ -153,7 +153,7 @@ auto_hide = true
 reserve_space = false
 launcher_position = "start"
 background_opacity = 0.6
-pinned = [ "com.microsoft.VSCode", "com.spotify.Client", "com.anydesk.Anydesk", "io.github.kolunmi.Bazaar", "org.mozilla.thunderbird" ]
+pinned = [ "com.microsoft.VSCode", "com.spotify.Client", "com.anydesk.Anydesk", "io.github.kolunmi.Bazaar" ]
 
 # Lançador ancorado no canto superior esquerdo, abrindo perto de onde foi
 # clicado.

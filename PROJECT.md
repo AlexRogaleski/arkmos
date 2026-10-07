@@ -1166,10 +1166,12 @@ Onde fica cada aplicativo em uso:
 | Podman, Distrobox, Docker CE | imagem |
 | VS Code | imagem: precisa do docker do host (seção 17.1) |
 | Nautilus, Discos, compactação, assistente de impressão | imagem: integração com o sistema (25.1, 25.2) |
-| Chrome, Thunderbird, Spotify, Discord, OnlyOffice, Inkscape, Switcheroo, AnyDesk | Flatpak |
+| Chrome, Spotify, Discord, OnlyOffice, Inkscape, Switcheroo, AnyDesk | Flatpak |
 | Conexões de rede (nm-connection-editor), nmtui, wdisplays, modo dos monitores | imagem: integração com o sistema (seções 22 e 8.4) |
 
-**Thunderbird: `org.mozilla.thunderbird`, a versão mensal.** A lista declarava o `org.mozilla.Thunderbird`, com T maiúsculo, que o Flathub pôs em fim de vida apontando para o `org.mozilla.thunderbird_esr` — e o flatpak segue esse redirecionamento sozinho, sem aviso além de uma linha no journal ("está em fim de vida, em favor de ..."). Toda instalação recebia o ESR sem que ninguém o tivesse escolhido, e o dock padrão, que fixava o id antigo, mostrava um ícone morto. Hoje há dois ids atuais, ambos da MZLA e verificados: `org.mozilla.thunderbird`, mensal, e `org.mozilla.thunderbird_esr`, uma versão grande por ano. Escolhido o mensal em 2026-09-28. Cada id guarda os dados em `~/.var/app/<id>`, então trocar de um para o outro é copiar o `.thunderbird` e marcar o perfil como padrão no `profiles.ini` (sem a seção `[Install...]`, que prende o perfil à instalação antiga); a versão nova o assume e atualiza, e o caminho não tem volta, porque o ESR não abre um perfil de versão mais nova. Um id em fim de vida não é detectável sem rede, então o `just check` não o pega; quem confere é o `just check-flatpaks`, que consulta o Flathub para cada id da lista.
+**Sem cliente de e-mail na lista, desde 2026-10-07.** O e-mail em uso passou a ser o Hylki, que vem de um repositório próprio do desenvolvedor, e não do Flathub. Pré-instalá-lo faria a imagem trazer esse repositório e a chave de assinatura dele — toda instalação confiando num terceiro —, e foi decidido não fazer: a imagem continua confiando só no Flathub, e o Hylki fica na conta. O Thunderbird saiu junto; quem o quiser instala o `org.mozilla.thunderbird`.
+
+**Histórico: o Thunderbird em fim de vida.** Enquanto esteve na lista, ela declarava o `org.mozilla.Thunderbird`, com T maiúsculo, que o Flathub pôs em fim de vida apontando para o `org.mozilla.thunderbird_esr` — e o flatpak segue esse redirecionamento sozinho, sem aviso além de uma linha no journal ("está em fim de vida, em favor de ..."). Toda instalação recebia o ESR sem que ninguém o tivesse escolhido, e o dock padrão, que fixava o id antigo, mostrava um ícone morto. Hoje há dois ids atuais, ambos da MZLA e verificados: `org.mozilla.thunderbird`, mensal, e `org.mozilla.thunderbird_esr`, uma versão grande por ano. Escolhido o mensal em 2026-09-28. Cada id guarda os dados em `~/.var/app/<id>`, então trocar de um para o outro é copiar o `.thunderbird` e marcar o perfil como padrão no `profiles.ini` (sem a seção `[Install...]`, que prende o perfil à instalação antiga); a versão nova o assume e atualiza, e o caminho não tem volta, porque o ESR não abre um perfil de versão mais nova. Um id em fim de vida não é detectável sem rede, então o `just check` não o pega; quem confere é o `just check-flatpaks`, que consulta o Flathub para cada id da lista.
 | Editor de Texto do GNOME, Papers (PDF), Loupe (imagens), Showtime (vídeo), Calculadora | Flatpak |
 | Fedora Media Writer, LocalSend, Galaxy Buds Client, Mecalin | Flatpak |
 | Monitor de sistema: btop, no lugar do htop da base | imagem |
@@ -1258,6 +1260,18 @@ A imagem traz a `fuse-libs`, que a base não tem. AppImages com o runtime cláss
 ### AnyDesk sob o niri
 
 Usar esta máquina para controlar outra funciona. Esta máquina ser controlada não: o niri compartilha a tela, mas não implementa o controle remoto de entrada (`org.gnome.Mutter.RemoteDesktop`), e sem ele o outro lado não move mouse nem digita.
+
+### Sites como aplicativos: `ujust arkmos-webapp`
+
+```bash
+ujust arkmos-webapp add "Google Agenda" https://calendar.google.com/calendar/r ~/icone.png
+ujust arkmos-webapp list
+ujust arkmos-webapp remove "Google Agenda"
+```
+
+Cria um atalho no menu que abre o site no **modo app** do Chrome (`--app=URL`), e não como webapp instalado. O webapp instalado sempre desenha a barra de ferramentas dele — título, extensões, menu —, e o Chrome não tem opção para escondê-la; o modo app não tem barra de ferramentas, e com o quadro do sistema ligado no Chrome (*Usar barra de título e bordas do sistema*) também não tem barra de título, já que o niri não desenha uma. Fica só o site, com a borda e o anel de foco do niri. Visto com o Google Agenda em 2026-10-07: o webapp instalado mostrava a barra; o modo app, nada.
+
+O atalho declara o `StartupWMClass` que o Chrome dá à janela do modo app — `chrome-<host>_<caminho com / trocado por _>-Default`, conferido com `niri msg windows` —, que é o que deixa o dock associar a janela ao ícone. O ícone sai, nesta ordem, do argumento (arquivo ou endereço), do maior ícone do manifesto do site (o mesmo que o Chrome usa ao instalar um webapp), do `apple-touch-icon` ou de um favicon grande, e por fim do genérico do tema. Sites atrás de login, como os do Google, redirecionam para a página de entrada e não mostram ícone: para eles, o ícone vai como argumento. Tudo mora na conta (`~/.local/share/applications/arkmos-webapp-*.desktop` e `~/.local/share/icons/arkmos-webapps/`); a imagem só traz o script (`/usr/bin/arkmos-webapp`), e o `just check` o exercita sem rede.
 
 ## 25.1 Gerenciador de arquivos: Nautilus, na imagem
 
@@ -1465,7 +1479,7 @@ Vieram de uma sessão de testes na VM: mexer na interface do Noctalia e exportar
 
 O arredondamento da interface do shell está em `corner_radius_scale = 1.25`, escolhido olhando na VM para acompanhar os cantos das janelas. Ele viaja ao login pelo sync, e é por isso que não é declarado no `greeter.toml` (seção 8.3).
 
-A barra leva lançador, captura e papel de parede à esquerda, com espaçadores antes e depois dos workspaces e a janela ativa no fim; data e hora numa cápsula e a mídia (só quando toca algo) no centro; e à direita o monitor de sistema, RAM, bandeja, notificações, área de transferência, caffeine, rede, Bluetooth, volume, brilho, bateria e sessão. A central de controle saiu da barra em 2026-09-28 e abre pelo `Super+N`. Sem moldura arredondada nem margem nas pontas, com 60% de opacidade, 36 px de altura e escala 1,05 — ajustes feitos no notebook e trazidos para o skel. O dock fica oculto e não reserva espaço, com VS Code, Spotify, AnyDesk, Bazaar e Thunderbird fixados. Cada item fixado é um id de `.desktop`, e o Noctalia não avisa quando um não existe — o ícone aparece morto, ou não aparece. A renomeação da entrada do VS Code (`code` → `com.microsoft.VSCode`, na 1.139.0) teria causado isso em silêncio; o `just check` confere os fixados contra a lista de Flatpaks e os `.desktop` da imagem.
+A barra leva lançador, captura e papel de parede à esquerda, com espaçadores antes e depois dos workspaces e a janela ativa no fim; data e hora numa cápsula e a mídia (só quando toca algo) no centro; e à direita o monitor de sistema, RAM, bandeja, notificações, área de transferência, caffeine, rede, Bluetooth, volume, brilho, bateria e sessão. A central de controle saiu da barra em 2026-09-28 e abre pelo `Super+N`. Sem moldura arredondada nem margem nas pontas, com 60% de opacidade, 36 px de altura e escala 1,05 — ajustes feitos no notebook e trazidos para o skel. O dock fica oculto e não reserva espaço, com VS Code, Spotify, AnyDesk e Bazaar fixados. Cada item fixado é um id de `.desktop`, e o Noctalia não avisa quando um não existe — o ícone aparece morto, ou não aparece. A renomeação da entrada do VS Code (`code` → `com.microsoft.VSCode`, na 1.139.0) teria causado isso em silêncio; o `just check` confere os fixados contra a lista de Flatpaks e os `.desktop` da imagem.
 
 Três coisas da exportação **não** entraram, e é a regra para as próximas:
 
@@ -1473,7 +1487,7 @@ Três coisas da exportação **não** entraram, e é a regra para as próximas:
 - **estado de máquina**: último papel de parede usado e o papel por monitor;
 - **posição dos widgets da tela de bloqueio**, que grava nome de monitor (`Virtual-1`, da VM) e coordenadas em pixels — no notebook o monitor é outro, e isso viraria lixo.
 
-Os ids dos fixados no dock são de `.desktop`: um id que não esteja instalado vira ícone morto. O Thunderbird é o `org.mozilla.thunderbird` (seção 25). A exportação da VM vinha com `org.mozilla.thunderbird_esr`, e aquilo não era erro: era o fim de vida do id antigo agindo — ver abaixo.
+Os ids dos fixados no dock são de `.desktop`: um id que não esteja instalado vira ícone morto. Enquanto o Thunderbird esteve no dock, a exportação da VM vinha com `org.mozilla.thunderbird_esr`, e aquilo não era erro: era o fim de vida do id antigo agindo (seção 25).
 
 ### Notificações
 
@@ -2460,7 +2474,7 @@ Instalação em hardware real, e o que o uso diário mostrou depois dela:
 - monitores: escolha de modo como o `Win+P` — duplicar, estender, só um — com `wl-mirror`, e o `wdisplays` (seção 8.4, issue #3);
 - rede: o editor de conexões no menu, para o MAC por rede, e o `nmtui` (seção 22, issue #4);
 - assistentes pequenos flutuando no centro (seção 8.1);
-- aplicativos: Editor de Texto do GNOME, Ignition, papéis de parede do Fedora, Thunderbird na versão mensal no lugar do id em fim de vida, Warehouse fora; `just check-flatpaks` (seção 25);
+- aplicativos: Editor de Texto do GNOME, Ignition, papéis de parede do Fedora, Warehouse e Thunderbird fora (o e-mail é o Hylki, de repositório próprio, na conta); sites como aplicativos sem barras, com `ujust arkmos-webapp`; `just check-flatpaks` (seção 25);
 - publicação semanal no sábado e tentativas repetidas no push para o GHCR; comentários do código enxutos, com o raciocínio no PROJECT.md (seções 28.2 e 29).
 
 Fecha com o teste na sala de aula: projetor pelo `Fn+F7` e a rede com o MAC cadastrado.

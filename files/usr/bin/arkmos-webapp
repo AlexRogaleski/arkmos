@@ -1,0 +1,172 @@
+#!/usr/bin/env python3
+"""Sites como aplicativos: janela do Chrome no modo app, sem barras.
+
+    arkmos-webapp add NOME URL [ICONE]   cria (ICONE: arquivo ou endereço)
+    arkmos-webapp remove NOME
+    arkmos-webapp list
+
+Sem ICONE, usa o maior ícone do manifesto do site, depois o apple-touch-icon,
+depois o favicon grande, e por fim um genérico. Tudo fica na conta, em
+~/.local/share/applications e ~/.local/share/icons (PROJECT.md §25).
+"""
+
+import json
+import re
+import shutil
+import sys
+import unicodedata
+import urllib.parse
+import urllib.request
+from pathlib import Path
+
+CHROME = "flatpak run com.google.Chrome --profile-directory=Default"
+GENERICO = "applications-internet"
+UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+      "(KHTML, like Gecko) Chrome/140.0 Safari/537.36"}
+
+DADOS = Path.home() / ".local/share"
+APPS = DADOS / "applications"
+ICONES = DADOS / "icons/arkmos-webapps"
+PREFIXO = "arkmos-webapp-"
+
+
+def slug(nome):
+    sem_acento = unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode()
+    s = re.sub(r"[^a-z0-9]+", "-", sem_acento.lower()).strip("-")
+    if not s:
+        sys.exit(f"Nome inválido: {nome!r}")
+    return s
+
+
+def classe_janela(url):
+    # Como o Chrome nomeia a janela do modo app: host, "_", caminho com as
+    # barras trocadas por "_", e o perfil. O dock acha o atalho por ela.
+    u = urllib.parse.urlsplit(url)
+    return f"chrome-{u.hostname}_{(u.path or '/').replace('/', '_')}-Default"
+
+
+def baixar(url):
+    pedido = urllib.request.Request(url, headers=UA)
+    with urllib.request.urlopen(pedido, timeout=15) as r:
+        return r.geturl(), r.read()
+
+
+def tamanho(sizes):
+    lados = [int(x.split("x")[0]) for x in (sizes or "").split() if re.fullmatch(r"\d+x\d+", x)]
+    return max(lados, default=0)
+
+
+def candidatos(url):
+    final, html = baixar(url)
+    html = html.decode("utf-8", "replace")
+    achados = []
+    def atributo(tag, nome):
+        m = re.search(nome + r'=["\']([^"\']+)', tag, re.I)
+        return m[1] if m else ""
+
+    for tag in re.findall(r"<link\b[^>]*>", html, re.I):
+        rel, href = atributo(tag, "rel").lower(), atributo(tag, "href")
+        if not href:
+            continue
+        href = urllib.parse.urljoin(final, href)
+        if "manifest" in rel:
+            try:
+                manifesto = json.loads(baixar(href)[1])
+            except (OSError, ValueError):
+                continue
+            for icone in manifesto.get("icons", []):
+                src = urllib.parse.urljoin(href, icone.get("src", ""))
+                if src.lower().split("?")[0].endswith((".png", ".svg")):
+                    achados.append((tamanho(icone.get("sizes")), src))
+        elif "apple-touch-icon" in rel:
+            achados.append((tamanho(atributo(tag, "sizes")) or 180, href))
+        elif "icon" in rel and href.lower().split("?")[0].endswith((".png", ".svg")):
+            achados.append((tamanho(atributo(tag, "sizes")), href))
+    return sorted(achados, reverse=True)
+
+
+def obter_icone(fonte, url, destino_base):
+    """Grava o ícone e devolve o valor de Icon=, ou o genérico."""
+    if fonte:
+        caminho = Path(fonte).expanduser()
+        if caminho.is_file():
+            destino = destino_base.with_suffix(caminho.suffix.lower() or ".png")
+            shutil.copyfile(caminho, destino)
+            return str(destino)
+        lista = [(0, fonte)]
+    else:
+        try:
+            lista = [c for c in candidatos(url) if c[0] == 0 or c[0] >= 64]
+        except OSError as erro:
+            print(f"aviso: não deu para ler o site ({erro}); ícone genérico")
+            return GENERICO
+    for _, origem in lista:
+        try:
+            _, dados = baixar(origem)
+        except OSError:
+            continue
+        ext = ".svg" if origem.lower().split("?")[0].endswith(".svg") else ".png"
+        destino = destino_base.with_suffix(ext)
+        destino.write_bytes(dados)
+        return str(destino)
+    if fonte:
+        sys.exit(f"Ícone não encontrado: {fonte}")
+    print("aviso: o site não expõe ícone grande; ícone genérico (passe um como 3º argumento)")
+    return GENERICO
+
+
+def adicionar(nome, url, icone=None):
+    if not re.match(r"https?://", url):
+        sys.exit("A URL precisa começar com http:// ou https://")
+    s = slug(nome)
+    APPS.mkdir(parents=True, exist_ok=True)
+    ICONES.mkdir(parents=True, exist_ok=True)
+    for antigo in ICONES.glob(f"{s}.*"):
+        antigo.unlink()
+    valor_icone = obter_icone(icone, url, ICONES / s)
+    (APPS / f"{PREFIXO}{s}.desktop").write_text(
+        "[Desktop Entry]\n"
+        "Type=Application\n"
+        f"Name={nome}\n"
+        f"Comment={url}\n"
+        f"Icon={valor_icone}\n"
+        f"Exec={CHROME} --app={url}\n"
+        f"StartupWMClass={classe_janela(url)}\n"
+        "Terminal=false\n"
+        "Categories=Network;\n"
+    )
+    print(f"Criado: {nome} ({APPS / (PREFIXO + s + '.desktop')})")
+    print("Para abrir sem barra nenhuma, deixe ligado no Chrome: chrome://settings/appearance"
+          " → \"Usar barra de título e bordas do sistema\".")
+
+
+def remover(nome):
+    s = slug(nome)
+    desktop = APPS / f"{PREFIXO}{s}.desktop"
+    if not desktop.exists():
+        sys.exit(f"Webapp não encontrado: {nome}")
+    desktop.unlink()
+    for icone in ICONES.glob(f"{s}.*"):
+        icone.unlink()
+    print(f"Removido: {nome}")
+
+
+def listar():
+    for desktop in sorted(APPS.glob(f"{PREFIXO}*.desktop")):
+        campos = dict(l.split("=", 1) for l in desktop.read_text().splitlines() if "=" in l)
+        print(f"{campos.get('Name', desktop.stem):24} {campos.get('Comment', '')}")
+
+
+def main(args):
+    if args[:1] == ["add"] and len(args) in (3, 4):
+        adicionar(*args[1:])
+    elif args[:1] == ["remove"] and len(args) == 2:
+        remover(args[1])
+    elif args[:1] == ["list"] and len(args) == 1:
+        listar()
+    else:
+        sys.exit(__doc__.strip())
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

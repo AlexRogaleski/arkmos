@@ -293,7 +293,7 @@ json.dump(d, open(p, "w"), indent=4)' "$ARKMOS_REGISTRY" \
 # agente SSH do gcr para todo usuário, e grub-boot-success mascarada — ela
 # escreveria no /boot, que aqui é somente leitura.
 RUN chmod 0755 /usr/libexec/arkmos-firstboot /usr/libexec/arkmos-greeter \
-                /usr/bin/arkmos-diag /usr/bin/arkmos-display \
+                /usr/bin/arkmos-diag /usr/bin/arkmos-display /usr/bin/arkmos-webapp \
     && systemctl enable arkmos-firstboot.service \
     && systemctl enable arkmos-flatpak-preinstall.service \
     && systemctl disable sshd.service \

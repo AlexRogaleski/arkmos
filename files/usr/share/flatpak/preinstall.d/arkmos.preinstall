@@ -18,11 +18,6 @@
 [Flatpak Preinstall com.google.Chrome]
 Branch=stable
 
-# E-mail. A versão mensal; o 'org.mozilla.Thunderbird' antigo está em fim de
-# vida e o flatpak o troca sozinho pelo ESR (PROJECT.md §25).
-[Flatpak Preinstall org.mozilla.thunderbird]
-Branch=stable
-
 # Música
 [Flatpak Preinstall com.spotify.Client]
 Branch=stable

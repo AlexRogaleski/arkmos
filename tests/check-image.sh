@@ -290,6 +290,18 @@ check "estado do greeter com o rótulo SELinux do greetd" \
     run sh -c 'matchpathcon -n /var/lib/noctalia-greeter/sync.toml | grep -qx "system_u:object_r:xdm_var_lib_t:s0" &&
                grep -qx "Z /var/lib/noctalia-greeter - - - -" /usr/lib/tmpfiles.d/arkmos.conf'
 
+# Webapps: sem rede, com ícone local. A classe da janela tem de bater com a
+# que o Chrome dá ao modo app, ou o dock não associa o atalho (§25).
+check "arkmos-webapp cria, lista e remove" \
+    sh -c 'podman run --rm --network=none -e HOME=/tmp "'"$IMAGE"'" sh -c "
+        arkmos-webapp add \"Teste App\" https://example.org/a/b /usr/share/icons/Papirus/64x64/apps/web-browser.svg >/dev/null
+        d=/tmp/.local/share/applications/arkmos-webapp-teste-app.desktop
+        desktop-file-validate \$d
+        grep -qx StartupWMClass=chrome-example.org__a_b-Default \$d || { echo classe; exit 1; }
+        arkmos-webapp list | grep -q \"Teste App\"
+        arkmos-webapp remove \"Teste App\" >/dev/null && test ! -e \$d
+    " 2>&1'
+
 # O preto do 'ujust arkmos-cursor', e o gancho do niri por onde ele entra.
 check "cursor preto e include do niri para a troca por conta" \
     run sh -c 'test -e /usr/share/icons/Bibata-Modern-Classic/cursors/left_ptr &&
