@@ -13,3 +13,4 @@ output-nvidia/
 cosign.key
 cosign.password
 *.key
+__pycache__/
