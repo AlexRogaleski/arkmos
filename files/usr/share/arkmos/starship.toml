@@ -14,7 +14,7 @@
 "$schema" = 'https://starship.rs/config-schema.json'
 
 format = """
-$directory$git_branch$git_state$git_status$php$nodejs$python$rust$docker_context$cmd_duration
+$directory$git_branch$git_state$git_status$php${custom.node}$python$rust$docker_context$cmd_duration
 $character"""
 
 add_newline = true
@@ -54,15 +54,20 @@ deleted = '✘${count} '
 [git_state]
 style = 'bold red'
 
-# Versão da linguagem só aparece dentro de um projeto que a usa — é o
-# comportamento padrão desses módulos, e o que mantém o prompt curto.
+# PHP e Node só com o símbolo, dentro de um projeto que os usa. Mostrar a
+# versão roda 'php --version' e 'node --version' a cada prompt, e com wrappers
+# como os do lerd isso custava meio segundo por Enter (PROJECT.md §13.1).
 [php]
 style = 'bold blue'
-format = '[$symbol($version )]($style)'
+format = '[$symbol]($style)'
 
-[nodejs]
+# O módulo nodejs roda o node mesmo sem $version (compara com o 'engines' do
+# package.json); este só procura o arquivo.
+[custom.node]
+detect_files = ['package.json']
+symbol = ' '
 style = 'bold green'
-format = '[$symbol($version )]($style)'
+format = '[$symbol]($style)'
 
 [python]
 style = 'bold yellow'

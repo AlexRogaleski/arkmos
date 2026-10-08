@@ -773,6 +773,8 @@ O `tools.zsh` põe `~/.local/bin` e `~/bin` na frente do `PATH`. O Fedora faz is
 
 O `arkmos.zsh` também troca `/var/home/<usuário>` por `$HOME` no diretório inicial. A sessão herda o caminho resolvido do link `/home → /var/home`, e sem isso todo terminal abria fora do `~` aos olhos do prompt.
 
+**PHP e Node no prompt só com o símbolo.** O starship mostrava a versão de cada um dentro de um projeto, e para isso roda `php --version` e `node --version` a **cada prompt**. Com o PHP e o Node do lerd, que são scripts que entram num container, isso custava 0,85 s e 0,33 s: o `php` estourava o limite de 500 ms do starship (o aviso `Executing command ... timed out` em todo terminal aberto, em 2026-10-08) e cada Enter num projeto Laravel levava meio segundo. Agora o PHP aparece só como símbolo, e o Node por um módulo `custom.node` que apenas procura o `package.json` — o `nodejs` nativo roda o `node` mesmo sem a versão no formato, para comparar com o `engines`. O prompt no mesmo projeto caiu para 0,06 s. A versão continua a um `php -v` de distância.
+
 O `zoxide` substitui o `cd` (`zoxide init --cmd cd`): caminho normal continua funcionando, e um pedaço do nome de um diretório já visitado também — `cd ark` vai para `~/Projetos/arkmos`, e `cdi` escolhe entre os candidatos pelo fzf.
 
 ## 13.2 Plugins: RPM, não git clone
