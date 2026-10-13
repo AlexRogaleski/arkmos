@@ -579,6 +579,10 @@ binds {
     Mod+Ctrl+Shift+WheelScrollDown { move-column-right; }
     Mod+Ctrl+Shift+WheelScrollUp   { move-column-left; }
 
+    // Botões laterais do mouse trocam de coluna; sem Mod, voltar/avançar.
+    Mod+MouseBack    { focus-column-left; }
+    Mod+MouseForward { focus-column-right; }
+
     // Similarly, you can bind touchpad scroll "ticks".
     // Touchpad scrolling is continuous, so for these binds it is split into
     // discrete intervals.

@@ -342,6 +342,7 @@ Personalizações em relação à configuração de exemplo:
 - `Mod+Shift+E` abre o menu de sessão do Noctalia (desligar, reiniciar, suspender, sair), no lugar do `quit` do niri, que continua no `Ctrl+Alt+Delete`;
 - `Mod+D` e `Mod+Space` abrem o lançador do Noctalia, e `Super+Alt+L` bloqueia a tela pelo Noctalia. A configuração de exemplo apontava para o fuzzel e o swaylock, dois programas à parte, e o lançador do Noctalia ficava sem atalho;
 - `Shift+Print` faz captura com anotação (seção 25);
+- `Mod` + botões laterais do mouse (voltar/avançar) trocam de coluna, como `Mod+←`/`Mod+→`: dá para alternar entre os programas só com o mouse, segurando o Super. Ligados direto como botões do mouse no niri, e não remapeados para setas, então sem o Super continuam voltar/avançar no navegador. Testado com um Attack Shark R1 em 2026-10-13;
 - anel de foco de 3 px, com gradiente do azul ao roxo de destaque do Tokyo Night, e cantos arredondados de 8 px em todas as janelas, com `clip-to-geometry` para o conteúdo ser recortado no mesmo raio — sem ele o arredondamento fica só na moldura e o conteúdo aparece quadrado nos cantos;
 - `prefer-no-csd` ligado;
 - assistentes pequenos abrem flutuando no centro, e não como coluna de meia tela: Conexões de rede, wdisplays, a janela do modo dos monitores (zenity), o assistente de impressão e a Calculadora. Os ids foram conferidos com `niri msg windows`, abrindo cada um — o do wdisplays e o do zenity não são os que o binário sugere (`wdisplays` e `zenity`, e não `network.cycles.wdisplays` e `org.gnome.Zenity`). Outro aplicativo entra com mais um `match`, na imagem ou no `~/.config/niri/local.kdl` da conta;
@@ -2472,7 +2473,7 @@ Instalação em hardware real, e o que o uso diário mostrou depois dela:
 - login em Tokyo Night desde o primeiro boot, cursor Bibata, Adwaita Sans como fonte única, e o cursor preto por conta com `ujust arkmos-cursor` (seções 8.3, 14 e 26.1);
 - zsh como shell de toda conta, carregado pelo `/etc/zshrc` com o `~/.zshrc` da conta por último, `~/.local/bin` no PATH, e o terminal abrindo em `~` (seção 13.1);
 - Neovim agradável para uso geral, com tokyonight e mini.nvim fixados, que sai do caminho diante de uma configuração própria (seção 9.1);
-- atalhos: `Super+E` (Nautilus), `Super+B` (Chrome), `Super+N` (central de controle), `Super+Shift+E` (menu de sessão) e `Super+P`/`Fn+F7` (modo dos monitores); `include` opcionais do niri para a conta (seção 8.1);
+- atalhos: `Super+E` (Nautilus), `Super+B` (Chrome), `Super+N` (central de controle), `Super+Shift+E` (menu de sessão) e `Super+P`/`Fn+F7` (modo dos monitores), `Super` + botões laterais do mouse para trocar de coluna; `include` opcionais do niri para a conta (seção 8.1);
 - monitores: escolha de modo como o `Win+P` — duplicar, estender, só um — com `wl-mirror`, e o `wdisplays` (seção 8.4, issue #3);
 - rede: o editor de conexões no menu, para o MAC por rede, e o `nmtui` (seção 22, issue #4);
 - assistentes pequenos flutuando no centro (seção 8.1);
