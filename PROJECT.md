@@ -1624,6 +1624,8 @@ O `just check` confere o initramfs, e não só o `/usr`: tema, `plymouthd.conf`,
 
 **Custo medido: 249 MB.** É o tamanho da camada com o initramfs regerado. O arquivo da base continua na camada dela, então é quanto a imagem cresce — e, como o initramfs já sai comprimido com zstd, o download cresce praticamente o mesmo. Comparado ao da base, o initramfs novo tem exatamente os mesmos módulos do dracut e os mesmos arquivos; muda o tema do Plymouth e entra o `vconsole.conf`. A comparação pegou uma diferença, já corrigida: sem `/var/roothome` no container de build — ele só nasce no boot —, o dracut não instalava o `/root`. O diretório é criado só durante o dracut.
 
+**O kernel do initramfs é o do pacote, e não o único diretório de módulos.** O passo exigia exatamente um diretório em `/usr/lib/modules`, e a base `44-20261017.1` do Universal Blue veio com dois: o `7.2.10`, do `kernel-core` instalado, e um `7.2.11` com 11 arquivos e sem `vmlinuz`, resto de outro build. O build agendado de 2026-10-17 parou nas duas variantes; a base seguinte já não tinha o resto. Agora a versão sai de `rpm -q kernel-core`, com `vmlinuz` obrigatório, e um diretório que não seja dela só gera aviso — o `bootc container lint` aceita a base com o resto, conferido.
+
 ## 27.3 Resolvido na 0.8.0
 
 - **Status do systemd por cima do assistente de firstboot** — seção 12.3.

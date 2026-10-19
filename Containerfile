@@ -317,11 +317,16 @@ COPY build_files/render-artwork.sh /tmp/render-artwork.sh
 RUN bash /tmp/render-artwork.sh && rm -f /tmp/render-artwork.sh
 
 # Initramfs regerado, porque o tema do Plymouth só vale lá dentro (§27.2).
-# Mesmos argumentos da base (lsinitrd). O /var/roothome existe só durante o
+# Mesmos argumentos da base (lsinitrd). O kernel é o do pacote kernel-core, e
+# não o único diretório em /usr/lib/modules: a base já veio com um diretório
+# de módulos a mais, sem vmlinuz (§27.2). O /var/roothome existe só durante o
 # dracut, que sem ele não instala o /root no initramfs.
-RUN kver="$(ls /usr/lib/modules)"; \
-    [ "$(printf '%s\n' "$kver" | wc -l)" -eq 1 ] \
-        || { echo "esperado um único kernel em /usr/lib/modules: $kver"; exit 1; }; \
+RUN kver="$(rpm -q --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n' kernel-core)"; \
+    [ "$(printf '%s\n' "$kver" | wc -l)" -eq 1 ] && [ -e "/usr/lib/modules/$kver/vmlinuz" ] \
+        || { echo "esperado um único kernel-core com vmlinuz: $kver"; exit 1; }; \
+    for d in /usr/lib/modules/*; do \
+        [ "${d##*/}" = "$kver" ] || echo "aviso: /usr/lib/modules/${d##*/} não é do kernel instalado"; \
+    done; \
     criado=; [ -d /var/roothome ] || { mkdir -m 0700 /var/roothome; criado=1; }; \
     DRACUT_NO_XATTR=1 dracut --no-hostonly --kver "$kver" --reproducible \
         --add ostree -f "/usr/lib/modules/$kver/initramfs.img" || exit 1; \
