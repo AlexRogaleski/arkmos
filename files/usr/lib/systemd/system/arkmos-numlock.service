@@ -1,0 +1,13 @@
+[Unit]
+Description=Arkmos: Num Lock ligado no console da sessão (vt1)
+After=systemd-vconsole-setup.service
+Before=arkmos-firstboot.service greetd.service getty@tty1.service
+
+[Service]
+Type=oneshot
+# Ao voltar da suspensão o kernel copia os LEDs do console para os teclados.
+# Ver PROJECT.md, seção 23.
+ExecStart=/bin/sh -c '/usr/bin/setleds -D +num < /dev/tty1'
+
+[Install]
+WantedBy=multi-user.target

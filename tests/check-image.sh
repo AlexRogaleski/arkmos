@@ -123,6 +123,7 @@ check "systemd-analyze verify (units do Arkmos)" \
     /usr/lib/systemd/system/arkmos-firstboot.service \
     /usr/lib/systemd/system/arkmos-login-fallback.service \
     /usr/lib/systemd/system/arkmos-flatpak-preinstall.service \
+    /usr/lib/systemd/system/arkmos-numlock.service \
     /usr/lib/systemd/system/greetd.service
 
 # --- Localização -----------------------------------------------------------

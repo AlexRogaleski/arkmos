@@ -1102,6 +1102,8 @@ Os diretórios que o tuned espera em `/var` são declarados em `tmpfiles.d` e n�
 
 **Bloqueio por inatividade.** O Noctalia vem com toda ação por inatividade desligada: a tela nunca bloqueava nem apagava sozinha. O `arkmos.toml` do skel liga o bloqueio e a tela apagada, com os tempos do próprio Noctalia (10 e 11 minutos). Cada ação é declarada inteira — ação e tempo, não só `enabled` —, porque o Noctalia **substitui** o bloco em vez de mesclá-lo com o padrão: declarar só `enabled = true` deixava a ação vazia e o tempo em zero, ligado e sem efeito, sem erro nenhum. O `just check` confere a configuração efetiva, como o Noctalia a lê, e não o arquivo. A suspensão por inatividade fica desligada, para não interromper um build ou um download longo; fechar a tampa já bloqueia antes de suspender (`lock_before_suspend`, ligado por padrão). Como é skel, vale para conta nova. Os tempos se mudam nas configurações do Noctalia (`noctalia msg settings-open`, seção de inatividade), que gravam em `~/.local/state/noctalia/settings.toml` e vencem o padrão.
 
+**Num Lock depois da suspensão.** O niri liga o Num Lock ao subir (`numlock` no `config.kdl`), mas o kernel guarda um estado de LED próprio para cada console de texto, e o da vt1 — onde roda a sessão — nasce com o Num Lock desligado. Na volta da suspensão (tampa ou menu), o kernel copia esse estado para os LEDs de todos os teclados: a luz apagava, o teclado numérico continuava digitando números, e o niri não corrigia porque, para ele, nada tinha mudado. Só bloquear a tela não passa por esse caminho. A `arkmos-numlock.service` liga o Num Lock da vt1 no boot (`setleds -D +num`; o `-D` muda também o padrão, que o kernel reaplica quando o console é reiniciado), antes do assistente de primeiro boot e do greetd. O limite: quem desligar o Num Lock no desktop e suspender recebe o LED de volta aceso com o Num Lock desligado — o inverso, no caso menos comum; apertar a tecla ressincroniza. Diagnosticado num Lenovo 82MG em 2026-10-29, acompanhando `/sys/class/leds/*::numlock` durante a suspensão.
+
 ---
 
 # 24. NVIDIA
@@ -2348,7 +2350,7 @@ arkmos/
         │   ├── bootc/install/     filesystem raiz
         │   ├── environment.d/     locale e XDG_DATA_DIRS do systemd --user
         │   ├── bootc/kargs.d/     argumentos de kernel
-        │   ├── systemd/system/    firstboot, preinstall de Flatpaks, drop-ins
+        │   ├── systemd/system/    firstboot, preinstall de Flatpaks, Num Lock, drop-ins
         │   ├── systemd/system-preset/  sshd desligado
         │   ├── sysusers.d/        grupo docker
         │   └── tmpfiles.d/        conteúdo de /var

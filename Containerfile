@@ -296,6 +296,7 @@ RUN chmod 0755 /usr/libexec/arkmos-firstboot /usr/libexec/arkmos-greeter \
                 /usr/bin/arkmos-diag /usr/bin/arkmos-display /usr/bin/arkmos-webapp \
     && systemctl enable arkmos-firstboot.service \
     && systemctl enable arkmos-flatpak-preinstall.service \
+    && systemctl enable arkmos-numlock.service \
     && systemctl disable sshd.service \
     && systemctl --global enable gcr-ssh-agent.socket \
     && firewall-offline-cmd --set-default-zone=FedoraWorkstation \
