@@ -116,7 +116,7 @@ members = [ "date", "clock" ]
 enabled = true
 accordion = false
 accordion_direction = "end"
-fill = "surface_variant"
+fill = "surface_container"
 opacity = 0.0
 padding = 6.0
 
