@@ -1,0 +1,15 @@
+# Arkmos: o Noctalia como serviço da sessão, para voltar sozinho se morrer
+# (PROJECT.md §8.2). Substitui o spawn-at-startup do niri.
+[Unit]
+Description=Noctalia, o shell do desktop
+PartOf=graphical-session.target
+After=graphical-session.target
+Requisite=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/noctalia
+Restart=on-failure
+RestartSec=1
+
+[Install]
+WantedBy=niri.service

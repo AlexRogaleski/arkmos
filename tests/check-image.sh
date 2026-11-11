@@ -934,6 +934,16 @@ check "firewall na zona FedoraWorkstation" \
 check "agente SSH do gcr habilitado para as sessões" \
     run sh -c '[ "$(systemctl --global is-enabled gcr-ssh-agent.socket 2>&1)" = enabled ]'
 
+# Pelo spawn do niri, o Noctalia dividia o scope com os apps do lançador e
+# morria junto quando o OOM matava um deles; o serviço o reinicia (§8.2).
+check "Noctalia sobe como serviço, não pelo niri" \
+    run sh -c 'test -L /etc/systemd/user/niri.service.wants/noctalia.service \
+        || { echo "noctalia.service não habilitado"; exit 1; }
+      ! grep -q "^spawn-at-startup \"noctalia\"" /etc/niri/config.kdl \
+        || { echo "o niri ainda inicia o Noctalia"; exit 1; }
+      grep -qx "launch_apps_as_systemd_services = true" /etc/skel/.config/noctalia/arkmos.toml \
+        || { echo "apps do lançador sem unit própria"; exit 1; }'
+
 check "greetd é o display-manager" \
     run sh -c 'readlink /etc/systemd/system/display-manager.service | grep -q greetd'
 

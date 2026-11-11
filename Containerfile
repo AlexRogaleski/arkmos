@@ -290,8 +290,8 @@ json.dump(d, open(p, "w"), indent=4)' "$ARKMOS_REGISTRY" \
 
 # Serviços (§7, §22): sshd desligado (o 10-arkmos.preset impede que o preset
 # do Fedora o religue no primeiro boot), firewall na zona FedoraWorkstation,
-# agente SSH do gcr para todo usuário, e grub-boot-success mascarada — ela
-# escreveria no /boot, que aqui é somente leitura.
+# agente SSH do gcr e Noctalia (§8.2) para todo usuário, e grub-boot-success
+# mascarada — ela escreveria no /boot, que aqui é somente leitura.
 RUN chmod 0755 /usr/libexec/arkmos-firstboot /usr/libexec/arkmos-greeter \
                 /usr/bin/arkmos-diag /usr/bin/arkmos-display /usr/bin/arkmos-webapp \
     && systemctl enable arkmos-firstboot.service \
@@ -299,6 +299,7 @@ RUN chmod 0755 /usr/libexec/arkmos-firstboot /usr/libexec/arkmos-greeter \
     && systemctl enable arkmos-numlock.service \
     && systemctl disable sshd.service \
     && systemctl --global enable gcr-ssh-agent.socket \
+    && systemctl --global enable noctalia.service \
     && firewall-offline-cmd --set-default-zone=FedoraWorkstation \
     && systemctl enable docker.service \
     && systemctl enable greetd.service \

@@ -372,6 +372,8 @@ O pacote não entrega agente polkit próprio, então o `mate-polkit` continua ne
 
 Responsável por barra, dock, lançador, central de controle, notificações, wallpaper e tela de bloqueio.
 
+Sobe pelo `noctalia.service` (unit de usuário, `WantedBy=niri.service`, `Restart=on-failure`), e não pelo `spawn-at-startup` do niri. Iniciado pelo niri, ele ficava num `app-niri-noctalia-*.scope` junto com todo app aberto pelo lançador: quando o OOM do kernel matou um processo do VSCode, o systemd parou o scope inteiro (`OOMPolicy=stop`, o padrão) e o shell sumiu, com o niri e os outros apps de pé. O serviço resolve as duas pontas. O Noctalia volta sozinho se morrer, e o `launch_apps_as_systemd_services = true` (no `[shell]` do skel) passa a abrir cada app numa `app-*@*.service` própria, com `OOMPolicy=continue`. Essa opção só funciona com o Noctalia rodando como serviço do systemd de usuário; fora disso, ela registra um aviso e abre o app direto.
+
 ## 8.3 Login
 
 ```text

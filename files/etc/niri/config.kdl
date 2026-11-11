@@ -286,10 +286,9 @@ layout {
 // which may be more convenient to use.
 // See the binds section below for more spawn examples.
 
-// Noctalia: barra, dock, lançador, central de controle, notificações,
-// wallpaper e tela de bloqueio. Substitui a waybar que a config de
-// exemplo iniciava aqui.
-spawn-at-startup "noctalia"
+// Noctalia: não sobe daqui, e sim pelo noctalia.service, que o reinicia se
+// morrer (PROJECT.md §8.2). Substitui a waybar que a config de exemplo
+// iniciava aqui.
 
 // Agente de autenticação do polkit.
 //

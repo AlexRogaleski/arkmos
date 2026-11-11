@@ -25,10 +25,15 @@
 # font_family é a fonte da interface inteira: Adwaita Sans, a mesma do dconf e
 # dos settings.ini, para barra e janelas não usarem fontes diferentes. O padrão
 # do Noctalia é 'sans-serif', que no Fedora cai na Noto Sans.
+#
+# launch_apps_as_systemd_services: cada app aberto pelo lançador vira uma
+# unit própria; sem isso, um app morto por falta de memória levava o Noctalia
+# junto (PROJECT.md §8.2).
 [shell]
 lang = "pt-BR"
 corner_radius_scale = 1.25
 font_family = "Adwaita Sans"
+launch_apps_as_systemd_services = true
 
 # Esquema de cores do sistema: Tokyo Night, embutido no Noctalia. É dele que
 # saem as cores do shell, e o sync as leva para a tela de login. O identificador
