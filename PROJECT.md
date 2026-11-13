@@ -4,7 +4,7 @@ Sistema operacional pessoal e reprodutível baseado em Fedora bootc, desenvolvid
 
 > **Status:** Em desenvolvimento
 > **Versão atual:** 0.10.0
-> **Base:** Universal Blue, Fedora 44 bootc
+> **Base:** Universal Blue, Fedora 45 bootc
 > **Compositor:** Niri
 > **Shell do desktop:** Noctalia
 > **Bootloader atual de testes:** GRUB
@@ -205,8 +205,8 @@ Os componentes `ublue-os-*` que vêm na imagem estão sob MIT (`akmods-addons`, 
 A versão major do Fedora permanece explícita, e a base é parametrizada por `ARG BASE_IMAGE`:
 
 ```text
-arkmos          ghcr.io/ublue-os/base-main:44      padrão, sem pilha NVIDIA
-arkmos-nvidia   ghcr.io/ublue-os/base-nvidia:44    driver NVIDIA assinado
+arkmos          ghcr.io/ublue-os/base-main:45      padrão, sem pilha NVIDIA
+arkmos-nvidia   ghcr.io/ublue-os/base-nvidia:45    driver NVIDIA assinado
 ```
 
 A diferença é **apenas** a imagem base: uma árvore `files/` só, um `Containerfile` só. A variante padrão é um subconjunto exato da variante NVIDIA — 79 pacotes a menos, nenhum pacote exclusivo.
@@ -222,7 +222,8 @@ O Containerfile remove o que não se aplica (`/etc/nvidia`, drop-in do CDI) deci
 
 ```text
 0.1.0 – 0.7.0    quay.io/fedora/fedora-bootc:44
-0.8.0 –          ghcr.io/ublue-os/base-main:44 (+ variante nvidia)
+0.8.0 – 0.10.0   ghcr.io/ublue-os/base-main:44 (+ variante nvidia)
+0.11.0 –         ghcr.io/ublue-os/base-main:45 (+ variante nvidia)
 ```
 
 Motivo da saída do `fedora-bootc`: ele é o tier "standard", voltado a servidor headless — não é uma base mínima nem uma base de desktop, e a pilha gráfica e de drivers teria de ser construída inteira.
@@ -429,8 +430,8 @@ O que importa estar ali: `[session] default = "Niri"` (tem de casar com o `Name=
 O script de setup do upstream aplica um patch em `/etc/pam.d/greetd` para acrescentar `pam_systemd.so`. **No Fedora é desnecessário**, e o script dá falso positivo porque faz grep literal sem seguir os `include`:
 
 ```text
-/etc/pam.d/greetd          session include system-auth → tem pam_systemd
-/etc/pam.d/greetd-greeter  session optional pam_systemd.so (direto, do pacote)
+/usr/lib/pam.d/greetd          session include system-auth → tem pam_systemd
+/usr/lib/pam.d/greetd-greeter  session optional pam_systemd.so (direto, do pacote)
 ```
 
 O Fedora já entrega um PAM dedicado ao greeter. Nada a fazer.
@@ -536,7 +537,9 @@ Objetivos:
 
 Os portais seguem listados explicitamente no `Containerfile` mesmo vindo da base: o Niri depende deles, e o Universal Blue vem podando imagens intermediárias. Se a base parar de trazê-los, é melhor o build continuar correto do que a sessão quebrar de forma confusa.
 
-**Chaveiro destravado no login: `gnome-keyring-pam`.** É um pacote separado do `gnome-keyring` e entrega só o `pam_gnome_keyring.so`. O `/etc/pam.d/greetd` já o referencia, mas com `-` na frente, a sintaxe que manda ignorar em silêncio quando o módulo não existe. Sem o pacote nada falha e nada avisa: o chaveiro não é destravado com a senha do login, e a sessão abre pedindo a mesma senha de novo, num prompt sem tema e em inglês — foi o que apareceu no teste em VM. O `just check` confere o módulo instalado e referenciado.
+**Chaveiro destravado no login: `gnome-keyring-pam`.** É um pacote separado do `gnome-keyring` e entrega só o `pam_gnome_keyring.so`. O PAM do greetd já o referencia, mas com `-` na frente, a sintaxe que manda ignorar em silêncio quando o módulo não existe. Sem o pacote nada falha e nada avisa: o chaveiro não é destravado com a senha do login, e a sessão abre pedindo a mesma senha de novo, num prompt sem tema e em inglês — foi o que apareceu no teste em VM. O `just check` confere o módulo instalado e referenciado.
+
+**O oo7 está instalado, e não é ele que responde.** O Fedora 45 trocou o Secret Service padrão para o oo7, e o `xdg-desktop-portal-gnome` 51 o puxa como dependência (`oo7-portal` → `oo7-daemon`). O Arkmos continua no `gnome-keyring`: o `oo7-daemon.service` vem desabilitado, a ativação do `org.freedesktop.secrets` pelo D-Bus é a do `gnome-keyring-daemon`, e o `niri-portals.conf` fixa `Secret=gnome-keyring`. Conferido na VM com a base 45, em 2026-11-13: o dono do barramento era o `gnome-keyring-daemon`, com a coleção `login` destravada pelo login. O `just check` reprova se o oo7 for habilitado ou se a ativação mudar de dono. Trocar para o oo7 fica para quando ele sair do beta (0.7.0 no lançamento do 45) e a migração do chaveiro existente estiver comprovada.
 
 **Agente SSH: o do gcr.** O `gnome-keyring` deixou de ser agente SSH, e o papel passou para o `gcr-ssh-agent`, do pacote `gcr`. O socket é habilitado para todo usuário (`systemctl --global`) e define o `SSH_AUTH_SOCK` no `systemd --user`, de onde o niri e tudo o que ele abre herdam. A senha da chave fica no chaveiro, que o login já destrava. Sem agente nenhum, cada `git push` pedia a senha da chave, e o VS Code, que não tem onde perguntar, falhava.
 
@@ -675,6 +678,16 @@ kill -s RTMIN+21 1
 ```
 
 `SIGRTMIN+21` desliga a impressão de status no console e `SIGRTMIN+20` religa (ver `systemd(1)`). Sem isso, as linhas "Started…", "Listening on…" e "Reached target…" dos serviços que ainda estão subindo caem no meio das perguntas. O estado não é restaurado ao final de propósito: o plymouth manda o mesmo sinal quando sai, então console silencioso já é o normal depois do boot.
+
+### Consoles de texto: getty, e não kmscon
+
+O Fedora 45 troca o console de texto do kernel pelo kmscon ([Changes/UseKmsconVTConsole](https://fedoraproject.org/wiki/Changes/UseKmsconVTConsole)), e a `base-main:45` já chega com ele ligado de dois jeitos: o `autovt@.service` aponta para o `kmsconvt@.service`, e o `kmsconvt@tty1` vem no `getty.target`, ao lado do `getty@tty1`. Tudo o que o Arkmos faz na vt1 conhece só o getty: o assistente é ordenado antes do `getty@tty1`, o greetd tem `Conflicts=getty@tty1`, e o login de recuperação sobe o `getty@tty1`.
+
+No primeiro teste em VM com a base 45, em 2026-11-13, o assistente abriu na vt1 e, seis segundos depois, subiu o `kmsconvt@tty6`. Ele desenha direto no DRM, e a tela passou a mostrar o `arkmos login:` dele, com o assistente esperando resposta por baixo, sem conta para entrar. No boot seguinte não aconteceu: o defeito depende de corrida, e não aparece todo boot.
+
+O `Containerfile` remove o kmscon e habilita o `getty@.service`, que devolve o alias `autovt@` ao getty. O `90-default.preset` do Fedora 45 desabilita o `getty@` em favor do kmscon, então o `10-arkmos.preset` o habilita de volta, para o caso de os presets serem reaplicados no primeiro boot. A proposta do Fedora prevê esse caminho: sem o kmscon, o padrão volta a ser fbcon com getty.
+
+Não é recurso de segurança perdido. O argumento da mudança é tirar código antigo do kernel, mas o fbcon continua compilado no kernel do 45, com ou sem o kmscon, e no Arkmos o console de texto só serve ao assistente e à recuperação. Vale revisitar se o Fedora tirar o fbcon do kernel: aí o kmscon vira obrigatório, e o assistente, o greetd e o fallback precisam ser ordenados contra o `kmsconvt@tty1`.
 
 ### O teclado da sessão gráfica vem do vconsole.conf
 
@@ -1665,7 +1678,7 @@ O título de cada entrada de boot sai do `PRETTY_NAME` do `/usr/lib/os-release` 
 
 ```text
 NAME="Arkmos"
-PRETTY_NAME="Arkmos 44.AAAAMMDD.N"          (variante NVIDIA: "Arkmos NVIDIA ...")
+PRETTY_NAME="Arkmos 45.AAAAMMDD.N"          (variante NVIDIA: "Arkmos NVIDIA ...")
 VERSION / OSTREE_VERSION                    a versão da imagem
 DEFAULT_HOSTNAME, HOME_URL, BUG_REPORT_URL  do Arkmos
 ID=fedora, VERSION_ID=44                    mantidos
@@ -1741,7 +1754,7 @@ O workflow tem duas funções, e elas entram em momentos diferentes do projeto.
 - **toda semana**, pelo `schedule` (sábado às 06:00 UTC), para a máquina instalada acompanhar a base do Universal Blue mesmo numa semana sem commit;
 - **à mão**, pelo `workflow_dispatch` com a caixa `publish` marcada, quando uma mudança precisa chegar antes do sábado.
 
-As tags seguem o esquema por data: `44.AAAAMMDD.N`, mais `44` e `latest`.
+As tags seguem o esquema por data: `45.AAAAMMDD.N`, mais `45` e `latest`. A tag do Fedora fixa a versão major: quem segue `arkmos:44` continua no 44 até um `bootc switch` para a `45`, e a `44` deixa de receber publicações quando o `FEDORA_MAJOR` do workflow muda.
 
 Detalhes do desenho:
 
@@ -1762,7 +1775,7 @@ Detalhes do desenho:
 - **O `just` tem versão fixada** (1.57.0), a mesma da máquina: o formatador muda de uma versão para outra, e o `just --fmt --check` passava na máquina e falhava no CI, que instalava a mais recente. A action é a que o image-template do Universal Blue usa (`extractions/setup-just`), fixada por commit.
 - **O lint roda com `ARKMOS_LINT_CONTAINER=1`**: o runner traz shellcheck 0.9.0, contra a 0.11.0 fixada no projeto, e versões diferentes acusam coisas diferentes (seção 29).
 - **Espaço em disco.** O runner vem com pouco espaço livre: a variante padrão passa de 8 GB por causa dos codecs da base, e a NVIDIA de 11 GB. O job apaga `/usr/share/dotnet`, `/usr/local/lib/android`, `/opt/ghc`, `/usr/local/share/boost` e o `$AGENT_TOOLSDIRECTORY` antes de construir.
-- **O número da versão não é a rede de segurança.** O esquema `44.AAAAMMDD.N` segue Fedora e Universal Blue; quem desfaz uma versão ruim é o `bootc rollback`.
+- **O número da versão não é a rede de segurança.** O esquema `45.AAAAMMDD.N` segue Fedora e Universal Blue; quem desfaz uma versão ruim é o `bootc rollback`.
 
 O digest assinado, o login do cosign e o formato da assinatura só apareceram ao publicar de verdade, porque é o único trecho que um push comum não executa.
 
@@ -1780,7 +1793,7 @@ O projeto já era construído com essa hipótese: nada pessoal é declarado na i
 
 ### Retenção
 
-Cada publicação cria **uma** versão (um digest) carregando três tags: `44.AAAAMMDD.N`, `44` e `latest`. Sem limpeza, nada remove as anteriores e cada uma ocupa ~4 GB. Em repositório público isso não custa cota, mas uma listagem com centenas de versões deixa de ser navegável — e com o `schedule` ligado ela cresce sozinha.
+Cada publicação cria **uma** versão (um digest) carregando três tags: `45.AAAAMMDD.N`, `45` e `latest`. Sem limpeza, nada remove as anteriores e cada uma ocupa ~4 GB. Em repositório público isso não custa cota, mas uma listagem com centenas de versões deixa de ser navegável — e com o `schedule` ligado ela cresce sozinha.
 
 Dois passos, com critérios diferentes:
 
@@ -2096,7 +2109,7 @@ O Anaconda que roda aí é o mesmo que vai rodar no hardware, com as telas de di
 **A VM nasce seguindo a imagem local.** O disco é gerado a partir de `localhost/arkmos:dev`, e é isso que fica gravado na deployment: um `bootc upgrade` ali tenta buscar em `localhost/v2/` e falha. Para a VM passar a seguir a imagem publicada, uma vez:
 
 ```bash
-sudo bootc switch --enforce-container-sigpolicy ghcr.io/<owner>/arkmos:44
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/<owner>/arkmos:45
 ```
 
 Depois disso o `bootc upgrade` funciona, com a assinatura verificada, e o `/var` não é tocado — os Flatpaks instalados e a conta continuam lá.
@@ -2184,7 +2197,7 @@ Com a mídia anterior, ainda com o kickstart padrão do builder:
 sudo podman run --rm --privileged --pid=host \
     -v /dev:/dev -v /var/lib/containers:/var/lib/containers \
     --security-opt label=type:unconfined_t \
-    ghcr.io/<owner>/arkmos:44 \
+    ghcr.io/<owner>/arkmos:45 \
     bootc install to-disk --wipe /dev/sdX
 ```
 
@@ -2193,7 +2206,7 @@ A imagem não tem conta nenhuma, e é o assistente do primeiro boot que a cria (
 **Rebase**, a partir de um Fedora Atomic já instalado (Silverblue, Kinoite, Aurora…):
 
 ```bash
-sudo bootc switch --enforce-container-sigpolicy ghcr.io/<owner>/arkmos:44
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/<owner>/arkmos:45
 ```
 
 A conta e o `/var/home` vêm do sistema de origem, e o assistente se dispensa sozinho (seção 12.1).
@@ -2485,6 +2498,7 @@ Instalação em hardware real, e o que o uso diário mostrou depois dela:
 - assistentes pequenos flutuando no centro (seção 8.1);
 - aplicativos: Editor de Texto do GNOME, Ignition, papéis de parede do Fedora, Warehouse e Thunderbird fora (o e-mail é o Hylki, de repositório próprio, na conta); sites como aplicativos sem barras, com `ujust arkmos-webapp`; `just check-flatpaks` (seção 25);
 - publicação semanal no sábado e tentativas repetidas no push para o GHCR; comentários do código enxutos, com o raciocínio no PROJECT.md (seções 28.2 e 29).
+- base no Fedora 45: o kmscon fora da imagem e o getty de volta nos consoles de texto (seção 12.3); o PAM do greetd, agora em `/usr/lib/pam.d`, conferido onde estiver (seção 10).
 
 Fecha com o teste na sala de aula: projetor pelo `Fn+F7` e a rede com o MAC cadastrado.
 ---
