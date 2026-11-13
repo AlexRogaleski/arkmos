@@ -20,7 +20,7 @@ on:
         default: false
 
 env:
-  FEDORA_MAJOR: "44"
+  FEDORA_MAJOR: "45"
 
 # Só push e pull request se cancelam: uma publicação interrompida entre o
 # push e a assinatura deixaria no registry uma imagem sem assinatura.
@@ -68,13 +68,13 @@ jobs:
           # A variante padrão publica sob o nome sem sufixo.
           - variant: base
             suffix: ""
-            base_image: ghcr.io/ublue-os/base-main:44
+            base_image: ghcr.io/ublue-os/base-main:45
             publishable: true
 
           # Publicar esta redistribui o driver NVIDIA: ver PROJECT.md §28.4.
           - variant: nvidia
             suffix: "-nvidia"
-            base_image: ghcr.io/ublue-os/base-nvidia:44
+            base_image: ghcr.io/ublue-os/base-nvidia:45
             publishable: true
 
     env:
@@ -113,7 +113,7 @@ jobs:
       - name: Gerar tags
         id: tags
         run: |
-          # Esquema por data, como Fedora e ublue: 44.AAAAMMDD.N
+          # Esquema por data, como Fedora e ublue: 45.AAAAMMDD.N
           DATE="$(date -u +%Y%m%d)"
           BUILD="${GITHUB_RUN_NUMBER}"
           VERSION="${FEDORA_MAJOR}.${DATE}.${BUILD}"
@@ -236,7 +236,7 @@ jobs:
 
       # --- Retenção (PROJECT.md §28.2) ------------------------------------
 
-      # Versões que ficaram sem tag quando 44 e latest foram movidas.
+      # Versões que ficaram sem tag quando a tag do Fedora e a latest foram movidas.
       - name: Remover versões sem tag
         if: env.PUBLICAR == 'true'
         uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5.0.0

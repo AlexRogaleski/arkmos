@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Instala em /usr/bin os binários que o Fedora 44 não empacota.
+# Instala em /usr/bin os binários que o Fedora não empacota.
 #
 # Cada entrada fixa versão E checksum. Baixar de release upstream direto para
 # /usr/bin sem verificar o conteúdo seria confiar em qualquer coisa que

@@ -6,7 +6,7 @@
 
 variant := ""
 
-base := if variant == "nvidia" { "ghcr.io/ublue-os/base-nvidia:44" } else { "ghcr.io/ublue-os/base-main:44" }
+base := if variant == "nvidia" { "ghcr.io/ublue-os/base-nvidia:45" } else { "ghcr.io/ublue-os/base-main:45" }
 
 suffix := if variant == "nvidia" { "-nvidia" } else { "" }
 
@@ -16,7 +16,7 @@ tag := "dev"
 builder := "quay.io/centos-bootc/bootc-image-builder:latest"
 
 # Origem da mídia de instalação ('iso'); build e verificações usam a local.
-publicado := "ghcr.io/alexrogaleski/arkmos" + suffix + ":44"
+publicado := "ghcr.io/alexrogaleski/arkmos" + suffix + ":45"
 
 default:
     @just --list

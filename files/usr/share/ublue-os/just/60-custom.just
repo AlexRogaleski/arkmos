@@ -106,7 +106,7 @@ arkmos-variant ALVO="prompt":
         containers-storage:* | localhost/*)
             echo "Esta máquina segue uma imagem local: ${imagem}"
             echo "Troque primeiro para a publicada, com:"
-            echo "  sudo bootc switch --enforce-container-sigpolicy ghcr.io/<dono>/arkmos:44"
+            echo "  sudo bootc switch --enforce-container-sigpolicy ghcr.io/<dono>/arkmos:45"
             exit 1
             ;;
     esac

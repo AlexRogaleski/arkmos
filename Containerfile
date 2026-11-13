@@ -3,13 +3,13 @@
 #
 # Duas variantes; a única diferença é a imagem base (ver PROJECT.md §5.2):
 #
-#   arkmos          ghcr.io/ublue-os/base-main:44     (padrão)
-#   arkmos-nvidia   ghcr.io/ublue-os/base-nvidia:44   driver NVIDIA assinado
+#   arkmos          ghcr.io/ublue-os/base-main:45     (padrão)
+#   arkmos-nvidia   ghcr.io/ublue-os/base-nvidia:45   driver NVIDIA assinado
 #
 # ARG antes do FROM não é visível depois dele: a variante viaja separada, no
 # ARKMOS_VARIANT do fim do arquivo.
 # ---------------------------------------------------------------------------
-ARG BASE_IMAGE="ghcr.io/ublue-os/base-main:44"
+ARG BASE_IMAGE="ghcr.io/ublue-os/base-main:45"
 
 # ---------------------------------------------------------------------------
 # Estágio de compilação: Noctalia Greeter (não empacotado no Fedora; §8.3)
@@ -70,8 +70,11 @@ COPY files/etc/yum.repos.d/ /etc/yum.repos.d/
 # wl-clipboard e os portais GTK. Os portais seguem listados de propósito:
 # o niri depende deles, e a base vem sendo podada.
 #
-# 'gnome-keyring-pam': o /etc/pam.d/greetd o referencia com '-', que ignora em
+# 'gnome-keyring-pam': o PAM do greetd o referencia com '-', que ignora em
 # silêncio o módulo ausente — sem o pacote, o chaveiro não destrava no login.
+#
+# O kmscon sai (§12.3): no Fedora 45 ele assume os consoles de texto e disputa
+# a vt1 com o assistente do primeiro boot, o greetd e o login de recuperação.
 #
 # O papel de parede da versão tem o número do Fedora no nome do pacote, que
 # por isso sai do 'rpm -E %fedora'.
@@ -119,7 +122,7 @@ RUN dnf -y --setopt=install_weak_deps=False install \
         btop \
         fedora-workstation-backgrounds \
         "f$(rpm -E %fedora)-backgrounds-base" \
-    && dnf -y remove htop \
+    && dnf -y remove htop kmscon \
     && dnf clean all
 
 # Ambiente de terminal: só o que o Fedora não empacota (starship, lazygit,
@@ -291,12 +294,14 @@ json.dump(d, open(p, "w"), indent=4)' "$ARKMOS_REGISTRY" \
 # Serviços (§7, §22): sshd desligado (o 10-arkmos.preset impede que o preset
 # do Fedora o religue no primeiro boot), firewall na zona FedoraWorkstation,
 # agente SSH do gcr e Noctalia (§8.2) para todo usuário, e grub-boot-success
-# mascarada — ela escreveria no /boot, que aqui é somente leitura.
+# mascarada — ela escreveria no /boot, que aqui é somente leitura. O getty@
+# volta a ser o autovt@, papel que o preset do Fedora deu ao kmscon.
 RUN chmod 0755 /usr/libexec/arkmos-firstboot /usr/libexec/arkmos-greeter \
                 /usr/bin/arkmos-diag /usr/bin/arkmos-display /usr/bin/arkmos-webapp \
     && systemctl enable arkmos-firstboot.service \
     && systemctl enable arkmos-flatpak-preinstall.service \
     && systemctl enable arkmos-numlock.service \
+    && systemctl enable getty@.service \
     && systemctl disable sshd.service \
     && systemctl --global enable gcr-ssh-agent.socket \
     && systemctl --global enable noctalia.service \

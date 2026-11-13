@@ -168,11 +168,27 @@ check "assistente dispensado em rebase (conta existente)" firstboot_rebase
 
 # O PAM do greetd referencia o módulo com '-', que ignora se ele faltar: sem o
 # pacote -pam, o chaveiro não abre com o login e a sessão pede a senha de novo.
+# Vale o de /etc, se existir; desde o Fedora 45 o pacote o entrega em /usr/lib.
 check "pam_gnome_keyring presente e referenciado" \
     run sh -c 'test -e /usr/lib64/security/pam_gnome_keyring.so \
         || { echo "o módulo não está instalado (falta gnome-keyring-pam)"; exit 1; }
-      grep -q pam_gnome_keyring /etc/pam.d/greetd \
+      pam=/etc/pam.d/greetd; [ -e "$pam" ] || pam=/usr/lib/pam.d/greetd
+      grep -q pam_gnome_keyring "$pam" \
         || { echo "o PAM do greetd não referencia o módulo"; exit 1; }'
+
+# O xdg-desktop-portal-gnome 51 puxa o oo7 (§10). Ele fica instalado, mas o
+# org.freedesktop.secrets é do gnome-keyring: o oo7-daemon desligado e a
+# ativação pelo D-Bus apontando para o gnome-keyring-daemon.
+check "Secret Service do gnome-keyring, oo7 desligado" \
+    run sh -c '[ "$(systemctl --global is-enabled oo7-daemon.service 2>/dev/null)" != enabled ] \
+        || { echo "oo7-daemon habilitado"; exit 1; }
+      for f in /usr/share/dbus-1/services/*.service; do
+          grep -qx "Name=org.freedesktop.secrets" "$f" || continue
+          grep -q "^Exec=/usr/bin/gnome-keyring-daemon" "$f" \
+              || { echo "$f ativa outro Secret Service"; exit 1; }
+          achou=1
+      done
+      [ -n "${achou:-}" ] || { echo "nada ativa o org.freedesktop.secrets"; exit 1; }'
 
 # O autostart do agente tem OnlyShowIn=MATE e nunca subiria no niri. Sem
 # agente, toda autorização falha sem janela nem erro.
@@ -266,7 +282,7 @@ check "cursor Bibata-Modern-Ice instalado e declarado nos cinco lugares" \
                grep -qx "    xcursor-theme \"$c\"" /etc/niri/config.kdl || { echo "niri"; exit 1; }
                grep -qx "theme = \"$c\"" /usr/share/arkmos/noctalia-greeter.toml || { echo "greeter"; exit 1; }'
 
-# O Fedora 44 não traz .desktop do nm-connection-editor: sem o nosso, o editor
+# O Fedora (44 e 45) não traz .desktop do nm-connection-editor: sem o nosso, o editor
 # de MAC por rede fica invisível no menu (§22). Monitores: §8.4.
 check "rede e monitores: ferramentas e atalhos no menu" \
     run sh -c 'for c in nmtui nm-connection-editor wl-mirror wdisplays zenity; do
@@ -283,7 +299,7 @@ check "rede e monitores: ferramentas e atalhos no menu" \
 check "os-release: nome Arkmos, ID e versão do Fedora" \
     run sh -c '. /usr/lib/os-release
                case "$PRETTY_NAME" in Arkmos*) ;; *) echo "PRETTY_NAME=$PRETTY_NAME"; exit 1 ;; esac
-               [ "$ID" = fedora ] && [ "$VERSION_ID" = 44 ] || { echo "ID=$ID VERSION_ID=$VERSION_ID"; exit 1; }'
+               [ "$ID" = fedora ] && [ "$VERSION_ID" = 45 ] || { echo "ID=$ID VERSION_ID=$VERSION_ID"; exit 1; }'
 
 # Com o rótulo genérico, o SELinux impede o greeter de regravar o sync.toml, e
 # a aparência do desktop não chega ao login, sem erro visível (§8.3).
@@ -842,6 +858,19 @@ check "componentes herdados da base presentes" \
 # Shim de 'docker' para o podman: proibido (§15).
 check "podman-docker ausente" \
     sh -c '! podman run --rm "'"$IMAGE"'" rpm -q podman-docker >/dev/null 2>&1'
+
+# O kmscon disputa a vt1 com o assistente, o greetd e o fallback (§12.3): fora
+# da imagem, e o autovt@ de volta ao getty. Confere de novo depois de reaplicar
+# os presets, como o primeiro boot faz: o do Fedora 45 desabilita o getty@.
+check "consoles de texto com o getty, sem kmscon" \
+    run sh -c '! rpm -q kmscon >/dev/null 2>&1 || { echo "kmscon instalado"; exit 1; }
+      getty_ok() {
+          [ "$(readlink -f /etc/systemd/system/autovt@.service)" = /usr/lib/systemd/system/getty@.service ] \
+            && [ "$(systemctl is-enabled getty@tty1.service)" = enabled ]
+      }
+      getty_ok || { echo "autovt@ ou getty@tty1 fora do getty na imagem"; exit 1; }
+      systemctl preset-all >/dev/null 2>&1
+      getty_ok || { echo "os presets desligam o getty@"; exit 1; }'
 
 # --- Serviços --------------------------------------------------------------
 

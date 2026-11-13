@@ -15,7 +15,7 @@ O objetivo não é publicar uma distribuição. É que a configuração da máqu
 
 | Camada | Componentes |
 | --- | --- |
-| Base | Fedora 44 bootc sobre o [Universal Blue](https://universal-blue.org), Btrfs, SELinux enforcing |
+| Base | Fedora 45 bootc sobre o [Universal Blue](https://universal-blue.org), Btrfs, SELinux enforcing |
 | Desktop | [niri](https://github.com/niri-wm/niri) (compositor), [Noctalia](https://github.com/noctalia-dev/noctalia) (shell), [Noctalia Greeter](https://github.com/noctalia-dev/noctalia-greeter) (login), Nautilus, Discos, gerenciador de compactação |
 | Terminal | [foot](https://codeberg.org/dnkl/foot), zsh com configuração própria, [starship](https://starship.rs), JetBrains Mono Nerd Font, btop |
 | Desenvolvimento | VS Code, Docker CE + compose, Podman, Distrobox, [mise](https://mise.jdx.dev), Git, GitHub CLI, Neovim, lazygit, lazydocker |
@@ -31,8 +31,8 @@ Duas imagens do mesmo sistema; a única diferença é a imagem base.
 
 | Imagem | Base | Para |
 | --- | --- | --- |
-| `ghcr.io/alexrogaleski/arkmos` | `ublue-os/base-main:44` | padrão |
-| `ghcr.io/alexrogaleski/arkmos-nvidia` | `ublue-os/base-nvidia:44` | máquinas com GPU NVIDIA em uso — driver com módulos assinados |
+| `ghcr.io/alexrogaleski/arkmos` | `ublue-os/base-main:45` | padrão |
+| `ghcr.io/alexrogaleski/arkmos-nvidia` | `ublue-os/base-nvidia:45` | máquinas com GPU NVIDIA em uso — driver com módulos assinados |
 
 Na variante padrão não há driver NVIDIA nenhum: numa máquina cuja dGPU é ligada pela BIOS, é preciso trocar de variante. Trocar é `bootc switch` e reboot, não reinstalação.
 
@@ -76,7 +76,7 @@ A partir da imagem publicada:
 sudo podman run --rm --privileged --pid=host \
     -v /dev:/dev -v /var/lib/containers:/var/lib/containers \
     --security-opt label=type:unconfined_t \
-    ghcr.io/alexrogaleski/arkmos:44 \
+    ghcr.io/alexrogaleski/arkmos:45 \
     bootc install to-disk --wipe /dev/sdX
 ```
 
@@ -85,7 +85,7 @@ O primeiro boot abre um assistente que cria a conta e define a senha — só iss
 Ou por rebase, a partir de um Fedora Atomic já instalado (Silverblue, Kinoite, Aurora…), mantendo a conta e os arquivos:
 
 ```bash
-sudo bootc switch --enforce-container-sigpolicy ghcr.io/alexrogaleski/arkmos:44
+sudo bootc switch --enforce-container-sigpolicy ghcr.io/alexrogaleski/arkmos:45
 ```
 
 A flag faz toda atualização seguinte exigir a assinatura. A troca em si é verificada pela política do sistema de origem, que ainda não conhece a chave do Arkmos.
@@ -98,10 +98,12 @@ sudo bootc rollback                                        # volta para a deploy
 sudo bootc status                                          # o que roda e o que está preparado
 
 sudo bootc switch --enforce-container-sigpolicy \
-    ghcr.io/alexrogaleski/arkmos-nvidia:44                 # troca de variante
+    ghcr.io/alexrogaleski/arkmos-nvidia:45                 # troca de variante
 ```
 
-As imagens são assinadas com [cosign](https://github.com/sigstore/cosign), e o sistema **recusa** atualização que não venha com assinatura válida. As versões seguem o esquema por data do Fedora (`44.AAAAMMDD.N`), mais as tags `44` e `latest`.
+As imagens são assinadas com [cosign](https://github.com/sigstore/cosign), e o sistema **recusa** atualização que não venha com assinatura válida. As versões seguem o esquema por data do Fedora (`45.AAAAMMDD.N`), mais as tags `45` e `latest`.
+
+A tag do Fedora fixa a versão major: uma máquina que segue `arkmos:44` não sobe para o 45 com `bootc upgrade`. A troca é um `bootc switch` para a tag `45`, uma vez.
 
 ---
 

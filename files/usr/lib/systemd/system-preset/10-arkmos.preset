@@ -10,3 +10,8 @@
 disable sshd.service
 
 enable arkmos-flatpak-preinstall.service
+
+# O 90-default.preset do Fedora 45 desabilita o getty@ em favor do kmscon, que
+# a imagem remove (Containerfile). Sem isto, a vt1 e o autovt@ ficariam sem
+# login de texto quando os presets fossem reaplicados.
+enable getty@.service
