@@ -384,14 +384,34 @@ window-rule {
     open-floating true
 }
 
+// Arkmos: programas de uso longo abrem com a coluna maximizada (o Mod+F), e
+// não em meia tela. Ids conferidos com 'niri msg windows' (PROJECT.md §8.1).
+window-rule {
+    match app-id=r#"^google-chrome$"#
+    match app-id=r#"^com\.microsoft\.VSCode$"#
+    match app-id=r#"^ONLYOFFICE$"#
+    match app-id=r#"^co\.hyprlab\.Hylki$"#
+    open-maximized true
+}
+
+// Arkmos: Nautilus levemente translúcido, como o terminal.
+window-rule {
+    match app-id=r#"^org\.gnome\.Nautilus$"#
+    opacity 0.9
+}
+
 // Arkmos: cantos arredondados em todas as janelas.
 //
 // Sem 'match', a regra vale para todas. O clip-to-geometry recorta o conteúdo
 // no mesmo raio: sem ele o arredondamento é só na moldura que o niri desenha, e
 // o conteúdo da janela continua quadrado por baixo, aparecendo nos cantos.
+//
+// Sem draw-border-with-background false, o anel de foco é pintado sólido atrás
+// da janela focada, e as translúcidas ficam opacas ao receber foco.
 window-rule {
     geometry-corner-radius 8
     clip-to-geometry true
+    draw-border-with-background false
 }
 
 // Example: block out two password managers from screen capture.

@@ -255,6 +255,10 @@ assert c.get("window.autoDetectColorScheme") is True, "não segue o tema do sist
 assert c.get("update.mode") == "none", "auto-update ligado numa imagem read-only"
 '
 
+# Com a barra própria, o OnlyOffice deixa uma margem dentro da coluna do niri.
+check "OnlyOffice semeado com a barra de título do sistema" \
+    run grep -qx "titlebar=system" /etc/skel/.var/app/org.onlyoffice.desktopeditors/config/onlyoffice/DesktopEditors.conf
+
 # Caminho sem portal nem D-Bus: se o portal não subir, o GTK3 acha o tema aqui.
 check "tema GTK declarado também fora do dconf" \
     run sh -c 'grep -qx "gtk-theme-name=adw-gtk3-dark" /etc/xdg/gtk-3.0/settings.ini && grep -qx "gtk-application-prefer-dark-theme=1" /etc/xdg/gtk-3.0/settings.ini'
