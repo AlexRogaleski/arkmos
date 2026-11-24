@@ -160,6 +160,22 @@ launcher_position = "start"
 background_opacity = 0.6
 pinned = [ "com.microsoft.VSCode", "com.spotify.Client", "com.anydesk.Anydesk", "io.github.kolunmi.Bazaar" ]
 
+# Cantos inferiores trocam de coluna no niri, como o Mod + botões laterais do
+# mouse. Os 150 ms evitam a troca quando o ponteiro só passa pelo canto. Os
+# cantos de cima ficam livres: o superior esquerdo é o overview do niri.
+# Cada canto declara ação e comando: o Noctalia substitui o bloco inteiro.
+[hot_corners]
+enabled = true
+delay_ms = 150
+
+[hot_corners.bottom_left]
+action = "command"
+command = "niri msg action focus-column-left"
+
+[hot_corners.bottom_right]
+action = "command"
+command = "niri msg action focus-column-right"
+
 # Lançador ancorado no canto superior esquerdo, abrindo perto de onde foi
 # clicado.
 [shell.panel]
