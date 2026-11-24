@@ -842,6 +842,21 @@ for nome, acao in (("lock", "lock"), ("screen-off", "screen_off")):
 PY
     '
 
+# O comando do canto roda pelo NIRI_SOCKET do serviço do Noctalia (§8.2).
+check "cantos inferiores trocam de coluna para conta nova" \
+    run sh -c '
+        mkdir -p /tmp/h/.config && cp -r /etc/skel/.config/noctalia /tmp/h/.config/
+        HOME=/tmp/h noctalia config export full 2>/dev/null > /tmp/efetivo.toml
+        python3 /dev/stdin <<PY
+import tomllib
+c = tomllib.load(open("/tmp/efetivo.toml", "rb"))["hot_corners"]
+assert c["enabled"] is True, "cantos desligados"
+for canto, acao in (("bottom_left", "focus-column-left"), ("bottom_right", "focus-column-right")):
+    assert c[canto]["action"] == "command", canto + ": ação " + repr(c[canto]["action"])
+    assert c[canto]["command"] == "niri msg action " + acao, canto + ": " + repr(c[canto]["command"])
+PY
+    '
+
 # --- tmpfiles --------------------------------------------------------------
 
 # O dry-run resolve usuários e grupos de verdade.
